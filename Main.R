@@ -1,0 +1,140 @@
+# Main code/file
+
+setwd("~/Documents/RStudio")
+source("GenerateMultipleMassFuncs.R")
+library(ProSpect)
+library(float)
+
+massParams = list(
+  dtau=list(
+    name="dtau",
+    func=massfunc_dtau,
+    mSFR=10,
+    mpeak=seq(7,14.2,0.3),
+    mtau=seq(0.5,3.5, 0.2)
+  ),
+  snorm=list(
+    name="snorm",
+    func=massfunc_snorm,
+    mSFR=10,
+    mpeak=seq(7,14.2,0.3),
+    mperiod=seq(0.5,1.5, 0.2),
+    mskew=seq(-0.5, 1, 0.1)
+  )
+)
+
+massParams2 = list(
+  dtau=list(
+    name="dtau",
+    func=massfunc_dtau,
+    mpeak=c(seq(8,12,2)),
+    mtau=c(2, 3)
+  )
+)
+
+massParams3 = list(
+  dtau=list(
+    name="dtau",
+    func=massfunc_dtau,
+    mpeak=8,
+    mtau=2
+  )
+)
+
+
+ZParams = list(
+  func=Zfunc_massmap_box,
+  Zstart=1e-4,
+  yield=0.03,
+  Zfinal=c(0.02, 0.03)
+)
+
+
+ZParams2 = list(
+  func=Zfunc_massmap_box,
+  Zstart=1e-4,
+  yield=0.03,
+  Zfinal=0.02
+)
+
+
+EMILESCombined = readRDS(file="EMILESCombined.rds")
+
+outputFolder = "OutputsGenerated"
+outputFolder = "/Volumes/Elements/Outputs"
+absolutePath = TRUE
+
+# Delete files in outputfolder
+if (FALSE){
+  # ls = list.files(file.path(getwd(), outputFolder))
+  ls = list.files(outputFolder)
+  for (file in ls){
+    # file.remove(file.path(getwd(), outputFolder, file))
+    file.remove(file.path(outputFolder, file))
+  }
+}
+
+ls1 = sort(list.files(outputFolder))
+
+# waveout = seq(4700, 9400, 1.25)
+# wave = seq(4700, 9400, 1.25)
+# agevec = c(6300000,7900000,10000000,12600000,15800000,20000000,25100000,
+#            31600000,39800000,50100000,63100000,70800000,79400000,89100000,
+#            100000000,112200000,125900000,141300000,158500000,177800000,
+#            199500000,223900000,251200000,281800000,316200000,354800000,
+#            398100000,446700000,501200000,562300000,631000000,707900000,
+#            794300000,891300000,1000000000,1122000000,1258900000,1412500000,
+#            1584900000, 1778300000,1995300000,2238700000,2511900000,
+#            2818400000,3162300000,3548100000,3981100000,4466800000,
+#            5011900000,5623400000,6309600000,7079500000,7943300000,
+#            8912500000,10000000000,11220200000,12589300000,14125400000,
+#            15848900000,17782800000)
+# TODO Check if a reference file is there (do NOT remove it with the general folder cleaning)
+
+generateSpecFromParams(massParams = massParams2,
+                       ZParams = ZParams,
+                       folderPath = outputFolder, absolutePath = absolutePath,
+                       randomSamples = 1,
+                       speclib = EMILESCombined,
+                       confirmation = TRUE,
+                       verbose=1,
+                       verboseSteps=2,
+                       cleanOutputFolder=TRUE)
+
+# Verify total file size
+ls2 = sort(list.files(outputFolder))
+ls2 = ls2[!ls2 %in% ls1]
+
+sizeI = 0
+sizeL = 0
+
+for (file in ls2){
+  if (substr(file, 1, 5) == "Input"){
+    sizeI = sizeI + file.info(file.path(outputFolder, file))$size
+  } else {
+    sizeL = sizeL + file.info(file.path(outputFolder, file))$size
+  }
+}
+
+roundMultiple <- function(number, multiple, f=round){
+  return(f(number/multiple)*multiple)
+}
+
+bytes2Human <- function(B, decimals=2){
+  betterUnits = roundMultiple(log10(B), 3, trunc)
+  B = B/(10^betterUnits)
+  units = c("", "K", "M", "G", "T", "P", "E", "Z", "Y")
+  units = units[betterUnits/3 + 1]
+  return(paste0(toString(round(B, decimals)), units, "B"))
+}
+
+sizeIs = bytes2Human(sizeI)
+sizeLs = bytes2Human(sizeL)
+sizeTotal = sizeI + sizeL
+sizeTotals = bytes2Human(sizeTotal)
+cat("Total Size pair: ", sizeTotals, sep="")
+
+dfRead <- readFITS(file.path(outputFolder, ls2[1]))
+
+
+
