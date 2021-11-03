@@ -221,7 +221,7 @@ generateSpecFromParams <- function(massParams="default",
   if (verbose > 0)
     cat(paste0("Output Folder: ", folderPath, "\n"))
   
-  # Verify if folder exists (and create it)
+  # Verify if folder exists (and create it if it does not)
   if (!dir.exists(folderPath)){
     dir.create(folderPath)
   }
@@ -515,18 +515,19 @@ generateSpecFromParams <- function(massParams="default",
                            (rnd + 1) + (ZCaseNumber - 1) * (randomSamples + 1) + (massCaseNumber - 1) * ZNumberOfCases * (randomSamples + 1),
                           massNumberOfCases * ZNumberOfCases * (randomSamples + 1)
                           )
-          sTotal = sprintf(paste0("Tot:(%0", nchar(toString(combMassFunc*combZ*(randomSamples + 1))), "d/%d)"),
+          sTotal = sprintf(paste0("Tot:(%0", nchar(toString(combMassFunc*combZ*(randomSamples + 1))), "d/%d) - %5.1f"),
                            absoluteCountCases,
-                           totalNumberOfCases
-          )
+                           totalNumberOfCases,
+                           absoluteCountCases/totalNumberOfCases*100
+                           )
           if (verbose > 0){
             if (absoluteCountCases %% verboseSteps == 0 || absoluteCountCases == 1 || absoluteCountCases == totalNumberOfCases){
-              cat(paste0(sFilename, sMass, sZ, sRNG, sCurrentMF, sTotal, "\n"))
+              cat(paste0(sFilename, sMass, sZ, sRNG, sCurrentMF, sTotal, "%\n"))
             }
           }
           # EXPORT FILE
           exportObjectToFITS(spectraObject,
-                             filename=filename,
+                             filename=filename, 
                              foldername=folderPath,
                              spectrumParam = savedParams,
                              randomNoise = c(rnd, SNRatio),
