@@ -35,6 +35,9 @@ findClosestInVector <- function(number, vector, returnIndex=FALSE){
   }
 }
 
+# Conseguir memoria ram de las variables y objetos
+sort(sapply(ls(),function(x){object.size(get(x))}))
+
 wavelength2rgb <- function(l) {
   r = 0
   g = 0
@@ -764,13 +767,51 @@ pltComparison <- function(object1, object2, mode=NULL){
 }
 
 
-# UT
-# pltComparison(Stars,
-#               Stars2,
-#               mode="division")
+convertAny2decimal <- function(x, old=16){
+  if (old > 62){
+    stop("Maximum order is 62.")
+  } else if (old <= 0) {
+    stop("Minimum order is 1.")
+  }
+  x <- toString(x)
+  dic <- c(0:9, letters[1:26], LETTERS[1:26])
+  tmp = 0
+  tmpi = 0
+  while (x != ""){
+    t <- match(substr(x, nchar(x), nchar(x)), dic) - 1
+    tmp = tmp + old**tmpi*t
+    tmpi = tmpi + 1
+    x = substr(x, 1, nchar(x) - 1)
+  }
+  return(tmp)
+}
 
 
+convertDecimal2Any <- function(x, new=16){
+  if (new > 62){
+    stop("Maximum order is 62.")
+  } else if (new <= 0) {
+    stop("Minimum order is 1.")
+  }
+  dic <- c(0:9, letters[1:26], LETTERS[1:26])
+  tmp = ""
+  while (x > 0){
+    tmp = paste0(dic[x%%new + 1], tmp)
+    x = (x - x%%new)/new
+  }
+  return(tmp)
+}
 
+
+convertAny2Any <- function(x, old=10, new=16){
+  if (old > 62 | new > 62){
+    stop("Maximum order is 62.")
+  } else if (old <= 0 | new <= 0) {
+    stop("Minimum order is 1.")
+  }
+  dic <- c(0:9, letters[1:26], LETTERS[1:26])
+  convertDecimal2Any(convertAny2decimal(x, old), new)
+}
 
 
 
