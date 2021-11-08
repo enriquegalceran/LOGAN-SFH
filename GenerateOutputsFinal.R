@@ -14,6 +14,7 @@ library(FITSio)
 library(ProSpect)
 library(uuid)
 
+
 exportObjectToFITS <- function(inputObject,
                                filename,
                                foldername,
@@ -110,6 +111,7 @@ exportObjectToFITS <- function(inputObject,
   
   #####
   # Generate Header for Inputs
+  # R saves scientific notation with lower case 'e'. Will be fixed in python.
   hdrIn <- newKwv("DateGen", dateGenerated, "Date when generated")
   hdrIn <- addKwv("FileType", "Input", note="File type (Input/Label)", header=hdrIn)
   hdrIn <- addKwv("Filename", paste0("Input_", fileprefix, filename, ".fits"), header=hdrIn)
@@ -128,6 +130,7 @@ exportObjectToFITS <- function(inputObject,
   
   #####
   # Generate Header for Labels
+  # R saves scientific notation with lower case 'e'. Will be fixed in python.
   hdrLb <- newKwv("DateGen", dateGenerated, "Date when generated")
   hdrLb <- addKwv("FileType", "Label", note="File type [Input/Label]", header=hdrLb)
   hdrLb <- addKwv("Filename", paste0("Label_", fileprefix, filename, ".fits"), header=hdrLb)

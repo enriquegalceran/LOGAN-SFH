@@ -14,17 +14,14 @@ def main():
     filedir = "/Volumes/Elements/Outputs"
     ls = os.listdir(filedir)
     print(ls)
-    filename = ls[0]
+    filename = ls[2]
 
     with fits.open(os.path.join(filedir, filename)) as hdul:
         hdul.info()
-        data = hdul[0].data
-        print(type(data))
-        data = np.float32(data)
-        print(type(data))
+        data = hdul[0].data.astype(np.float32)
         hdul[0].data = data
-        hdul.info()
-        hdul.writeto(os.path.join(filedir, "aaaaa.fits"), overwrite=True)
+        # R saves scientific notation with lower case 'e', while the FITS standard indicates it should be upper case 'E'
+        hdul.writeto(os.path.join(filedir, "aaaaa.fits"), overwrite=True, output_verify="silentfix")
 
 
 
