@@ -89,7 +89,6 @@ ls1 = sort(list.files(outputFolder))
 #            5011900000,5623400000,6309600000,7079500000,7943300000,
 #            8912500000,10000000000,11220200000,12589300000,14125400000,
 #            15848900000,17782800000)
-# TODO Check if a reference file is there (do NOT remove it with the general folder cleaning)
 
 generateSpecFromParams(massParams = massParams2,
                        ZParams = ZParams,
