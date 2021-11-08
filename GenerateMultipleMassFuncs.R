@@ -25,9 +25,10 @@ generateSpecFromParams <- function(massParams="default",
                                    filenamemode=2,
                                    confirmation=FALSE,
                                    verbose=2,
-                                   verboseSteps=1,
+                                   verboseSteps=1,        # if 0, will be the same as pythonStep
                                    cleanOutputFolder=FALSE,
                                    absolutePath=FALSE,
+                                   bytesForPython=10e6,
                                    ...) {
   #####
   # Functions
@@ -231,8 +232,8 @@ generateSpecFromParams <- function(massParams="default",
   # Clean Output Folder
   if (cleanOutputFolder & nfilesAtStart > 0){
     if (confirmation){
-      cleanConfirmations <- readline(prompt = paste0("Clean Outputfolder with ", nfilesAtStart, " elements? (Y/[N]/All) "))
-      if (any(cleanConfirmations == c("y", "Y", "yes", "YES", "all", "All", "ALL", "a"))){
+      cleanConfirmation <- readline(prompt = paste0("Clean Outputfolder with ", nfilesAtStart, " elements? (Y/[N]/All) "))
+      if (any(cleanConfirmation == c("y", "Y", "yes", "YES", "all", "All", "ALL", "a"))){
         cleanConfirmation = TRUE
       } else {
         cleanConfirmation = FALSE
@@ -244,7 +245,7 @@ generateSpecFromParams <- function(massParams="default",
     if (cleanConfirmation){
       ls = list.files(folderPath)
       for (file in ls){
-        if (any(cleanConfirmations == c("all", "ALL", "All", "a")) || (file != "ReferenceInputs.fits" & file != "ReferenceLabel.fits"))
+        if (any(cleanConfirmation == c("all", "ALL", "All", "a")) || (file != "ReferenceInputs.fits" & file != "ReferenceLabel.fits"))
           file.remove(file.path(folderPath, file))
       }
       if (verbose > 0)
@@ -357,14 +358,24 @@ generateSpecFromParams <- function(massParams="default",
   }
  
    
+  #####
+  # Calculate how many pairs are to be generated before calling the Python code.
+  pythonSteps = trunc(bytesForPython/expectedSizePerPair)
+  cat("The Python script will be executed every ", pythonSteps, " calculations. (", bytes2Human(expectedSizePerPair * pythonSteps), "/", bytes2Human(bytesForPython), ")\n", sep="")
+  pythonListFilenames = rep(NA, min(pythonSteps, totalNumberOfCases))
+  if (verboseSteps == 0){
+    verboseSteps = pythonSteps
+  }
+  
+  
   if (confirmation){
     confirmation <- readline(prompt = paste0("Continue operation for ", totalNumberOfCases, " combinations? ([Y]/N) "))
     if (!any(confirmation == c("", "y", "Y", "yes", "YES"))){
       stop("User stopped execution.")
     }
   }
-
-
+  
+  
   #####
   # Iterate over massParams
   absoluteCountCases = 1
@@ -536,6 +547,27 @@ generateSpecFromParams <- function(massParams="default",
                              CRVALDELTA = CRVALDELTA,
                              forcemass = forcemass
                              )
+          
+          pythonListFilenames[absoluteCountCases %% pythonSteps] = filename
+          #####
+          # Execute Python code that reduces to 32-bit every pythonStep
+          if (absoluteCountCases %% pythonSteps == 0 | absoluteCountCases == totalNumberOfCases){
+            listFilename = file.path(getwd(), "ListToConvertTo32.txt")
+            zz <- file(listFilename, "wb")
+            writeBin(paste(pythonListFilenames, collapse="\n"), zz)
+            close(zz)
+            # TODO: create a file that is a list with all the names in pythonListFilenames
+            # TODO: clean pythonListFilenames
+            # TODO: Fix python script (Not even started. Maybe it is not needed to put everything in main, and I can call the function something useful...)
+            # TODO: Python should remove the listfile
+            # TODO: output something to screen IF VERBOSE
+            pythonExecution = paste0("/Users/enrique/.conda/envs/LOGAN/bin/python testExecution.py -list ", listFilename, " -data ", folderPath)
+            cat("Executing: '", pythonExecution, "'\n", sep="")
+            system(pythonExecution)
+            # TODO: FIX THIS. Using env variables
+            # TODO: Should be able to be more flexible
+          }
+          
           # Count every case
           absoluteCountCases = absoluteCountCases + 1
         }
