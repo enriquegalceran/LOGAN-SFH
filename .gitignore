@@ -2,3 +2,5 @@
 .DS_Store
 /EMILESData/EMILESCombined.rds
 /.idea/
+.Rhistory
+ListToConvertTo32.txt

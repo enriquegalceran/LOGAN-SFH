@@ -118,9 +118,8 @@ exportObjectToFITS <- function(inputObject,
   hdrIn <- addKwv("UuidInp", objectUUID[1], note="UUID for Input", header=hdrIn)
   hdrIn <- addKwv("UuidLab", objectUUID[2], note="UUID for Label", header=hdrIn)
   hdrIn <- addExtraHeaderElements(spectrumParam, extraHeaders, hdrIn)
-  hdrIn <- addKwv("Minwave", min(spectra[,1]), note="Minimum wavelength", header=hdrIn)
-  hdrIn <- addKwv("Maxwave", max(spectra[,1]), note="Maximum wavelength", header=hdrIn)
-  hdrIn <- addKwv("Nelement", length(spectra[,1]), note="Elements in wavelength", header=hdrIn)
+  hdrIn <- addKwv("MinFlux", min(spectra[,1]), note="Minimum Flux", header=hdrIn)
+  hdrIn <- addKwv("Maxflux", max(spectra[,1]), note="Maximum Flux", header=hdrIn)
   hdrIn <- addKwv("masstot", inputObject$masstot, note="Total mass", header=hdrIn)
   hdrIn <- addKwv("forcema", if(forcemass==FALSE){FALSE} else {TRUE}, note="Was the mass forced to a value", header=hdrIn)
   hdrIn <- addKwv("Noise", if(randomNoise[1] >0){1}else{0}, note="0: No noise  - 1: Noise according to SNR", header=hdrIn)
@@ -156,19 +155,7 @@ exportObjectToFITS <- function(inputObject,
   dir.create(filedirectory, showWarnings = FALSE)
   if (verbose > 1)
     cat("Saving files in '", filedirectory, "/'.\n", sep="")
-  
-  # New file name system does not use this. If error appears with filename,
-  #     this should be uncommented, having added previously a hidewarnings/similar
-  # # Check if files exist and remove if necessary
-  # if (file.exists(paste0(filedirectory, "/Input_", filename))) {
-  #   #Delete file if it exists
-  #   file.remove(paste0(filedirectory, "/Input_", filename))
-  # }
-  # if (file.exists(paste0(filedirectory, "/Label_", filename))) {
-  #   #Delete file if it exists
-  #   file.remove(paste0(filedirectory, "/Label_", filename))
-  # }
-  
+
   
   #####
   # Save files

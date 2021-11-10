@@ -562,8 +562,9 @@ generateSpecFromParams <- function(massParams="default",
             # TODO: Python should remove the listfile
             # TODO: output something to screen IF VERBOSE
             pythonExecution = paste0("/Users/enrique/.conda/envs/LOGAN/bin/python testExecution.py -list ", listFilename, " -data ", folderPath)
-            cat("Executing: '", pythonExecution, "'\n", sep="")
+            cat("Executing: '", pythonExecution, "'\n", sep="")           # TODO: this line will be removed
             system(pythonExecution)
+            pythonListFilenames = c()
             # TODO: FIX THIS. Using env variables
             # TODO: Should be able to be more flexible
           }
