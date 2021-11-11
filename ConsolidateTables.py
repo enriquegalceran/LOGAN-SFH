@@ -13,29 +13,29 @@ def consolidateFITSTables():
     # Initialize parameters, read argparse and reads files
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--list", "-l", type=str,
+    parser.add_argument("--list", "-l", type=str, default="ListToConvertoTo32.txt",
                         help="Path to file containing the list of files to be changed")
     parser.add_argument("--datadirectory", "-dd", type=str,
                         help="Path to folder with the data to be converted")
-    parser.add_argument("--tablename", "-tn", type=str, default="LOGANTable",
-                        help="Name of combined table to be generated. Without '.fits' at the end")
-    parser.add_argument("--new", "-n", action='store_true',
-                        help="Start new table instead of appending to table if a file with name [tablename] already exists")
-    parser.add_argument("--tableindex", "-ti", type=int, default=None,
-                        help="Current index of the table. If None, it will have to search the directory for the next value.")
+    parser.add_argument("--tablename", "-tn", type=str, default="LOGANTable.fits",
+                        help="Name of combined table to be generated. If absolute path is NOT given, will search for it in the data directory>current working directory. If the file is not found, it will be generated in the Data directory")
     args = parser.parse_args()
-    tablename = args.tablename
-    working_directory = os.getcwd()
-    if args.new:
-        writingMode = "new"
-    elif tablename in os.listdir(working_directory):
-        writingMode = "add"
-    else:
-        writingMode = "other"  # TODO: Decide what is going to happen with this case
 
-    if args.tableindex is None:
-        args.tableindex = 1
-        # ToDo: search directory for the correct index
+    # Locate the Consolidated table
+    tablename = args.tablename
+    if not os.path.isabs(tablename):
+        # If the name is NOT an absolute path, search in the data directory and then in the cwd
+        writingMode = "add"
+        if tablename in os.listdir(args.datadirectory):
+            tablename = os.path.join(args.datadirectory, tablename)
+            print(f"Table was found in {tablename}")
+        elif tablename in os.listdir(os.getcwd()):
+            tablename = os.path.join(os.getcwd(), tablename)
+            print(f"Table was found in {tablename}")
+        else:
+            tablename = os.path.join(args.datadirectory, tablename)
+            writingMode = "new"
+            print(f"Table was not found. It will be generated in {tablename}")
 
     writingMode = "new"  # TODO: TESTING, REMOVE THIS
     if writingMode == "new":
@@ -127,11 +127,11 @@ def consolidateFITSTables():
     coldefs = fits.ColDefs(colList)
     print(coldefs)
     dummyTable = fits.BinTableHDU.from_columns(coldefs)
-    dummyTable.writeto(os.path.join(args.datadirectory, args.tablename + str(args.tableindex) + ".fits"), overwrite=True)
+    dummyTable.writeto(os.path.join(args.datadirectory, "tmp.fits"), overwrite=True)
 
-    # fits.append(os.path.join(args.datadirectory, args.tablename + ".fits"),)
-    filename1 = os.path.join(args.datadirectory, args.tablename + ".fits")
-    filename2 = os.path.join(args.datadirectory, args.tablename + str(args.tableindex) + ".fits")
+    # fits.append(os.path.join(args.datadirectory, args.tablename),)
+    filename1 = os.path.join(args.datadirectory, args.tablename)
+    filename2 = os.path.join(args.datadirectory, "tmp.fits")
     print(f"file1: {filename1}")
     print(f"file2: {filename2}")
     with fits.open(filename1) as hdul1:
@@ -144,38 +144,16 @@ def consolidateFITSTables():
                 hdu.data[colname][nrows1:] = hdul2[1].data[colname]
     hdu.writeto(filename1, overwrite=True)
 
+    # TODO: Remove tmp file and fits files
+
     # Test Reading the table appended
     print("----------------------------------------------")
     with fits.open(filename1) as hdul:
         data = hdul[1].data
         print(data.shape)
-        print(data)
         print("_-_-_-_-_-_-_-_-_-_-_-_-_-_-_")
         for k in data[0]:
             print(k, type(k))
-
-
-
-    # for file in lines:
-    #     # Input
-    #     print(os.path.join(args.data, "Input_" + file + ".fits"))
-    #     with fits.open(os.path.join(args.data, "Input_" + file + ".fits")) as hdul:
-    #         hdul.info()
-    #         data = hdul[0].data.astype(np.float32)
-    #         hdul[0].data = data
-    #         hdul.info()
-    #         # R saves scientific notation with lower case 'e', while the FITS standard indicates it should be upper case 'E'
-    #         hdul.writeto(os.path.join(args.data, "Input_" + file + ".fits"), overwrite=True, output_verify="silentfix")
-    #
-    #     # Label
-    #     print(os.path.join(args.data, "Label_" + file + ".fits"))
-    #     with fits.open(os.path.join(args.data, "Label_" + file + ".fits")) as hdul:
-    #         hdul.info()
-    #         data = hdul[0].data.astype(np.float32)
-    #         hdul[0].data = data
-    #         hdul.info()
-    #         # R saves scientific notation with lower case 'e', while the FITS standard indicates it should be upper case 'E'
-    #         hdul.writeto(os.path.join(args.data, "Label_" + file + ".fits"), overwrite=True, output_verify="silentfix")
 
 
 if __name__ == "__main__":
