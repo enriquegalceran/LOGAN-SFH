@@ -28,7 +28,7 @@ generateSpecFromParams <- function(massParams="default",
                                    verboseSteps=1,        # if 0, will be the same as pythonStep
                                    cleanOutputFolder=FALSE,
                                    absolutePath=FALSE,
-                                   bytesForPython=10e6,
+                                   bytesForPython=50e6,
                                    ...) {
   #####
   # Functions
@@ -556,17 +556,14 @@ generateSpecFromParams <- function(massParams="default",
             zz <- file(listFilename, "wb")
             writeBin(paste(pythonListFilenames, collapse="\n"), zz)
             close(zz)
-            # TODO: create a file that is a list with all the names in pythonListFilenames
-            # TODO: clean pythonListFilenames
-            # TODO: Fix python script (Not even started. Maybe it is not needed to put everything in main, and I can call the function something useful...)
-            # TODO: Python should remove the listfile
             # TODO: output something to screen IF VERBOSE
-            pythonExecution = paste0("/Users/enrique/.conda/envs/LOGAN/bin/python testExecution.py -list ", listFilename, " -data ", folderPath)
-            cat("Executing: '", pythonExecution, "'\n", sep="")           # TODO: this line will be removed
+            pythonExecution = paste0("/Users/enrique/.conda/envs/LOGAN/bin/python testExecution.py --list ", listFilename, " --datadirectory ", folderPath)
+            if (verbose>0)
+              cat("Executing: '", pythonExecution, "'\n", sep="")
             system(pythonExecution)
             pythonListFilenames = c()
-            # TODO: FIX THIS. Using env variables
-            # TODO: Should be able to be more flexible
+            # TODO: Using env variables There should be an env variable pointing to the python execution
+            # TODO: Should be more flexible
           }
           
           # Count every case

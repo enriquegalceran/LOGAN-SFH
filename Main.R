@@ -5,6 +5,7 @@ setwd("~/Documents/GitHub/LOGAN-SFH")
 source("GenerateMultipleMassFuncs.R")
 library(ProSpect)
 
+
 massParams = list(
   dtau=list(
     name="dtau",
@@ -95,10 +96,11 @@ generateSpecFromParams(massParams = massParams2,
                        folderPath = outputFolder, absolutePath = absolutePath,
                        randomSamples = 1,
                        speclib = EMILESCombined,
-                       confirmation = TRUE,
+                       confirmation = FALSE,
                        verbose=1,
                        verboseSteps=2,
-                       cleanOutputFolder=TRUE)
+                       cleanOutputFolder=TRUE,
+                       bytesForPython=10e6)
 
 # Verify total file size
 ls2 = sort(list.files(outputFolder))
@@ -130,8 +132,9 @@ bytes2Human <- function(B, decimals=2){
 sizeIs = bytes2Human(sizeI)
 sizeLs = bytes2Human(sizeL)
 sizeTotal = sizeI + sizeL
-sizeTotals = bytes2Human(sizeTotal)
-cat("Total Size pair: ", sizeTotals, sep="")
+cat("Total Size: ", bytes2Human(sizeTotal), "\n", sep="")
+cat("Total DISK Size: ", bytes2Human(length(ls2)*262144), " (+", length(ls2)*262000/sizeTotal*100, "%)\n", sep="")
+
 
 dfRead <- readFITS(file.path(outputFolder, ls2[1]))
 
