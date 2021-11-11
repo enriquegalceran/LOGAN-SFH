@@ -24,9 +24,14 @@ def consolidateFITSTables():
                              "If the file is not found, it will be generated in the Data directory")
     parser.add_argument("--new", "-n", action='store_true',
                         help="Start new table instead of appending to table if a file with name [tablename] already exists")
+    parser.add_argument("-ns", type=int, help="Number of points in the spectra.")
+    parser.add_argument("-nf", type=int, help="Number of filters/photometry measured.")
     args = parser.parse_args()
+    # TODO: Do the equivalent for Labels and metadata!
 
     # Locate the Consolidated table
+    # TODO: Optional: do the same for list
+    listfilename = args.list
     tablename = args.tablename
     if not os.path.isabs(tablename):
         # If the name is NOT an absolute path, search in the data directory and then in the cwd
@@ -53,30 +58,26 @@ def consolidateFITSTables():
         print(f"Writing mode forced to generate a new file.")
         writingMode = "new"
 
-    numberOfSpectraPoints = 5  # TODO: This should reflect the number of points in the spectra. For testing only 5 points will be taken
-    numberOfFilters = 5  # TODO: This should reflect the number of filter. For testing only 5 points will be taken
+    numberOfSpectraPoints = args.ns
+    numberOfFilters = args.nf
     columnNames = ["ID", "UuidI", "UuidL", "Noise"] + ["s" + str(i) for i in range(1, numberOfSpectraPoints + 1)] + ["f" + str(i) for i in range(1, numberOfFilters + 1)]
     columnFormat = ["I", "36A", "36A", "L"] + ["E" for i in range(1, numberOfSpectraPoints + 1)] + ["E" for i in range(1, numberOfFilters + 1)]
     if writingMode == "new":
         # If new, generate a dummy (empty) table.
         colList = [fits.Column(name=columnNames[i], format=columnFormat[i]) for i in range(len(columnNames))]
         coldefs = fits.ColDefs(colList)
-        dummyTable = fits.BinTableHDU.from_columns(coldefs)
-        dummyTable.writeto(tablename, overwrite=True)
+        tmpTable = fits.BinTableHDU.from_columns(coldefs)
+        tmpTable.writeto(tablename, overwrite=True)
     elif writingMode == "add":
         # TODO: Open file and read table
         pass
 
     # Read the file with the names of files to be read and generate filelist
-    listfilename = args.list
     with open(listfilename) as file:
         filelist = file.readlines()
         filelist = [line.rstrip().rstrip("\x00") for line in filelist]
 
-    filelist = ["testFits1.fits", "testFits2.fits", "testFits3.fits", "testFits4.fits", "testFits5.fits", "testFits6.fits"]
-
-    # numberOfRows = len(filelist)  # ToDo: This will be the way to calculate numberOfRows
-    numberOfRows = 5
+    numberOfRows = len(filelist)
     newData = [np.zeros(numberOfRows, dtype=np.int16),
                np.zeros(numberOfRows, dtype=np.dtype('U36')),
                np.zeros(numberOfRows, dtype=np.dtype('U36')),
@@ -86,14 +87,8 @@ def consolidateFITSTables():
 
     file_i = 0
     lastID = 10  # TODO: This needs to be read from the previous existing table or start at 1 (0?)
-    # print("\n\n\n\n\n\n\n\n\n\n\n\n")
     for file in filelist:
-        # print(file)
-        if file == filelist[numberOfRows]:  # TODO: Just for testing, this will be removed
-            break
-
-        # with fits.open(os.path.join(args.datadirectory, "Input_" + file + ".fits")) as hdul:
-        with fits.open(os.path.join(args.datadirectory, file)) as hdul:
+        with fits.open(os.path.join(args.datadirectory, "Input_" + file + ".fits")) as hdul:
             dataFile = hdul[0].data
             hdr = hdul[0].header
 
@@ -115,18 +110,13 @@ def consolidateFITSTables():
             for f in range(4 + numberOfSpectraPoints, 4 + numberOfSpectraPoints + numberOfFilters):
                 newData[f][file_i] = hdr["FILTERV" + str(f - 3 - numberOfSpectraPoints)]
 
-            # for k in newData:
-            #     print(k, type(k[0]))
-
         file_i += 1
-
 
     colList = [fits.Column(name=columnNames[i], format=columnFormat[i], array=newData[i]) for i in range(len(columnNames))]
     coldefs = fits.ColDefs(colList)
-    dummyTable = fits.BinTableHDU.from_columns(coldefs)
-    dummyTable.writeto(os.path.join(args.datadirectory, "tmp.fits"), overwrite=True)
+    tmpTable = fits.BinTableHDU.from_columns(coldefs)
+    tmpTable.writeto(os.path.join(args.datadirectory, "tmp.fits"), overwrite=True)
 
-    # fits.append(os.path.join(args.datadirectory, args.tablename),)
     tmpname = os.path.join(args.datadirectory, "tmp.fits")
     print(f"file1: {tablename}")
     print(f"file2: {tmpname}")
@@ -141,36 +131,46 @@ def consolidateFITSTables():
                 hdu.data[colname][nrows1:] = hdul2[1].data[colname]
     hdu.writeto(tablename, overwrite=True)
 
+    # Remove files that have been read and stored (tmp, list-file, and read files)
+    os.remove(os.path.join(args.datadirectory, "tmp.fits"))
+    for file in filelist:
+        os.remove(os.path.join(args.datadirectory, "Input_" + file + ".fits"))
+        os.remove(os.path.join(args.datadirectory, "Label_" + file + ".fits"))
+    os.remove(listfilename)
+
     # TODO: Remove tmp file and fits files
 
     # Test Reading the table appended
-    print("----------------------------------------------")
-    with fits.open(tablename) as hdul:
-        data = hdul[1].data
-        print(data.shape)
-        print("_-_-_-_-_-_-_-_-_-_-_-_-_-_-_")
-        for k in data[0]:
-            print(k, type(k))
-
-        print("@@@@@@@@@@@")
-        print(data.shape)
-        names = hdul[1].columns.names  # we need the column names
-        cols = [hdul[1].data.field(col) for col in names]  # and their content
-        cat = np.rec.fromarrays(cols, names=names)
-        print(cat)
-        print(cat.dtype.names)  # similar to hdus[1].columns.names
-        print(cat.shape)  # and we have access to numpy commands
-
-        selection_names = ["s" + str(i) for i in range(1, numberOfSpectraPoints + 1)] + ["f" + str(i) for i in range(1, numberOfFilters + 1)]
-        selection = cat[selection_names]
-        print(selection)
-        print(selection.shape)
-        print(type(selection))
-        arr = pd.DataFrame(selection).to_numpy()
-        print(arr)
-        print(arr.shape)
-        print(type(arr))
-        print(type(arr[0][0]))
+    # TODO: This is temporarily stored here for future use when reading the table
+    # TODO: For future usage, store in NPY File
+    # TODO: https://machinelearningmastery.com/how-to-save-a-numpy-array-to-file-for-machine-learning/
+    # print("----------------------------------------------")
+    # with fits.open(tablename) as hdul:
+    #     data = hdul[1].data
+    #     print(data.shape)
+    #     print("_-_-_-_-_-_-_-_-_-_-_-_-_-_-_")
+    #     for k in data[0]:
+    #         print(k, type(k))
+    #
+    #     print("@@@@@@@@@@@")
+    #     print(data.shape)
+    #     names = hdul[1].columns.names  # we need the column names
+    #     cols = [hdul[1].data.field(col) for col in names]  # and their content
+    #     cat = np.rec.fromarrays(cols, names=names)
+    #     print(cat)
+    #     print(cat.dtype.names)  # similar to hdus[1].columns.names
+    #     print(cat.shape)  # and we have access to numpy commands
+    #
+    #     selection_names = ["s" + str(i) for i in range(1, numberOfSpectraPoints + 1)] + ["f" + str(i) for i in range(1, numberOfFilters + 1)]
+    #     selection = cat[selection_names]
+    #     print(selection)
+    #     print(selection.shape)
+    #     print(type(selection))
+    #     arr = pd.DataFrame(selection).to_numpy()
+    #     print(arr)
+    #     print(arr.shape)
+    #     print(type(arr))
+    #     print(type(arr[0][0]))
 
 
 if __name__ == "__main__":
