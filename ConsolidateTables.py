@@ -4,6 +4,7 @@ import os
 from astropy.io import fits
 from astropy.table import Table, vstack
 import numpy as np
+import pandas as pd
 
 
 def consolidateFITSTables():
@@ -150,6 +151,26 @@ def consolidateFITSTables():
         print("_-_-_-_-_-_-_-_-_-_-_-_-_-_-_")
         for k in data[0]:
             print(k, type(k))
+
+        print("@@@@@@@@@@@")
+        print(data.shape)
+        names = hdul[1].columns.names  # we need the column names
+        cols = [hdul[1].data.field(col) for col in names]  # and their content
+        cat = np.rec.fromarrays(cols, names=names)
+        print(cat)
+        print(cat.dtype.names)  # similar to hdus[1].columns.names
+        print(cat.shape)  # and we have access to numpy commands
+
+        selection_names = ["s" + str(i) for i in range(1, numberOfSpectraPoints + 1)] + ["f" + str(i) for i in range(1, numberOfFilters + 1)]
+        selection = cat[selection_names]
+        print(selection)
+        print(selection.shape)
+        print(type(selection))
+        arr = pd.DataFrame(selection).to_numpy()
+        print(arr)
+        print(arr.shape)
+        print(type(arr))
+        print(type(arr[0][0]))
 
 
 if __name__ == "__main__":
