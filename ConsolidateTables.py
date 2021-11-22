@@ -31,29 +31,37 @@ def consolidate_files_into_tables():
     parser.add_argument("--new", "-n", action='store_true',
                         help="Start new table instead of appending to table if a file with name"
                              "[nametable] already exists")
+    parser.add_argument("--crval", default=None, type=float,
+                        help="CRVAL keyword in header (if None, it will take the value of the first file.")
+    parser.add_argument("--cdelt", default=None, type=float,
+                        help="CDELT keyword in header (if None, it will take the value of the first file.")
     parser.add_argument("-ns", type=int, help="Number of points in the spectra.")
     parser.add_argument("-nf", type=int, help="Number of filters/photometry measured.")
+    parser.add_argument("-nlab", type=int, help="Number of elements in the labels.")
     parser.add_argument("-nid", type=int, help="ID of last element.")
     args = parser.parse_args()
     # TODO: Do the equivalent for Labels and metadata!
+    # TODO: raise error if value is missing
 
+    column_names = ["ID", "UuidI", "UuidL", "Noise"] + \
+                   ["s" + str(i) for i in range(1, args.ns + 1)] + \
+                   ["f" + str(i) for i in range(1, args.nf + 1)]
+    column_format = ["I", "36A", "36A", "L"] + \
+                    ["E" for _ in range(1, args.ns + 1)] + \
+                    ["E" for _ in range(1, args.nf + 1)]
     # Locate the Consolidated table
     # TODO: Optional: do the same for list
     list_filename, _ = search_file(args, args.list, "File list")
     name_table, writing_table = search_file(args, args.nametable, "Table")
-    # name_label, writing_lable = search_file(args, args.namelabel, "Labels")
-    # name_metadata, writing_metadata = search_file(args, args.namemetadata, "Metadata")
+    name_label, writing_lable = search_file(args, args.namelabel, "Labels")
+    name_metadata, writing_metadata = search_file(args, args.namemetadata, "Metadata")
 
     if args.new:
         print(f"Writing mode forced to generate a new file.")
         writing_table = "new"
+        writing_lable = "new"
+        writing_metadata = "new"
 
-    column_names = ["ID", "UuidI", "UuidL", "Noise"] +\
-                   ["s" + str(i) for i in range(1, args.ns + 1)] +\
-                   ["f" + str(i) for i in range(1, args.nf + 1)]
-    column_format = ["I", "36A", "36A", "L"] +\
-                    ["E" for _ in range(1, args.ns + 1)] +\
-                    ["E" for _ in range(1, args.nf + 1)]
     if writing_table == "new":
         # If new, generate a dummy (empty) table.
         col_list = [fits.Column(name=column_names[i], format=column_format[i]) for i in range(len(column_names))]
@@ -67,12 +75,23 @@ def consolidate_files_into_tables():
         filelist = [line.rstrip().rstrip("\x00") for line in filelist]
 
     number_of_rows = len(filelist)
-    new_data = [np.zeros(number_of_rows, dtype=np.int16),
-                np.zeros(number_of_rows, dtype=np.dtype('U36')),
-                np.zeros(number_of_rows, dtype=np.dtype('U36')),
-                np.zeros(number_of_rows, dtype=np.bool_)] + \
-               [np.zeros(number_of_rows, dtype=np.float32)] * args.ns + \
-               [np.zeros(number_of_rows, dtype=np.float32)] * args.nf
+    # ID, UUIDInput, UUIDLabel, Noise, #Spectra, #Filters
+    new_data_table = [np.zeros(number_of_rows, dtype=np.int16),
+                      np.zeros(number_of_rows, dtype=np.dtype('U36')),
+                      np.zeros(number_of_rows, dtype=np.dtype('U36')),
+                      np.zeros(number_of_rows, dtype=np.bool_)] + \
+                     [np.zeros(number_of_rows, dtype=np.float32)] * args.ns + \
+                     [np.zeros(number_of_rows, dtype=np.float32)] * args.nf
+    tmp_header = None
+
+    # Agevector is going to be added to the metadata
+    new_data_lable = [np.zeros(number_of_rows, dtype=np.int16),
+                      np.zeros(number_of_rows, dtype=np.dtype('U36')),
+                      np.zeros(number_of_rows, dtype=np.dtype('U36')),
+                      np.zeros(number_of_rows, dtype=np.bool_)] + \
+                     [np.zeros(number_of_rows, dtype=np.float32)] * args.ns + \
+                     [np.zeros(number_of_rows, dtype=np.float32)] * args.nf
+
 
     file_i = 0
     last_id = args.nid
@@ -84,23 +103,57 @@ def consolidate_files_into_tables():
             # ===========================================================
             # Insert new information into its place
             # ID
-            new_data[0][file_i] = last_id + 1
+            new_data_table[0][file_i] = last_id + 1
             last_id += 1
             # UUIDs
-            new_data[1][file_i] = hdr["UUIDINP"]
-            new_data[2][file_i] = hdr["UUIDLAB"]
+            new_data_table[1][file_i] = hdr["UUIDINP"]
+            new_data_table[2][file_i] = hdr["UUIDLAB"]
             # Noise
-            new_data[3][file_i] = hdr["Noise"]
+            new_data_table[3][file_i] = hdr["Noise"]
             # Spectra
             for s in range(4, 4 + args.ns):
-                new_data[s][file_i] = data_file[0][s - 4]
+                new_data_table[s][file_i] = data_file[0][s - 4]
             # Filters
             for f in range(4 + args.ns, 4 + args.ns + args.nf):
-                new_data[f][file_i] = hdr["FILTERV" + str(f - 3 - args.ns)]
+                new_data_table[f][file_i] = hdr["FILTERV" + str(f - 3 - args.ns)]
+
+            if tmp_header is None:
+                tmp_header = hdr
+
+        # with fits.open(os.path.join(args.datadirectory, "Label_" + file + ".fits")) as hdul:
+        #     data_file = hdul[0].data
+        #     hdr = hdul[0].header
+        #
+        #     # ===========================================================
+        #     # Insert new information into its place
+        #     # ID
+        #     new_data_table[0][file_i] = last_id + 1
+        #     last_id += 1
+        #     # UUIDs
+        #     new_data_table[1][file_i] = hdr["UUIDINP"]
+        #     new_data_table[2][file_i] = hdr["UUIDLAB"]
+        #     # Noise
+        #     new_data_table[3][file_i] = hdr["Noise"]
+        #     # Spectra
+        #     for s in range(4, 4 + args.ns):
+        #         new_data_table[s][file_i] = data_file[0][s - 4]
+        #     # Filters
+        #     for f in range(4 + args.ns, 4 + args.ns + args.nf):
+        #         new_data_table[f][file_i] = hdr["FILTERV" + str(f - 3 - args.ns)]
+
+
+
+
+
         file_i += 1
 
+    print(tmp_header)
+
+    print("==================================================")
+
+
     # Transform the matrix into a temporary file
-    col_list = [fits.Column(name=column_names[i], format=column_format[i], array=new_data[i])
+    col_list = [fits.Column(name=column_names[i], format=column_format[i], array=new_data_table[i])
                 for i in range(len(column_names))]
     col_defs = fits.ColDefs(col_list)
     tmp_table = fits.BinTableHDU.from_columns(col_defs)
@@ -116,17 +169,17 @@ def consolidate_files_into_tables():
             hdu = fits.BinTableHDU.from_columns(hdul1[1].columns, nrows=nrows)
             for colname in hdul1[1].columns.names:
                 hdu.data[colname][nrows1:] = hdul2[1].data[colname]
+                # TODO: Add history to table!
     hdu.writeto(name_table, overwrite=True)
 
     # Remove files that have been read and stored (tmp, list-file, and read files)
-    if False:       # ToDo: Made inaccesible during testing
+    if False:  # ToDo: Made inaccesible during testing
         os.remove(os.path.join(args.datadirectory, "tmp.fits"))
         for file in filelist:
             os.remove(os.path.join(args.datadirectory, "Input_" + file + ".fits"))
             os.remove(os.path.join(args.datadirectory, "Label_" + file + ".fits"))
         os.remove(list_filename)
-
-    # TODO: Remove tmp file and fits files
+        # TODO: Remove tmp file and fits files
 
     # Test Reading the table appended
     # TODO: This is temporarily stored here for future use when reading the table
