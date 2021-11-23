@@ -99,6 +99,7 @@ generateSpecFromParams(massParams = massParams2,
                        confirmation = FALSE,
                        verbose=1,
                        verboseSteps=2,
+                       filters="defautl",
                        cleanOutputFolder=TRUE,
                        bytesForPython=10e6,
                        singleOutput=TRUE)

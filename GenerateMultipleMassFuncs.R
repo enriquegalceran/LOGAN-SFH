@@ -553,8 +553,8 @@ generateSpecFromParams <- function(massParams="default",
           if (!singleOutput){
             # Generate a file for each element
             exportObjectToFITS(spectraObject,
-                               filename=filename,
-                               foldername=folderPath,
+                               filename = filename,
+                               foldername = folderPath,
                                spectrumParam = savedParams,
                                randomNoise = c(rnd, SNRatio),
                                verbose = verbose,
@@ -607,6 +607,27 @@ generateSpecFromParams <- function(massParams="default",
       cat(paste0(" -------------- Finished to calculate for massfunction: ", func$name, " -------------- \n"))
     
   }
+  
+  #########
+  # Store final Matrix into a FITS "image" in 2D
+  if (singleOutput){
+    exportObjectsToSingleFITS <- function(inputMatrix = completeDataMatrixIn,
+                                          labelMatrix = completeDataMatrixLa,
+                                          filename = filename,
+                                          foldername = folderPath,
+                                          filters = filters,
+                                          absolutePath = absolutePath,
+                                          verbose=verbose,
+                                         ) 
+    
+    
+    
+    
+    
+    
+    
+  }
+  
   if (verbose > 0){
     cat("\n\n")
     filesAtEnd = length(list.files(folderPath))

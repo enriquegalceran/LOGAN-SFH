@@ -83,7 +83,7 @@ exportObjectToFITS <- function(inputObject,
     }
     return(header)
   }
-
+  
   #####
   # Set default values
   if (CRVALDELTA == "default"){
@@ -155,7 +155,7 @@ exportObjectToFITS <- function(inputObject,
   dir.create(filedirectory, showWarnings = FALSE)
   if (verbose > 1)
     cat("Saving files in '", filedirectory, "/'.\n", sep="")
-
+  
   
   #####
   # Save files
@@ -175,5 +175,100 @@ exportObjectToFITS <- function(inputObject,
               file = paste0(filedirectory, "/Label_", filename),
               ctypen = c("agevec", "SFR/Z"),
               cunitn = c("Gyrs", "Msol/yrs"),
+              header=hdrLb)
+}
+
+
+exportObjectsToSingleFITS <- function(inputMatrix,
+                                      labelMatrix,
+                                      filename,
+                                      foldername,
+                                      filters,
+                                      fileprefix = "",
+                                      absolutePath = FALSE,
+                                      verbose=2,
+                                     ){
+  #####
+  # Function(s)
+  # Adds the Filters to the header
+  addFiltersToHeaderSingle <- function(header, filters){
+    header <- addComment("------ List of filters analysed ------", header=header)
+    for (i in 1:length(filters$filter)){
+      header <- addKwv(paste0("filterN", i),
+                       filters$filter[i],
+                       note=paste("Filter Name", i),
+                       header=header)
+      header <- addKwv(paste0("filterC", i),
+                       filters$cenwave[i],
+                       note=paste("Filter CenterWave", i),
+                       header=header)
+    }
+    return(header)
+  }
+  
+  
+  #####
+  # Read and generate data + metadata
+  filters = inputObject$out
+  objectUUID = UUIDgenerate(n=2L)
+  dateGenerated = Sys.time()
+  n.filters = length(filters)
+  spectra.points = dim(labelMatrix)[2] - 1 - n.filters
+  n.agevec = (dim(labelMatrix)[2] - 1)/2
+  
+  
+  #####
+  # Generate Header for Inputs
+  # R saves scientific notation with lower case 'e'. Will be fixed in python.
+  hdrIn <- newKwv("DateGen", dateGenerated, "Date when generated")
+  hdrIn <- addKwv("FileType", "Input", note="File type (Input/Label)", header=hdrIn)
+  hdrIn <- addKwv("Filename", paste0("Input_", fileprefix, filename, ".fits"), header=hdrIn)
+  hdrIn <- addKwv("UuidInp", objectUUID[1], note="UUID for Input", header=hdrIn)
+  hdrIn <- addKwv("UuidLab", objectUUID[2], note="UUID for Label", header=hdrIn)
+  hdrIn <- addFiltersToHeaderSingle(hdrIn, filters)
+  hdrIn <- addKwv("NSpectra", spectra.points,note="Number of SpectraPoints", header=hdrIn)
+  hdrIn <- addKwv("NFilters", n.filters, note="Number of Filters", header=hdrIn)
+  hdrIn <- addComment("First row (ID=0) has the X values of the corresponding column if applicable")
+  
+  
+  #####
+  # Generate Header for Labels
+  # R saves scientific notation with lower case 'e'. Will be fixed in python.
+  hdrLb <- newKwv("DateGen", dateGenerated, "Date when generated")
+  hdrLb <- addKwv("FileType", "Label", note="File type [Input/Label]", header=hdrLb)
+  hdrLb <- addKwv("Filename", paste0("Label_", fileprefix, filename, ".fits"), header=hdrLb)
+  hdrLb <- addKwv("UuidInp", objectUUID[1], note="UUID for Input", header=hdrLb)
+  hdrLb <- addKwv("UuidLab", objectUUID[2], note="UUID for Label", header=hdrLb)
+  hdrLb <- addKwv("Nagevec", n.agevec, note="Length of agevec", header=hdrLb)
+  hdrIn <- addComment("First row (ID=0) has the X values of the corresponding column if applicable")
+  
+  
+  #####
+  # Generate File Names and verify directory
+  if (absolutePath){
+    filedirectory = foldername
+  } else {
+    filedirectory = file.path(getwd(), foldername)
+  }
+  filename = paste0(fileprefix, filename, ".fits")
+  
+  # If output folder does not exist, generate it
+  dir.create(filedirectory, showWarnings = FALSE)
+  if (verbose > 1)
+    cat("Saving files in '", filedirectory, "/'.\n", sep="")
+  
+  
+  #####
+  # Save files
+  if (verbose > 1)
+    cat(paste0("Saving Input_", filename, " ...\n"))
+  writeFITSim(inputMatrix,
+              file = paste0(filedirectory, "/Input_", filename),
+              header=hdrIn)
+  
+  if (verbose > 1)
+    cat(paste0("Saving Label_", filename, " ...\n"))
+  writeFITSim(labelMatrix,
+              file = paste0(filedirectory, "/Label_", filename),
               header=hdrLb)
 }
