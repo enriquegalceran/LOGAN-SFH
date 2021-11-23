@@ -29,6 +29,7 @@ generateSpecFromParams <- function(massParams="default",
                                    cleanOutputFolder=FALSE,
                                    absolutePath=FALSE,
                                    bytesForPython=50e6,
+                                   singleOutput=TRUE,
                                    ...) {
   #####
   # Functions
@@ -267,19 +268,21 @@ generateSpecFromParams <- function(massParams="default",
                 c1 = "Reference Inputs. Contains wavelength (see crval&cdelt)")
     cat("Reference file for Inputs generated.\n")
   }
+    
+  agevec = speclib$Age
   if (!("ReferenceLabel.fits" %in% ls)){
     # Generate Reference Input
-    agevec = data.matrix(c(6300000,7900000,10000000,12600000,15800000,20000000,25100000,
-                           31600000,39800000,50100000,63100000,70800000,79400000,89100000,
-                           100000000,112200000,125900000,141300000,158500000,177800000,
-                           199500000,223900000,251200000,281800000,316200000,354800000,
-                           398100000,446700000,501200000,562300000,631000000,707900000,
-                           794300000,891300000,1000000000,1122000000,1258900000,1412500000,
-                           1584900000,1778300000,1995300000,2238700000,2511900000,
-                           2818400000,3162300000,3548100000,3981100000,4466800000,
-                           5011900000,5623400000,6309600000,7079500000,7943300000,
-                           8912500000,10000000000,11220200000,12589300000,14125400000,
-                           15848900000,17782800000))
+    # agevec = data.matrix(c(6300000,7900000,10000000,12600000,15800000,20000000,25100000,
+    #                        31600000,39800000,50100000,63100000,70800000,79400000,89100000,
+    #                        100000000,112200000,125900000,141300000,158500000,177800000,
+    #                        199500000,223900000,251200000,281800000,316200000,354800000,
+    #                        398100000,446700000,501200000,562300000,631000000,707900000,
+    #                        794300000,891300000,1000000000,1122000000,1258900000,1412500000,
+    #                        1584900000,1778300000,1995300000,2238700000,2511900000,
+    #                        2818400000,3162300000,3548100000,3981100000,4466800000,
+    #                        5011900000,5623400000,6309600000,7079500000,7943300000,
+    #                        8912500000,10000000000,11220200000,12589300000,14125400000,
+    #                        15848900000,17782800000))
     writeFITSim(agevec,
                 file = file.path(folderPath, "ReferenceLabel.fits"),
                 ctypen = c("Agevec", ""),
@@ -375,6 +378,15 @@ generateSpecFromParams <- function(massParams="default",
     }
   }
   
+  # Initiate the matrix that will contain all of the data
+  numberColumnsIn = length(waveout) + length(filters) + 1    # Add 1 for the ID
+  # numberColumnsLa = 2 * length(agevec) + 1                   # Add 1 for the ID
+  numberColumnsLa = 2 * 56 + 1                               # 56 should be the length of the Agevector, but it includes very long sizes, so this may generate some problems in the future TODO check this!
+  completeDataMatrixIn <- matrix(, nrow=totalNumberOfCases + 1, ncol= numberColumnsIn)
+  completeDataMatrixLa <- matrix(, nrow=totalNumberOfCases + 1, ncol= numberColumnsLa)
+  # ToDo: set the first row correctly (Corregir lo de 56)
+  completeDataMatrixIn[1, ] = c(0, waveout, seq(1:length(filters)))
+  completeDataMatrixLa[1, ] = c(0, agevec[1:56], agevec[1:56])
   
   #####
   # Iterate over massParams
@@ -536,18 +548,34 @@ generateSpecFromParams <- function(massParams="default",
               cat(paste0(sFilename, sMass, sZ, sRNG, sCurrentMF, sTotal, "%\n"))
             }
           }
-          # EXPORT FILE
-          exportObjectToFITS(spectraObject,
-                             filename=filename, 
-                             foldername=folderPath,
-                             spectrumParam = savedParams,
-                             randomNoise = c(rnd, SNRatio),
-                             verbose = verbose,
-                             absolutePath = TRUE,
-                             CRVALDELTA = CRVALDELTA,
-                             forcemass = forcemass
-                             )
           
+          # EXPORT FILE
+          if (!singleOutput){
+            # Generate a file for each element
+            exportObjectToFITS(spectraObject,
+                               filename=filename,
+                               foldername=folderPath,
+                               spectrumParam = savedParams,
+                               randomNoise = c(rnd, SNRatio),
+                               verbose = verbose,
+                               absolutePath = TRUE,
+                               CRVALDELTA = CRVALDELTA,
+                               forcemass = forcemass
+                               )
+          } else {
+            # Generate a single for for every element
+            # ToDo: Generate a function that, given an ID and parameters, gives out the parameters and generates a single file based on the data provided
+            
+            # New row to be added (Input)
+            # ID, spectra, Magnitudes
+            newRowIn <- c(absoluteCountCases, spectraObject$flux$flux, spectraObject$out$out)  # ESTO ES LO QUE SALE NULL!!! # TODO
+            newRowLa <- c(absoluteCountCases, spectraObject$SFR, spectraObject$Zvec)
+            
+            # Add new row to the Matrix
+            completeDataMatrixIn[absoluteCountCases + 1, ] = newRowIn
+            completeDataMatrixLa[absoluteCountCases + 1, ] = newRowLa
+          }
+
           pythonListFilenames[absoluteCountCases %% pythonSteps] = filename
           #####
           # Execute Python code that reduces to 32-bit every pythonStep
@@ -588,4 +616,5 @@ generateSpecFromParams <- function(massParams="default",
     print(proc.time() - ptm)
     cat(" -------- FINISHED --------\n")
   }
+  
 }

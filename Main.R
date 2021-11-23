@@ -100,7 +100,8 @@ generateSpecFromParams(massParams = massParams2,
                        verbose=1,
                        verboseSteps=2,
                        cleanOutputFolder=TRUE,
-                       bytesForPython=10e6)
+                       bytesForPython=10e6,
+                       singleOutput=TRUE)
 
 # Verify total file size
 ls2 = sort(list.files(outputFolder))
@@ -133,10 +134,25 @@ sizeIs = bytes2Human(sizeI)
 sizeLs = bytes2Human(sizeL)
 sizeTotal = sizeI + sizeL
 cat("Total Size: ", bytes2Human(sizeTotal), "\n", sep="")
-cat("Total DISK Size: ", bytes2Human(length(ls2)*262144), " (+", length(ls2)*262000/sizeTotal*100, "%)\n", sep="")
+cat("Total DISK Size: ", bytes2Human(length(ls2)*262144),
+    " (+", length(ls2)*262000/sizeTotal*100, "%)\n", sep="")
 
 
 dfRead <- readFITS(file.path(outputFolder, ls2[1]))
+
+
+
+save(massParams, file="fname.RData")  #Binary! Not Human-readable
+?save
+
+
+
+test1 <- matrix(, nrow=5, ncol= 7)
+
+print(test1)
+
+test1[1,] = c(1:7)
+dim(test1)
 
 
 
