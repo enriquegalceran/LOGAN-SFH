@@ -186,7 +186,7 @@ exportObjectsToSingleFITS <- function(inputMatrix,
                                       filters,
                                       fileprefix = "",
                                       absolutePath = FALSE,
-                                      verbose=2,
+                                      verbose=2
                                      ){
   #####
   # Function(s)
@@ -209,7 +209,6 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   
   #####
   # Read and generate data + metadata
-  filters = inputObject$out
   objectUUID = UUIDgenerate(n=2L)
   dateGenerated = Sys.time()
   n.filters = length(filters)
@@ -228,7 +227,7 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   hdrIn <- addFiltersToHeaderSingle(hdrIn, filters)
   hdrIn <- addKwv("NSpectra", spectra.points,note="Number of SpectraPoints", header=hdrIn)
   hdrIn <- addKwv("NFilters", n.filters, note="Number of Filters", header=hdrIn)
-  hdrIn <- addComment("First row (ID=0) has the X values of the corresponding column if applicable")
+  hdrIn <- addComment("First row (ID=0) has the X values of the corresponding column if applicable", hdrIn)
   
   
   #####
@@ -240,7 +239,7 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   hdrLb <- addKwv("UuidInp", objectUUID[1], note="UUID for Input", header=hdrLb)
   hdrLb <- addKwv("UuidLab", objectUUID[2], note="UUID for Label", header=hdrLb)
   hdrLb <- addKwv("Nagevec", n.agevec, note="Length of agevec", header=hdrLb)
-  hdrIn <- addComment("First row (ID=0) has the X values of the corresponding column if applicable")
+  hdrLb <- addComment("First row (ID=0) has the X values of the corresponding column if applicable", hdrLb)
   
   
   #####
@@ -254,19 +253,19 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   
   # If output folder does not exist, generate it
   dir.create(filedirectory, showWarnings = FALSE)
-  if (verbose > 1)
+  if (verbose >= 1)
     cat("Saving files in '", filedirectory, "/'.\n", sep="")
   
   
   #####
   # Save files
-  if (verbose > 1)
+  if (verbose >= 1)
     cat(paste0("Saving Input_", filename, " ...\n"))
   writeFITSim(inputMatrix,
               file = paste0(filedirectory, "/Input_", filename),
               header=hdrIn)
   
-  if (verbose > 1)
+  if (verbose >= 1)
     cat(paste0("Saving Label_", filename, " ...\n"))
   writeFITSim(labelMatrix,
               file = paste0(filedirectory, "/Label_", filename),

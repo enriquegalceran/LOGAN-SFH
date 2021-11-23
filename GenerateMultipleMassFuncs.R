@@ -388,6 +388,8 @@ generateSpecFromParams <- function(massParams="default",
   completeDataMatrixIn[1, ] = c(0, waveout, seq(1:length(filters)))
   completeDataMatrixLa[1, ] = c(0, agevec[1:56], agevec[1:56])
   
+  filterData = NULL
+  
   #####
   # Iterate over massParams
   absoluteCountCases = 1
@@ -575,11 +577,12 @@ generateSpecFromParams <- function(massParams="default",
             completeDataMatrixIn[absoluteCountCases + 1, ] = newRowIn
             completeDataMatrixLa[absoluteCountCases + 1, ] = newRowLa
           }
-
+  
+          # ToDo: Fix every part of the code that depends on "singleOutput"
           pythonListFilenames[absoluteCountCases %% pythonSteps] = filename
           #####
           # Execute Python code that reduces to 32-bit every pythonStep
-          if (absoluteCountCases %% pythonSteps == 0 | absoluteCountCases == totalNumberOfCases){
+          if ((absoluteCountCases %% pythonSteps == 0 | absoluteCountCases == totalNumberOfCases) && !singleOutput){
             listFilename = file.path(getwd(), "ListToConvertTo32.txt")
             zz <- file(listFilename, "wb")
             writeBin(paste(pythonListFilenames, collapse="\n"), zz)
@@ -611,21 +614,17 @@ generateSpecFromParams <- function(massParams="default",
   #########
   # Store final Matrix into a FITS "image" in 2D
   if (singleOutput){
-    exportObjectsToSingleFITS <- function(inputMatrix = completeDataMatrixIn,
-                                          labelMatrix = completeDataMatrixLa,
-                                          filename = filename,
-                                          foldername = folderPath,
-                                          filters = filters,
-                                          absolutePath = absolutePath,
-                                          verbose=verbose,
-                                         ) 
-    
-    
-    
-    
-    
-    
-    
+    filterData = spectraObject$out
+    exportObjectsToSingleFITS(inputMatrix = completeDataMatrixIn,
+                              labelMatrix = completeDataMatrixLa,
+                              filename = filename,
+                              foldername = folderPath,
+                              filters = filterData,
+                              absolutePath = absolutePath,
+                              verbose=verbose
+    )
+    # ToDo: Reduce data with Python
+    # ToDo: Make Python understand that there are two distinct functions and act accordingly
   }
   
   if (verbose > 0){

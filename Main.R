@@ -99,7 +99,7 @@ generateSpecFromParams(massParams = massParams2,
                        confirmation = FALSE,
                        verbose=1,
                        verboseSteps=2,
-                       filters="defautl",
+                       filters="default",
                        cleanOutputFolder=TRUE,
                        bytesForPython=10e6,
                        singleOutput=TRUE)
@@ -147,13 +147,6 @@ save(massParams, file="fname.RData")  #Binary! Not Human-readable
 ?save
 
 
-
-test1 <- matrix(, nrow=5, ncol= 7)
-
-print(test1)
-
-test1[1,] = c(1:7)
-dim(test1)
 
 
 
