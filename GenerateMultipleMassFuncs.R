@@ -614,7 +614,7 @@ generateSpecFromParams <- function(massParams="default",
       cat(paste0(" -------------- Finished to calculate for massfunction: ", func$name, " -------------- \n"))
     
     # Add information to orderParameters (for metadata file)
-    tmp = list(c(massArgIdx$paramName, ZArgIdx$paramName))
+    tmp = list(list(mass = massArgIdx$paramName, Z = ZArgIdx$paramName))
     names(tmp) <- func$name
     orderParameters = c(orderParameters, tmp)
   }
