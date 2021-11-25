@@ -270,4 +270,7 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   writeFITSim(labelMatrix,
               file = paste0(filedirectory, "/Label_", filename),
               header=hdrLb)
+  
+  # Return UUIDs for the metadata file
+  return(objectUUID)
 }

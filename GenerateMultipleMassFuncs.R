@@ -623,13 +623,13 @@ generateSpecFromParams <- function(massParams="default",
   # Store final Matrix into a FITS "image" in 2D
   if (singleOutput){
     filterData = spectraObject$out
-    exportObjectsToSingleFITS(inputMatrix = completeDataMatrixIn,
-                              labelMatrix = completeDataMatrixLa,
-                              filename = filename,
-                              foldername = folderPath,
-                              filters = filterData,
-                              absolutePath = absolutePath,
-                              verbose=verbose
+    UUIDs <-exportObjectsToSingleFITS(inputMatrix = completeDataMatrixIn,
+                                      labelMatrix = completeDataMatrixLa,
+                                      filename = filename,
+                                      foldername = folderPath,
+                                      filters = filterData,
+                                      absolutePath = absolutePath,
+                                      verbose=verbose
     )
     # ToDo: Reduce data with Python
     # ToDo: Make Python understand that there are two distinct functions and act accordingly
@@ -644,7 +644,8 @@ generateSpecFromParams <- function(massParams="default",
                             forcemass=forcemass,
                             randomSamples=randomSamples,
                             SNRatio=SNRatio,
-                            onlyNoise=onlyNoise
+                            onlyNoise=onlyNoise,
+                            UUIDs = UUIDs
                             )
                        )
     write(jsonData, metadataName)
