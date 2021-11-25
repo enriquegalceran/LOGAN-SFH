@@ -43,6 +43,27 @@ massParams3 = list(
 )
 
 
+massParams4 = list(
+  dtau=list(
+    name="dtau",
+    func=massfunc_dtau,
+    mSFR=10,
+    mpeak=c(7,8,14),
+    mtau=c(2,3)
+  ),
+  snorm=list(
+    name="snorm",
+    func=massfunc_snorm,
+    mSFR=10,
+    mpeak=c(7,8,9,10),
+    mperiod=5,
+    mskew=c(0.5, 1, 1.5)
+  )
+)
+
+
+
+
 ZParams = list(
   func=Zfunc_massmap_box,
   Zstart=1e-4,
@@ -91,7 +112,7 @@ ls1 = sort(list.files(outputFolder))
 #            8912500000,10000000000,11220200000,12589300000,14125400000,
 #            15848900000,17782800000)
 
-generateSpecFromParams(massParams = massParams2,
+generateSpecFromParams(massParams = massParams4,
                        ZParams = ZParams,
                        folderPath = outputFolder,
                        absolutePath = absolutePath,
@@ -135,6 +156,7 @@ bytes2Human <- function(B, decimals=2){
 sizeIs = bytes2Human(sizeI)
 sizeLs = bytes2Human(sizeL)
 sizeTotal = sizeI + sizeL
+# TODO: This is no longer valid. Maybe redo it, maybe just remove it...
 cat("Total Size: ", bytes2Human(sizeTotal), "\n", sep="")
 cat("Total DISK Size: ", bytes2Human(length(ls2)*262144),
     " (+", length(ls2)*262000/sizeTotal*100, "%)\n", sep="")

@@ -390,6 +390,8 @@ generateSpecFromParams <- function(massParams="default",
   completeDataMatrixIn[1, ] = c(0, waveout, seq(1:length(filters)))
   completeDataMatrixLa[1, ] = c(0, agevec[1:56], agevec[1:56])
   
+  # Order of parameters for the metadata
+  orderParameters = c()
   filterData = NULL
   
   #####
@@ -611,6 +613,10 @@ generateSpecFromParams <- function(massParams="default",
     if (verbose > 0)
       cat(paste0(" -------------- Finished to calculate for massfunction: ", func$name, " -------------- \n"))
     
+    # Add information to orderParameters (for metadata file)
+    tmp = list(c(massArgIdx$paramName, ZArgIdx$paramName))
+    names(tmp) <- func$name
+    orderParameters = c(orderParameters, tmp)
   }
   
   #########
@@ -631,6 +637,7 @@ generateSpecFromParams <- function(massParams="default",
     # Export configuration settings into a JSON file
     jsonData <- toJSON(list(massParams=massParams,
                             ZParams=ZParams,
+                            orderParameters = orderParameters,
                             filters=names(filters),
                             emission=emission,
                             emission_scale=emission_scale,
