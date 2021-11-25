@@ -3,6 +3,7 @@ import argparse
 import os
 from astropy.io import fits
 import numpy as np
+import json
 
 
 def convert_bytes(num):
@@ -75,3 +76,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # Test Json
+    # with open("MetadataOutput.json") as f:
+    #     data = json.load(f)
+    # print(json.dumps(data, indent=4, sort_keys=True))

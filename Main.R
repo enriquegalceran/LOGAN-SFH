@@ -93,7 +93,8 @@ ls1 = sort(list.files(outputFolder))
 
 generateSpecFromParams(massParams = massParams2,
                        ZParams = ZParams,
-                       folderPath = outputFolder, absolutePath = absolutePath,
+                       folderPath = outputFolder,
+                       absolutePath = absolutePath,
                        randomSamples = 1,
                        speclib = EMILESCombined,
                        confirmation = FALSE,

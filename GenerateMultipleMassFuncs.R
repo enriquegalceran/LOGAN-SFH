@@ -3,6 +3,7 @@
 
 library(ProSpect)
 library(stringi)
+library(jsonlite)
 source("GenerateOutputsFinal.R")
 
 
@@ -30,6 +31,7 @@ generateSpecFromParams <- function(massParams="default",
                                    absolutePath=FALSE,
                                    bytesForPython=50e6,
                                    singleOutput=TRUE,
+                                   metadataName="MetadataOutput.json",
                                    ...) {
   #####
   # Functions
@@ -588,7 +590,7 @@ generateSpecFromParams <- function(massParams="default",
             writeBin(paste(pythonListFilenames, collapse="\n"), zz)
             close(zz)
             # TODO: output something to screen IF VERBOSE
-            pythonExecution = paste0("/Users/enrique/.conda/envs/LOGAN/bin/python testExecution.py --list ", listFilename, " --datadirectory ", folderPath)
+            pythonExecution = paste0("/Users/enrique/.conda/envs/LOGAN/bin/python ConsolidateTables.py --list ", listFilename, " --datadirectory ", folderPath)
             if (verbose>0)
               cat("Executing: '", pythonExecution, "'\n", sep="")
             system(pythonExecution)
@@ -625,6 +627,23 @@ generateSpecFromParams <- function(massParams="default",
     )
     # ToDo: Reduce data with Python
     # ToDo: Make Python understand that there are two distinct functions and act accordingly
+    
+    # Export configuration settings into a JSON file
+    jsonData <- toJSON(list(massParams=massParams,
+                            ZParams=ZParams,
+                            filters=names(filters),
+                            emission=emission,
+                            emission_scale=emission_scale,
+                            forcemass=forcemass,
+                            randomSamples=randomSamples,
+                            SNRatio=SNRatio,
+                            onlyNoise=onlyNoise
+                            )
+                       )
+    write(jsonData, metadataName)
+    if (verbose >= 1)
+      cat("Metadata was stored in", metadataName, "...\n")
+    
   }
   
   if (verbose > 0){

@@ -5,3 +5,5 @@
 .Rhistory
 ListToConvertTo32.txt
 test.bin.txt
+MetadataOutput.json
+fname.RData
