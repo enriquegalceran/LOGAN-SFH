@@ -232,12 +232,12 @@ def search_file(args, tablename, desc):
     return tablename, writing_mode
 
 
-def getparametersfromID(filename, ID, verbose=0):
+def getparametersfromid(filename, id_searched, verbose=0):
     """
-    Returns the parameters that were used to generate a specific piece of information.
+    Returns the parameters that were used to generate a specific piece of information given an ID and the metadata file.
     :param verbose:
     :param filename:
-    :param ID:
+    :param id_searched:
     :return:
     """
 
@@ -251,59 +251,58 @@ def getparametersfromID(filename, ID, verbose=0):
         print(json.dumps(data, indent=4, sort_keys=True))
         pass
 
-
     # Read parameters that will be used
-    randomSamples = data["randomSamples"][0]
-    orderParameters = data["orderParameters"]
-    massfuncNames = list(orderParameters.keys())
-    accumulatedCombinations = 0
+    random_samples = data["randomSamples"][0]
+    order_parameters = data["orderParameters"]
+    massfunc_names = list(order_parameters.keys())
+    accumulated_combinations = 0
 
     # Iterate over the different massfunc Names
-    for mfunc in massfuncNames:
+    for mfunc in massfunc_names:
         # Mass data for mfunc
-        massDatamfunc = data["massParams"][mfunc]
+        mass_data_mfunc = data["massParams"][mfunc]
         # Name of parameters
-        massKeysFormfunc = [x if x in list(massDatamfunc.keys()) else None for x in orderParameters[mfunc]["mass"]]
+        mass_keys_for_mfunc = [x if x in list(mass_data_mfunc.keys()) else None for x in order_parameters[mfunc]["mass"]]
         # Possible values of parameters
-        massParameters = [massDatamfunc[x] for x in massKeysFormfunc]
+        mass_parameters = [mass_data_mfunc[x] for x in mass_keys_for_mfunc]
         # Number of possible values for each parameters
-        numberValuesMassParameters = [len(x) for x in massParameters]
+        number_values_mass_parameters = [len(x) for x in mass_parameters]
 
         # Obtain same values for Z
-        Zdatamfunc = data["ZParams"]
-        ZKeysFormfunc = [x if x in list(Zdatamfunc.keys()) else None for x in orderParameters[mfunc]["Z"]]
-        ZParameters = [Zdatamfunc[x] for x in ZKeysFormfunc]
-        numberValuesZParameters = [len(x) for x in ZParameters]
+        z_data_mfunc = data["ZParams"]
+        z_keys_for_mfunc = [x if x in list(z_data_mfunc.keys()) else None for x in order_parameters[mfunc]["Z"]]
+        z_parameters = [z_data_mfunc[x] for x in z_keys_for_mfunc]
+        number_values_z_parameters = [len(x) for x in z_parameters]
 
         # Once all the data is recollected, number of cases
-        allParameters = massKeysFormfunc + ZKeysFormfunc + ["random"]
-        valuesAllParameters = massParameters + ZParameters
-        nParameters = len(allParameters)
-        numberAllParameters = numberValuesMassParameters + numberValuesZParameters + [randomSamples]
-        numberCombinations = [0] * nParameters
-        numberCombinations[-1] = randomSamples + 1
+        all_parameters = mass_keys_for_mfunc + z_keys_for_mfunc
+        values_all_parameters = mass_parameters + z_parameters
+        nparam = len(all_parameters) + 1
+        number_all_parameters = number_values_mass_parameters + number_values_z_parameters + [random_samples]
+        number_combinations = [0] * nparam
+        number_combinations[-1] = random_samples + 1
 
-        for i in reversed(range(nParameters - 1)):
-            numberCombinations[i] = numberCombinations[i + 1] * numberAllParameters[i]
+        for i in reversed(range(nparam - 1)):
+            number_combinations[i] = number_combinations[i + 1] * number_all_parameters[i]
 
         # Verify if ID is bigger than all possible combinations for this massfunc
-        if ID > accumulatedCombinations + numberCombinations[0]:
-            accumulatedCombinations += numberCombinations[0]
+        if id_searched > accumulated_combinations + number_combinations[0]:
+            accumulated_combinations += number_combinations[0]
             continue
 
-        IDCurrentmfunc = ID - accumulatedCombinations - 1
+        current_id = id_searched - accumulated_combinations - 1
         # If smaller, it will stay in this loop
-        indexParameter = [0] * nParameters
-        for idx in range(nParameters - 1):
-            indexParameter[idx] = int(IDCurrentmfunc/numberCombinations[idx + 1])
-            IDCurrentmfunc -= indexParameter[idx] * numberCombinations[idx + 1]
+        idx_param = [0] * nparam
+        for idx in range(nparam - 1):
+            idx_param[idx] = int(current_id/number_combinations[idx + 1])
+            current_id -= idx_param[idx] * number_combinations[idx + 1]
         # Random
-        indexParameter[-1] = IDCurrentmfunc
+        idx_param[-1] = current_id
 
         final_dictionary = {"massfunction": mfunc}
-        for f in range(nParameters - 1):
-            final_dictionary[allParameters[f]] = valuesAllParameters[f][indexParameter[f]]
-        if indexParameter[-1] == 0:
+        for f in range(nparam - 1):
+            final_dictionary[all_parameters[f]] = values_all_parameters[f][idx_param[f]]
+        if idx_param[-1] == 0:
             final_dictionary["randomSample"] = False
         else:
             final_dictionary["randomSample"] = True
@@ -319,4 +318,4 @@ if __name__ == "__main__":
 
     # Get the parameter with which the data was generated from ID and metadatafile
     for id_ in range(1, 73):
-        getparametersfromID("MetadataOutput.json", id_, verbose=1)
+        getparametersfromid("MetadataOutput.json", id_, verbose=1)
