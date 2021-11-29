@@ -2,6 +2,7 @@ import argparse
 import os
 from astropy.io import fits
 import numpy as np
+import json
 
 
 def consolidate_files_into_tables():
@@ -56,7 +57,7 @@ def consolidate_files_into_tables():
     name_metadata, writing_metadata = search_file(args, args.namemetadata, "Metadata")
 
     if args.new:
-        print(f"Writing mode forced to generate a new file.")
+        #print(f"Writing mode forced to generate a new file.")
         writing_table = "new"
         writing_lable = "new"
         writing_metadata = "new"
@@ -90,7 +91,6 @@ def consolidate_files_into_tables():
                       np.zeros(number_of_rows, dtype=np.bool_)] + \
                      [np.zeros(number_of_rows, dtype=np.float32)] * args.ns + \
                      [np.zeros(number_of_rows, dtype=np.float32)] * args.nf
-
 
     file_i = 0
     last_id = args.nid
@@ -140,16 +140,11 @@ def consolidate_files_into_tables():
         #     for f in range(4 + args.ns, 4 + args.ns + args.nf):
         #         new_data_table[f][file_i] = hdr["FILTERV" + str(f - 3 - args.ns)]
 
-
-
-
-
         file_i += 1
 
     print(tmp_header)
 
     print("==================================================")
-
 
     # Transform the matrix into a temporary file
     col_list = [fits.Column(name=column_names[i], format=column_format[i], array=new_data_table[i])
@@ -164,7 +159,7 @@ def consolidate_files_into_tables():
             nrows1 = hdul1[1].data.shape[0]
             nrows2 = hdul2[1].data.shape[0]
             nrows = nrows1 + nrows2
-            print(nrows1, nrows2, nrows)
+            #print(nrows1, nrows2, nrows)
             hdu = fits.BinTableHDU.from_columns(hdul1[1].columns, nrows=nrows)
             for colname in hdul1[1].columns.names:
                 hdu.data[colname][nrows1:] = hdul2[1].data[colname]
@@ -184,33 +179,33 @@ def consolidate_files_into_tables():
     # TODO: This is temporarily stored here for future use when reading the table
     # TODO: For future usage, store in NPY File
     # TODO: https://machinelearningmastery.com/how-to-save-a-numpy-array-to-file-for-machine-learning/
-    # print("----------------------------------------------")
+    # #print("----------------------------------------------")
     # with fits.open(name_table) as hdul:
     #     data = hdul[1].data
-    #     print(data.shape)
-    #     print("_-_-_-_-_-_-_-_-_-_-_-_-_-_-_")
+    #     #print(data.shape)
+    #     #print("_-_-_-_-_-_-_-_-_-_-_-_-_-_-_")
     #     for k in data[0]:
-    #         print(k, type(k))
+    #         #print(k, type(k))
     #
-    #     print("@@@@@@@@@@@")
-    #     print(data.shape)
+    #     #print("@@@@@@@@@@@")
+    #     #print(data.shape)
     #     names = hdul[1].columns.names  # we need the column names
     #     cols = [hdul[1].data.field(col) for col in names]  # and their content
     #     cat = np.rec.fromarrays(cols, names=names)
-    #     print(cat)
-    #     print(cat.dtype.names)  # similar to hdus[1].columns.names
-    #     print(cat.shape)  # and we have access to numpy commands
+    #     #print(cat)
+    #     #print(cat.dtype.names)  # similar to hdus[1].columns.names
+    #     #print(cat.shape)  # and we have access to numpy commands
     #
     #     selection_names = ["s" + str(i) for i in range(1, args.ns+1)] + ["f" + str(i) for i in range(1, args.nf + 1)]
     #     selection = cat[selection_names]
-    #     print(selection)
-    #     print(selection.shape)
-    #     print(type(selection))
+    #     #print(selection)
+    #     #print(selection.shape)
+    #     #print(type(selection))
     #     arr = pd.DataFrame(selection).to_numpy()
-    #     print(arr)
-    #     print(arr.shape)
-    #     print(type(arr))
-    #     print(type(arr[0][0]))
+    #     #print(arr)
+    #     #print(arr.shape)
+    #     #print(type(arr))
+    #     #print(type(arr[0][0]))
 
 
 def search_file(args, tablename, desc):
@@ -237,16 +232,91 @@ def search_file(args, tablename, desc):
     return tablename, writing_mode
 
 
+def getparametersfromID(filename, ID, verbose=0):
+    """
+    Returns the parameters that were used to generate a specific piece of information.
+    :param verbose:
+    :param filename:
+    :param ID:
+    :return:
+    """
 
-def getparametersfromID(filename, ID):
-    pass
+    # ToDo: Maybe verify UUIDs?
 
+    # Open Metadata file
+    with open(filename) as f:
+        data = json.load(f)
+
+    if verbose > 1:
+        print(json.dumps(data, indent=4, sort_keys=True))
+        pass
+
+
+    # Read parameters that will be used
+    randomSamples = data["randomSamples"][0]
+    orderParameters = data["orderParameters"]
+    massfuncNames = list(orderParameters.keys())
+    accumulatedCombinations = 0
+
+    # Iterate over the different massfunc Names
+    for mfunc in massfuncNames:
+        # Mass data for mfunc
+        massDatamfunc = data["massParams"][mfunc]
+        # Name of parameters
+        massKeysFormfunc = [x if x in list(massDatamfunc.keys()) else None for x in orderParameters[mfunc]["mass"]]
+        # Possible values of parameters
+        massParameters = [massDatamfunc[x] for x in massKeysFormfunc]
+        # Number of possible values for each parameters
+        numberValuesMassParameters = [len(x) for x in massParameters]
+
+        # Obtain same values for Z
+        Zdatamfunc = data["ZParams"]
+        ZKeysFormfunc = [x if x in list(Zdatamfunc.keys()) else None for x in orderParameters[mfunc]["Z"]]
+        ZParameters = [Zdatamfunc[x] for x in ZKeysFormfunc]
+        numberValuesZParameters = [len(x) for x in ZParameters]
+
+        # Once all the data is recollected, number of cases
+        allParameters = massKeysFormfunc + ZKeysFormfunc + ["random"]
+        valuesAllParameters = massParameters + ZParameters
+        nParameters = len(allParameters)
+        numberAllParameters = numberValuesMassParameters + numberValuesZParameters + [randomSamples]
+        numberCombinations = [0] * nParameters
+        numberCombinations[-1] = randomSamples + 1
+
+        for i in reversed(range(nParameters - 1)):
+            numberCombinations[i] = numberCombinations[i + 1] * numberAllParameters[i]
+
+        # Verify if ID is bigger than all possible combinations for this massfunc
+        if ID > accumulatedCombinations + numberCombinations[0]:
+            accumulatedCombinations += numberCombinations[0]
+            continue
+
+        IDCurrentmfunc = ID - accumulatedCombinations - 1
+        # If smaller, it will stay in this loop
+        indexParameter = [0] * nParameters
+        for idx in range(nParameters - 1):
+            indexParameter[idx] = int(IDCurrentmfunc/numberCombinations[idx + 1])
+            IDCurrentmfunc -= indexParameter[idx] * numberCombinations[idx + 1]
+        # Random
+        indexParameter[-1] = IDCurrentmfunc
+
+        final_dictionary = {"massfunction": mfunc}
+        for f in range(nParameters - 1):
+            final_dictionary[allParameters[f]] = valuesAllParameters[f][indexParameter[f]]
+        if indexParameter[-1] == 0:
+            final_dictionary["randomSample"] = False
+        else:
+            final_dictionary["randomSample"] = True
+
+        if verbose >= 1:
+            print(final_dictionary)
+        return final_dictionary
 
 
 if __name__ == "__main__":
-    print("\n\n\n")
+    # #print("\n\n\n")
     # consolidate_files_into_tables()
 
     # Get the parameter with which the data was generated from ID and metadatafile
-    getparametersfromID()
-
+    for id_ in range(1, 73):
+        getparametersfromID("MetadataOutput.json", id_, verbose=1)
