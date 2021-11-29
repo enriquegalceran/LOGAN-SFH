@@ -262,9 +262,9 @@ def getparametersfromid(filename, id_searched, verbose=0):
         # Mass data for mfunc
         mass_data_mfunc = data["massParams"][mfunc]
         # Name of parameters
-        mass_keys_for_mfunc = [x if x in list(mass_data_mfunc.keys()) else None for x in order_parameters[mfunc]["mass"]]
+        mass_keys_mfunc = [x if x in list(mass_data_mfunc.keys()) else None for x in order_parameters[mfunc]["mass"]]
         # Possible values of parameters
-        mass_parameters = [mass_data_mfunc[x] for x in mass_keys_for_mfunc]
+        mass_parameters = [mass_data_mfunc[x] for x in mass_keys_mfunc]
         # Number of possible values for each parameters
         number_values_mass_parameters = [len(x) for x in mass_parameters]
 
@@ -274,31 +274,39 @@ def getparametersfromid(filename, id_searched, verbose=0):
         z_parameters = [z_data_mfunc[x] for x in z_keys_for_mfunc]
         number_values_z_parameters = [len(x) for x in z_parameters]
 
-        # Once all the data is recollected, number of cases
-        all_parameters = mass_keys_for_mfunc + z_keys_for_mfunc
+        # Once all the data is recollected, number of cases are calculated
+        # All the parameter names
+        all_parameters = mass_keys_mfunc + z_keys_for_mfunc
+        # Values of the parameters
         values_all_parameters = mass_parameters + z_parameters
+        # How many parameters are there (+ randomSample)
         nparam = len(all_parameters) + 1
+        # How many cases are there for each parameter
         number_all_parameters = number_values_mass_parameters + number_values_z_parameters + [random_samples]
+
+        # Calculate how many iterations there are for every case
         number_combinations = [0] * nparam
         number_combinations[-1] = random_samples + 1
-
         for i in reversed(range(nparam - 1)):
             number_combinations[i] = number_combinations[i + 1] * number_all_parameters[i]
 
         # Verify if ID is bigger than all possible combinations for this massfunc
+        # If true, skip current massfunc and try with the next. Increase accumulated_combinations
         if id_searched > accumulated_combinations + number_combinations[0]:
             accumulated_combinations += number_combinations[0]
             continue
 
+        # If smaller, it will stay with this massfunc
         current_id = id_searched - accumulated_combinations - 1
-        # If smaller, it will stay in this loop
         idx_param = [0] * nparam
         for idx in range(nparam - 1):
+            # Calculate from biggest to smallest the index of the parameter that was used.
             idx_param[idx] = int(current_id/number_combinations[idx + 1])
             current_id -= idx_param[idx] * number_combinations[idx + 1]
-        # Random
+        # Add randomSample at the end
         idx_param[-1] = current_id
 
+        # Generate the final dictionary that will be returned
         final_dictionary = {"massfunction": mfunc}
         for f in range(nparam - 1):
             final_dictionary[all_parameters[f]] = values_all_parameters[f][idx_param[f]]
