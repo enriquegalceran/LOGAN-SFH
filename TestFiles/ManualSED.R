@@ -74,7 +74,7 @@ if (TRUE){SFH = SFHfunc
   emission = TRUE
   emission_scale = 'SFR'
   
-  EMILESCombined = readRDS(file="EMILESCombined.rds")
+  EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
   speclib1=EMILES
   speclib2=EMILESCombined
 }
