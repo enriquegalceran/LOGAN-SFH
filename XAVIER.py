@@ -21,6 +21,27 @@ import os
 # This code generates the model that will be loaded by JANE.
 
 
+class Cerebro:
+    @staticmethod
+    def build_input_spectrum_branch(inputs,):
+        pass
+
+    @staticmethod
+    def build_input_magnitudes_branch(inputs,):
+        pass
+
+    @staticmethod
+    def build_output_sfh_branch(inputs,):
+        pass
+
+    @staticmethod
+    def build_output_metallicity_branch(inputs,):
+        pass
+
+    @staticmethod
+    def build_model(inputs,):
+        pass
+
 
 
 
