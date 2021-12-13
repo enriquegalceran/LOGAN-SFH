@@ -159,8 +159,8 @@ sizeTotal = sizeI + sizeL
 # TODO: This is no longer valid. Maybe redo it, maybe just remove it...
 cat("Total Size: ", bytes2Human(sizeTotal), "\n", sep="")
 cat("Total DISK Size: ", bytes2Human(length(ls2)*262144),
-    " (+", length(ls2)*262000/sizeTotal*100, "%)\n", sep="")
-
+    " (+", length(ls2)*262000/sizeTotal*100, "%) [OUTDATED! NEEDS TO BE REMOVED OR FIXED. LOW PRIORITY]\n", sep="")
+# ToDo fix this section where it calculates disk space used. Recalculate disk space at the beginning as well.
 
 dfRead <- readFITS(file.path(outputFolder, ls2[1]))
 
