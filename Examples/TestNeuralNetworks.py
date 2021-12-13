@@ -217,97 +217,102 @@ def main():
                              numCategories=5,
                              numColors=3,
                              finalAct="softmax")
+    model.summary()
+    model.save("testmodel.h5")
+    print("END HERE")
+    exit()
+    #
+    # # define two dictionaries: one that specifies the loss method for
+    # # each output of the network along with a second dictionary that
+    # # specifies the weight per loss
+    # losses = {
+    #     "category_output": "categorical_crossentropy",
+    #     "color_output": "categorical_crossentropy",
+    # }
+    # # Ponderar la importancia de cada una de las dos categorias!
+    # lossWeights = {"category_output": 1.0, "color_output": 1.0}
+    #
+    # # initialize the optimizer and compile the model
+    # print("[INFO] compiling model...")
+    # opt = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
+    # model.compile(optimizer=opt, loss=losses, loss_weights=lossWeights,
+    #               metrics=["accuracy"])
+    #
+    # # partition the data into training and testing splits using 80% of
+    # # the data for training and the remaining 20% for testing
+    # # Aqui se le puede meter cualquier numero de funciones. HAY QUE ELIMINAR EL RANDOM_STATE CUANDO FUNCIONE!
+    # split = train_test_split(data, categoryLabels, colorLabels,
+    #                          test_size=0.2, random_state=42)
+    # (trainX, testX, trainCategoryY, testCategoryY,
+    #  trainColorY, testColorY) = split
+    # # ---------------------------------------------------------------------------------------
+    # # train the network to perform multi-output classification
+    # H = model.fit(x=trainX,
+    #               y={"category_output": trainCategoryY, "color_output": trainColorY},
+    #               validation_data=(testX,
+    #                                {"category_output": testCategoryY, "color_output": testColorY}),
+    #               epochs=EPOCHS,
+    #               verbose=1)
+    # # save the model to disk
+    # print("[INFO] serializing network...")
+    # model.save(args["model"], save_format="h5")
+    #
+    # # save the category binarizer to disk
+    # print("[INFO] serializing category label binarizer...")
+    # f = open(args["categorybin"], "wb")
+    # f.write(pickle.dumps(categoryLB))
+    # f.close()
+    # # save the color binarizer to disk
+    # print("[INFO] serializing color label binarizer...")
+    # f = open(args["colorbin"], "wb")
+    # f.write(pickle.dumps(colorLB))
+    # f.close()
+    #
+    # # ---------------------------------------------------------------------------------------
+    # # plot the total loss, category loss, and color loss
+    # lossNames = ["loss", "category_output_loss", "color_output_loss"]
+    # plt.style.use("ggplot")
+    # (fig, ax) = plt.subplots(3, 1, figsize=(13, 13))
+    #
+    # # loop over the loss names
+    # for (i, l) in enumerate(lossNames):
+    #     # plot the loss for both the training and validation data
+    #     title = "Loss for {}".format(l) if l != "loss" else "Total loss"
+    #     ax[i].set_title(title)
+    #     ax[i].set_xlabel("Epoch #")
+    #     ax[i].set_ylabel("Loss")
+    #     ax[i].plot(np.arange(0, EPOCHS), H.history[l], label=l)
+    #     ax[i].plot(np.arange(0, EPOCHS), H.history["val_" + l],
+    #                label="val_" + l)
+    #     ax[i].legend()
+    #
+    # # save the losses figure
+    # plt.tight_layout()
+    # plt.savefig("{}_losses.png".format(args["plot"]))
+    # plt.close()
+    #
+    # # create a new figure for the accuracies
+    # accuracyNames = ["category_output_accuracy", "color_output_accuracy"]
+    # plt.style.use("ggplot")
+    # (fig, ax) = plt.subplots(2, 1, figsize=(8, 8))
+    # # loop over the accuracy names
+    # for (i, l) in enumerate(accuracyNames):
+    #     # plot the loss for both the training and validation data
+    #     ax[i].set_title("Accuracy for {}".format(l))
+    #     ax[i].set_xlabel("Epoch #")
+    #     ax[i].set_ylabel("Accuracy")
+    #     ax[i].plot(np.arange(0, EPOCHS), H.history[l], label=l)
+    #     ax[i].plot(np.arange(0, EPOCHS), H.history["val_" + l],
+    #                label="val_" + l)
+    #     ax[i].legend()
+    # # save the accuracies figure
+    # plt.tight_layout()
+    # plt.savefig("{}_accs.png".format(args["plot"]))
+    # plt.close()
 
-    # define two dictionaries: one that specifies the loss method for
-    # each output of the network along with a second dictionary that
-    # specifies the weight per loss
-    losses = {
-        "category_output": "categorical_crossentropy",
-        "color_output": "categorical_crossentropy",
-    }
-    # Ponderar la importancia de cada una de las dos categorias!
-    lossWeights = {"category_output": 1.0, "color_output": 1.0}
 
-    # initialize the optimizer and compile the model
-    print("[INFO] compiling model...")
-    opt = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
-    model.compile(optimizer=opt, loss=losses, loss_weights=lossWeights,
-                  metrics=["accuracy"])
-
-    # partition the data into training and testing splits using 80% of
-    # the data for training and the remaining 20% for testing
-    # Aqui se le puede meter cualquier numero de funciones. HAY QUE ELIMINAR EL RANDOM_STATE CUANDO FUNCIONE!
-    split = train_test_split(data, categoryLabels, colorLabels,
-                             test_size=0.2, random_state=42)
-    (trainX, testX, trainCategoryY, testCategoryY,
-     trainColorY, testColorY) = split
-    # ---------------------------------------------------------------------------------------
-    # train the network to perform multi-output classification
-    H = model.fit(x=trainX,
-                  y={"category_output": trainCategoryY, "color_output": trainColorY},
-                  validation_data=(testX,
-                                   {"category_output": testCategoryY, "color_output": testColorY}),
-                  epochs=EPOCHS,
-                  verbose=1)
-    # save the model to disk
-    print("[INFO] serializing network...")
-    model.save(args["model"], save_format="h5")
-
-    # save the category binarizer to disk
-    print("[INFO] serializing category label binarizer...")
-    f = open(args["categorybin"], "wb")
-    f.write(pickle.dumps(categoryLB))
-    f.close()
-    # save the color binarizer to disk
-    print("[INFO] serializing color label binarizer...")
-    f = open(args["colorbin"], "wb")
-    f.write(pickle.dumps(colorLB))
-    f.close()
-
-    # ---------------------------------------------------------------------------------------
-    # plot the total loss, category loss, and color loss
-    lossNames = ["loss", "category_output_loss", "color_output_loss"]
-    plt.style.use("ggplot")
-    (fig, ax) = plt.subplots(3, 1, figsize=(13, 13))
-
-    # loop over the loss names
-    for (i, l) in enumerate(lossNames):
-        # plot the loss for both the training and validation data
-        title = "Loss for {}".format(l) if l != "loss" else "Total loss"
-        ax[i].set_title(title)
-        ax[i].set_xlabel("Epoch #")
-        ax[i].set_ylabel("Loss")
-        ax[i].plot(np.arange(0, EPOCHS), H.history[l], label=l)
-        ax[i].plot(np.arange(0, EPOCHS), H.history["val_" + l],
-                   label="val_" + l)
-        ax[i].legend()
-
-    # save the losses figure
-    plt.tight_layout()
-    plt.savefig("{}_losses.png".format(args["plot"]))
-    plt.close()
-
-    # create a new figure for the accuracies
-    accuracyNames = ["category_output_accuracy", "color_output_accuracy"]
-    plt.style.use("ggplot")
-    (fig, ax) = plt.subplots(2, 1, figsize=(8, 8))
-    # loop over the accuracy names
-    for (i, l) in enumerate(accuracyNames):
-        # plot the loss for both the training and validation data
-        ax[i].set_title("Accuracy for {}".format(l))
-        ax[i].set_xlabel("Epoch #")
-        ax[i].set_ylabel("Accuracy")
-        ax[i].plot(np.arange(0, EPOCHS), H.history[l], label=l)
-        ax[i].plot(np.arange(0, EPOCHS), H.history["val_" + l],
-                   label="val_" + l)
-        ax[i].legend()
-    # save the accuracies figure
-    plt.tight_layout()
-    plt.savefig("{}_accs.png".format(args["plot"]))
-    plt.close()
-
-
-
+if __name__ == "__main__":
+    main()
 
 
 
