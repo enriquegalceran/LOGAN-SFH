@@ -72,7 +72,7 @@ generateSpecFromParams <- function(massParams="default",
   }
   
   
-  generateFilename <- function(params, mode=2, rngLength=8, addDate=TRUE){
+  generateFilename <- function(params, mode=2, rngLength=8, addDate=TRUE, singleOutput=FALSE){
     if (mode == 1){
       filename = paste0(params$mfunc, "_")
       if (addDate){
@@ -111,7 +111,11 @@ generateSpecFromParams <- function(massParams="default",
     } else if (mode == 2){
       if (addDate){
         now = Sys.time()
-        filename = paste(params$mfunc, gsub(" ", "T", gsub(":", "", gsub("-", "", now))), stri_rand_strings(n=1, length=rngLength), sep="_")
+        if (!singleOutput){
+          filename = paste(params$mfunc, gsub(" ", "T", gsub(":", "", gsub("-", "", now))), stri_rand_strings(n=1, length=rngLength), sep="_")
+        } else {
+          filename = paste(gsub(" ", "T", gsub(":", "", gsub("-", "", now))), stri_rand_strings(n=1, length=rngLength), sep="_")
+        }
       } else {
         filename = paste(params$mfunc, stri_rand_strings(n=1, length=rngLength), sep="_")
       }
@@ -622,6 +626,8 @@ generateSpecFromParams <- function(massParams="default",
   #########
   # Store final Matrix into a FITS "image" in 2D
   if (singleOutput){
+    filename = generateFilename(NULL, mode=filenamemode, rngLength=6, addDate = addDate, singleOutput=TRUE)
+    
     filterData = spectraObject$out
     UUIDs <-exportObjectsToSingleFITS(inputMatrix = completeDataMatrixIn,
                                       labelMatrix = completeDataMatrixLa,

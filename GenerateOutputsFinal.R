@@ -211,8 +211,8 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   # Read and generate data + metadata
   objectUUID = UUIDgenerate(n=2L)
   dateGenerated = Sys.time()
-  n.filters = length(filters)
-  spectra.points = dim(labelMatrix)[2] - 1 - n.filters
+  n.filters = length(filters$filter)
+  spectra.points = dim(labelMatrix)[1] - 1 - n.filters
   n.agevec = (dim(labelMatrix)[2] - 1)/2
   
   
