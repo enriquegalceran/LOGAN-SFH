@@ -209,7 +209,7 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   
   #####
   # Read and generate data + metadata
-  objectUUID = UUIDgenerate(n=2L)
+  objectUUID = UUIDgenerate(n=3L)
   dateGenerated = Sys.time()
   n.filters = length(filters$filter)
   spectra.points = dim(labelMatrix)[1] - 1 - n.filters
@@ -224,6 +224,7 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   hdrIn <- addKwv("Filename", paste0("Input_", fileprefix, filename, ".fits"), header=hdrIn)
   hdrIn <- addKwv("UuidInp", objectUUID[1], note="UUID for Input", header=hdrIn)
   hdrIn <- addKwv("UuidLab", objectUUID[2], note="UUID for Label", header=hdrIn)
+  hdrIn <- addKwv("UuidMet", objectUUID[3], note="UUID for Metadata", header=hdrIn)
   hdrIn <- addFiltersToHeaderSingle(hdrIn, filters)
   hdrIn <- addKwv("NSpectra", spectra.points,note="Number of SpectraPoints", header=hdrIn)
   hdrIn <- addKwv("NFilters", n.filters, note="Number of Filters", header=hdrIn)
@@ -238,6 +239,7 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   hdrLb <- addKwv("Filename", paste0("Label_", fileprefix, filename, ".fits"), header=hdrLb)
   hdrLb <- addKwv("UuidInp", objectUUID[1], note="UUID for Input", header=hdrLb)
   hdrLb <- addKwv("UuidLab", objectUUID[2], note="UUID for Label", header=hdrLb)
+  hdrLb <- addKwv("UuidMet", objectUUID[3], note="UUID for Metadata", header=hdrLb)  
   hdrLb <- addKwv("Nagevec", n.agevec, note="Length of agevec", header=hdrLb)
   hdrLb <- addComment("First row (ID=0) has the X values of the corresponding column if applicable", hdrLb)
   

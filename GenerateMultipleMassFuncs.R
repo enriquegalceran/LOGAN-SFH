@@ -651,7 +651,9 @@ generateSpecFromParams <- function(massParams="default",
                             randomSamples=randomSamples,
                             SNRatio=SNRatio,
                             onlyNoise=onlyNoise,
-                            UUIDs = UUIDs
+                            UUIDInput = UUIDs[1],
+                            UUIDLabels = UUIDs[2],
+                            UUIDMetadata = UUIDs[3]
                             )
                        )
     write(jsonData, metadataName)
