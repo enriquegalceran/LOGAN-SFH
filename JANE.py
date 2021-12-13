@@ -9,27 +9,47 @@ import os
 import json
 
 
-def loadfiles():
+def loadfiles(input_path="/Volumes/Elements/Outputs/Input_20211213T115406_akvGb3.fits",
+              labels_path="/Volumes/Elements/Outputs/Label_20211213T115406_akvGb3.fits"):
     # ToDo: argparse these variables
-    input_path = "/Volumes/Elements/Outputs/Input_snorm_20211203T112003_mwIBuq.fits"
-    labels_path = "/Volumes/Elements/Outputs/Label_snorm_20211203T112003_mwIBuq.fits"
 
-    # Load files
-    print("Loading input...")
+    # Verify data is in 32 bits
+    verify32bits(input_path)
+    verify32bits(labels_path)
+
+    print("Loading inputs...")
     with fits.open(input_path) as hdul:
         input_data = hdul[0].data
         input_header = hdul[0].header
 
-        # TODO: if 64 bits, reduce to 32
-
-    print("Loading labels...")
+    print("Loading label...")
     with fits.open(labels_path) as hdul:
-        labels_data = hdul[0].data
-        labels_header = hdul[0].header
-
-        # TODO: if 64 bits, reduce to 32
+        label_data = hdul[0].data
+        label_header = hdul[0].header
 
     print(input_data.shape)
+
+
+def verify32bits(filepath, verbose=1):
+    """
+    Verifies if the file is in -32 or -64 format. If double (-64), reduces to single (-32).
+    :param verbose:
+    :param filepath:
+    :return:
+    """
+    with fits.open(filepath, mode="update") as hdul:
+        if hdul[0].header["bitpix"] == -64:
+            if verbose == 1:
+                print(f"File ({os.path.basename(filepath)}) has BITPIX={hdul[0].header['bitpix']}. \
+                        Reducing to single precision (-32) ...")
+            if verbose == 2:
+                print(f"File ({filepath}) has BITPIX={hdul[0].header['bitpix']}. \
+                        Reducing to single precision (-32) ...")
+            # Reduce to -32
+            hdul[0].data = hdul[0].data.astype(np.float32)
+            hdul.flush()
+            if verbose == 2:
+                print(f"Correctly reduced {os.path.basename(filepath)} to -32.")
 
 
 def getparametersfromid(filename, id_searched, verbose=0):
@@ -42,7 +62,7 @@ def getparametersfromid(filename, id_searched, verbose=0):
     """
 
     # ToDo: Maybe verify UUIDs?
-
+    # ToDo: Have an input that calls the R execution to generate the data again?
     # Open Metadata file
     with open(filename) as f:
         data = json.load(f)
@@ -101,7 +121,7 @@ def getparametersfromid(filename, id_searched, verbose=0):
         idx_param = [0] * nparam
         for idx in range(nparam - 1):
             # Calculate from biggest to smallest the index of the parameter that was used.
-            idx_param[idx] = int(current_id/number_combinations[idx + 1])
+            idx_param[idx] = int(current_id / number_combinations[idx + 1])
             current_id -= idx_param[idx] * number_combinations[idx + 1]
         # Add randomSample at the end
         idx_param[-1] = current_id
@@ -121,10 +141,9 @@ def getparametersfromid(filename, id_searched, verbose=0):
 
 
 def main():
-
     # Get the parameter with which the data was generated from ID and metadatafile
-    for id_ in range(1, 73):
-        getparametersfromid("MetadataOutput.json", id_, verbose=1)
+    # for id_ in range(1, 73):
+    #     getparametersfromid("MetadataOutput.json", id_, verbose=1)
 
     loadfiles()
 
