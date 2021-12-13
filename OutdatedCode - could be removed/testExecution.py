@@ -77,7 +77,7 @@ def main():
 if __name__ == "__main__":
     # main()
     # Test Json
-    with open("MetadataOutput.json") as f:
+    with open("../MetadataOutput.json") as f:
         data = json.load(f)
     print(json.dumps(data, indent=4))
     print(data["orderParameters"])
