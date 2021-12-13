@@ -9,8 +9,11 @@ import os
 import json
 
 
-def loadfiles(input_path="/Volumes/Elements/Outputs/Input_20211213T115406_akvGb3.fits",
-              labels_path="/Volumes/Elements/Outputs/Label_20211213T115406_akvGb3.fits"):
+def loadfiles(input_path="/Volumes/Elements/Outputs/Input_20211213T154548_HjCktf.fits",
+              labels_path="/Volumes/Elements/Outputs/Label_20211213T154548_HjCktf.fits",
+              size_inputs=None,
+              size_magnitudes=None,
+              size_labels=None):
     # ToDo: argparse these variables
 
     # Verify data is in 32 bits
@@ -29,6 +32,39 @@ def loadfiles(input_path="/Volumes/Elements/Outputs/Input_20211213T115406_akvGb3
 
     print(input_data.shape)
 
+    # Read the arrays from files
+    input_lenght_spectra = input_header["nspectra"]
+    input_length_filters = input_header["nfilters"]
+    label_agevec = label_header["nagevec"]
+    lambda_input_spectra = input_data[1:input_lenght_spectra + 1, 0]
+    agevec_label = label_data[1:label_agevec + 1, 0]
+    input_spectra = input_data[1:input_lenght_spectra + 1, 1:]
+    input_magnitudes = input_data[input_lenght_spectra + 1:, 1:]
+    label_sfh = label_data[1:label_agevec + 1, 1:]
+    label_z = label_data[label_agevec + 1:, 1:]
+    # All these vectors are ordered the other way around. Transpose them
+    input_spectra = input_spectra.transpose()
+    input_magnitudes = input_magnitudes.transpose()
+    label_sfh = label_sfh.transpose()
+    label_z = label_z.transpose()
+
+    # If array size does not match, transform accordingly
+    # ToDo: Make sure that there is no need to resize. If there is no need, this next section can be removed.
+    if size_inputs is not None:
+        x_old_input = input_data[1:input_lenght_spectra + 1, 0]
+        old_spectra = input_data[1:input_lenght_spectra + 1, 1:]
+        old_magnitudes = input_data[input_lenght_spectra + 1:, 1:]
+        print(len(x_old_input))
+        print(x_old_input)
+        print(type(x_old_input))
+        print(input_data.shape)
+        print(x_old_input.shape)
+        print(old_spectra.shape)
+        print(old_magnitudes.shape)
+        # new_x, new_y = reshape_array(x_old_input, )
+
+    return input_spectra, input_magnitudes, label_sfh, label_z
+
 
 def verify32bits(filepath, verbose=1):
     """
@@ -40,11 +76,11 @@ def verify32bits(filepath, verbose=1):
     with fits.open(filepath, mode="update") as hdul:
         if hdul[0].header["bitpix"] == -64:
             if verbose == 1:
-                print(f"File ({os.path.basename(filepath)}) has BITPIX={hdul[0].header['bitpix']}. \
-                        Reducing to single precision (-32) ...")
+                print(f"File ({os.path.basename(filepath)}) has BITPIX={hdul[0].header['bitpix']}.\n" +
+                      f"Reducing to single precision (-32) ...")
             if verbose == 2:
-                print(f"File ({filepath}) has BITPIX={hdul[0].header['bitpix']}. \
-                        Reducing to single precision (-32) ...")
+                print(f"File ({filepath}) has BITPIX={hdul[0].header['bitpix']}.\n"
+                      f"Reducing to single precision (-32) ...")
             # Reduce to -32
             hdul[0].data = hdul[0].data.astype(np.float32)
             hdul.flush()
