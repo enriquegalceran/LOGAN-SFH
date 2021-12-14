@@ -7,6 +7,7 @@ from tensorflow.keras.layers import MaxPooling1D
 from tensorflow.keras.layers import Activation
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import Lambda
+from tensorflow.keras.layers import Concatenate
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import Input
@@ -54,7 +55,7 @@ class Cerebro:
 
         # Output from input spectrum branch
         x = Dense(number_neurons)(x)
-        x = Activation(final_act)(x)
+        x = Activation(final_act, name="spectra_input")(x)
         return x
 
     @staticmethod
@@ -68,21 +69,51 @@ class Cerebro:
 
         # Output from input magnitudes branch
         x = Dense(number_neurons)(x)
-        x = Activation(final_act)(x)
+        x = Activation(final_act, name="magnitude_input")(x)
         return x
 
     @staticmethod
     def build_output_sfh_branch(inputs,):
+        # ToDo: WIP
         pass
 
     @staticmethod
     def build_output_metallicity_branch(inputs,):
+        # ToDo: WIP
         pass
 
     @staticmethod
-    def build_model(inputs,):
-        pass
+    def build_model(spectra_data_shape, magnitudes_data_shape,
+                    number_neurons_spectra, number_neurons_magnitudes,
+                    number_output_metal, number_ouput_sfh=None,
+                    intermediate_activation="relu", final_activation="softmax"):
+        if number_ouput_sfh is None:
+            number_ouput_sfh = number_output_metal
 
+        # Input Layers
+        input_spectra = Input(shape=spectra_data_shape)
+        input_magnitudes = Input(shape=magnitudes_data_shape)
+
+        # Input Branches
+        input_spec_branch = Cerebro.build_input_spectrum_branch(input_spectra,
+                                                                number_neurons_spectra, intermediate_activation)
+        input_magn_branch = Cerebro.build_input_magnitudes_branch(input_magnitudes,
+                                                                  number_neurons_magnitudes, intermediate_activation)
+
+        # Concatenate both input branches
+        intermediate_concatted = Concatenate(axis=1)([input_spec_branch, input_magn_branch])
+
+
+
+
+
+        model = Model(
+            inputs=[input_spectra, input_magnitudes],
+            outputs=[]
+        )
+
+        # ToDo: WIP
+        return model
 
 
 
