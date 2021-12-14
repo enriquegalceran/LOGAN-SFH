@@ -7,6 +7,7 @@ from astropy.io import fits
 import matplotlib.pyplot as plt
 import os
 import json
+from XAVIER import Cerebro
 
 
 def loadfiles(input_path="/Volumes/Elements/Outputs/Input_20211213T154548_HjCktf.fits",
