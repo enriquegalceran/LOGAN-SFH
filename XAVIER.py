@@ -73,7 +73,7 @@ class Cerebro:
         return x
 
     @staticmethod
-    def build_output_sfh_branch(inputs, number_neurons, final_act="softmax"):
+    def build_output_sfh_branch(inputs, number_neurons, final_act="linear"):
 
         # 512 neurons, relu, 50% dropout
         x = Cerebro.dense_act_batchnorm_dropout(inputs, 512, "relu", 0.5)
@@ -90,18 +90,32 @@ class Cerebro:
         return x
 
     @staticmethod
-    def build_output_metallicity_branch(inputs,):
-        # ToDo: WIP
-        x = 1
+    def build_output_metallicity_branch(inputs, number_neurons, final_act="linear"):
+
+        # 512 neurons, relu, 50% dropout
+        x = Cerebro.dense_act_batchnorm_dropout(inputs, 512, "relu", 0.5)
+
+        # 256 neurons, relu, 25% dropout
+        x = Cerebro.dense_act_batchnorm_dropout(x, 256, "relu", 0.25)
+
+        # 256 neurons, relu, 25% dropout
+        x = Cerebro.dense_act_batchnorm_dropout(x, 256, "relu", 0.25)
+
+        # 128 neurons, relu, 10% dropout
+        x = Cerebro.dense_act_batchnorm_dropout(x, 128, "relu", 0.10)
+
+        # Output from output sfh branch
+        x = Dense(number_neurons)(x)
+        x = Activation(final_act, name="metallicity_output")(x)
         return x
 
     @staticmethod
     def build_model(spectra_data_shape, magnitudes_data_shape,
                     number_neurons_spec, number_neurons_magn,
-                    number_output_metal, number_ouput_sfh=None,
-                    intermediate_activation="relu", final_activation="softmax"):
-        if number_ouput_sfh is None:
-            number_ouput_sfh = number_output_metal
+                    number_output_metal, number_output_sfh=None,
+                    intermediate_activation="relu", final_activation="linear"):
+        if number_output_sfh is None:
+            number_output_sfh = number_output_metal
 
         # Input Layers
         input_spec = Input(shape=spectra_data_shape, name="spectra_input")
@@ -114,8 +128,10 @@ class Cerebro:
         # Concatenate both input branches
         intermediate_concatted = Concatenate(axis=0)([input_spec_branch, input_magn_branch])
 
-        metal_branch = Cerebro.build_output_metallicity_branch(intermediate_concatted)
-        sfh_branch = Cerebro.build_output_sfh_branch(intermediate_concatted)
+        metal_branch = Cerebro.build_output_metallicity_branch(intermediate_concatted,
+                                                               number_output_metal, final_activation)
+        sfh_branch = Cerebro.build_output_sfh_branch(intermediate_concatted,
+                                                     number_output_sfh, final_activation)
 
 
 
