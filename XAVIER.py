@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# XAVIER
 # eXtragalactic Artificial-neural-network Visualizer and identifIER
 
 from tensorflow.keras.models import Model
@@ -6,17 +8,10 @@ from tensorflow.keras.layers import Conv1D
 from tensorflow.keras.layers import MaxPooling1D
 from tensorflow.keras.layers import Activation
 from tensorflow.keras.layers import Dropout
-from tensorflow.keras.layers import Lambda
 from tensorflow.keras.layers import Concatenate
 from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import Input
-import tensorflow as tf
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import os
 
 # ToDo: Generate a proper docstring
 # This code generates the model that will be loaded by JANE.
@@ -24,8 +19,9 @@ import os
 
 class Cerebro:
     @staticmethod
-    def conv_activation_pool(layer_input, nf=32, sf=3,
-                             st=1, act="relu", ps=3, do=0.25, pdd="same"):
+    def conv_activation_pool(layer_input: int, nf: int = 32, sf: int = 3,
+                             st: int = 1, act: str = "relu", ps: int = 3,
+                             do: float = 0.25, pdd: str = "same"):
         x = Conv1D(filters=nf, kernel_size=sf, strides=st, padding=pdd)(layer_input)
         x = Activation(act)(x)
         x = BatchNormalization()(x)
@@ -34,7 +30,7 @@ class Cerebro:
         return x
 
     @staticmethod
-    def dense_act_batchnorm_dropout(inputs, neurons, activation="relu", dropout=0.5):
+    def dense_act_batchnorm_dropout(inputs: int, neurons: int, activation: str = "relu", dropout: float = 0.5):
         x = Dense(neurons)(inputs)
         x = Activation(activation)(x)
         x = BatchNormalization()(x)
@@ -42,8 +38,7 @@ class Cerebro:
         return x
 
     @staticmethod
-    def build_input_spec_branch(inputs, number_neurons, final_act="relu"):
-
+    def build_input_spec_branch(inputs: int, number_neurons: int, final_act: str = "relu"):
         # CONV => RELU => POOL (I)
         x = Cerebro.conv_activation_pool(inputs, 32, 3, 1, "relu", 3, 0.25, "same")
 
@@ -59,8 +54,7 @@ class Cerebro:
         return x
 
     @staticmethod
-    def build_input_magn_branch(inputs, number_neurons, final_act="relu"):
-
+    def build_input_magn_branch(inputs: int, number_neurons: int, final_act: str = "relu"):
         # 256 neurons, relu, 50% dropout
         x = Cerebro.dense_act_batchnorm_dropout(inputs, 256, "relu", 0.5)
 
@@ -73,8 +67,7 @@ class Cerebro:
         return x
 
     @staticmethod
-    def build_output_sfh_branch(inputs, number_neurons, final_act="linear"):
-
+    def build_output_sfh_branch(inputs: int, number_neurons: int, final_act: str = "linear"):
         # 512 neurons, relu, 50% dropout
         x = Cerebro.dense_act_batchnorm_dropout(inputs, 512, "relu", 0.5)
 
@@ -90,8 +83,7 @@ class Cerebro:
         return x
 
     @staticmethod
-    def build_output_metallicity_branch(inputs, number_neurons, final_act="linear"):
-
+    def build_output_metallicity_branch(inputs: int, number_neurons: int, final_act: str = "linear"):
         # 512 neurons, relu, 50% dropout
         x = Cerebro.dense_act_batchnorm_dropout(inputs, 512, "relu", 0.5)
 
@@ -110,10 +102,10 @@ class Cerebro:
         return x
 
     @staticmethod
-    def build_model(spectra_data_shape, magnitudes_data_shape,
-                    number_neurons_spec, number_neurons_magn,
-                    number_output_metal, number_output_sfh=None,
-                    intermediate_activation="relu", final_activation="linear"):
+    def build_model(spectra_data_shape: int, magnitudes_data_shape: int,
+                    number_neurons_spec: int, number_neurons_magn: int,
+                    number_output_metal: int, number_output_sfh: int = None,
+                    intermediate_activation: str = "relu", final_activation: str = "linear"):
         if number_output_sfh is None:
             number_output_sfh = number_output_metal
 
@@ -133,18 +125,11 @@ class Cerebro:
         sfh_branch = Cerebro.build_output_sfh_branch(intermediate_concatted,
                                                      number_output_sfh, final_activation)
 
-
-
-
         model = Model(
             inputs=[input_spec, input_magn],
-            outputs=[]
+            outputs=[metal_branch, sfh_branch],
+            name="cerebro"
         )
 
         # ToDo: WIP
         return model
-
-
-
-
-
