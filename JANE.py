@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Just A Network Executor
 
 import numpy as np
@@ -182,7 +183,12 @@ def main():
     # for id_ in range(1, 73):
     #     getparametersfromid("MetadataOutput.json", id_, verbose=1)
 
-    loadfiles()
+    # loadfiles()
+
+    model = Cerebro.build_model(spectra_data_shape=3761, magnitudes_data_shape=5,
+                                number_neurons_spec=128, number_neurons_magn=64,
+                                number_output_sfh=10, number_output_metal=10)
+    model.summary()
 
 
 if __name__ == "__main__":

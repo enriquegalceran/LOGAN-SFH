@@ -38,7 +38,7 @@ class Cerebro:
         return x
 
     @staticmethod
-    def build_input_spec_branch(inputs: int, number_neurons: int, final_act: str = "relu"):
+    def build_input_spec_branch(inputs, number_neurons: int, final_act: str = "relu"):
         # CONV => RELU => POOL (I)
         x = Cerebro.conv_activation_pool(inputs, 32, 3, 1, "relu", 3, 0.25, "same")
 
@@ -56,10 +56,10 @@ class Cerebro:
     @staticmethod
     def build_input_magn_branch(inputs: int, number_neurons: int, final_act: str = "relu"):
         # 256 neurons, relu, 50% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(inputs, 256, "relu", 0.5)
+        x = Cerebro.dense_act_batchnorm_dropout(inputs, 128, "relu", 0.5)
 
         # 126 neurons, relu, 25% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(x, 126, "relu", 0.25)
+        x = Cerebro.dense_act_batchnorm_dropout(x, 64, "relu", 0.25)
 
         # Output from input magnitudes branch
         x = Dense(number_neurons)(x)
@@ -78,8 +78,8 @@ class Cerebro:
         x = Cerebro.dense_act_batchnorm_dropout(x, 128, "relu", 0.10)
 
         # Output from output sfh branch
-        x = Dense(number_neurons)(x)
-        x = Activation(final_act, name="sfh_output")(x)
+        x = Dense(number_neurons, activation=final_act, name="sfh_output")(x)
+        # x = Activation(final_act, name="sfh_output")(x)
         return x
 
     @staticmethod
@@ -97,28 +97,31 @@ class Cerebro:
         x = Cerebro.dense_act_batchnorm_dropout(x, 128, "relu", 0.10)
 
         # Output from output sfh branch
-        x = Dense(number_neurons)(x)
-        x = Activation(final_act, name="metallicity_output")(x)
+        x = Dense(number_neurons, activation=final_act, name="metallicity_output")(x)
+        # x = Activation(final_act, name="metallicity_output")(x)
         return x
 
     @staticmethod
     def build_model(spectra_data_shape: int, magnitudes_data_shape: int,
                     number_neurons_spec: int, number_neurons_magn: int,
-                    number_output_metal: int, number_output_sfh: int = None,
+                    number_output_sfh: int, number_output_metal: int = None,
                     intermediate_activation: str = "relu", final_activation: str = "linear"):
-        if number_output_sfh is None:
-            number_output_sfh = number_output_metal
+        if number_output_metal is None:
+            number_output_metal = number_output_sfh
 
         # Input Layers
-        input_spec = Input(shape=spectra_data_shape, name="spectra_input")
-        input_magn = Input(shape=magnitudes_data_shape, name="magnitude_input")
+        input_spec = Input(shape=(spectra_data_shape, 1), name="spectra_input")
+        input_magn = Input(shape=(magnitudes_data_shape, 1), name="magnitude_input")
 
         # Input Branches
         input_spec_branch = Cerebro.build_input_spec_branch(input_spec, number_neurons_spec, intermediate_activation)
         input_magn_branch = Cerebro.build_input_magn_branch(input_magn, number_neurons_magn, intermediate_activation)
 
+        print(input_spec_branch.shape)
+        print(input_magn_branch.shape)
+
         # Concatenate both input branches
-        intermediate_concatted = Concatenate(axis=0)([input_spec_branch, input_magn_branch])
+        intermediate_concatted = Concatenate(axis=-1)([input_spec_branch, input_magn_branch])
 
         metal_branch = Cerebro.build_output_metallicity_branch(intermediate_concatted,
                                                                number_output_metal, final_activation)
