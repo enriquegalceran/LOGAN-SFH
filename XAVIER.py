@@ -9,8 +9,10 @@ from tensorflow.keras.layers import MaxPooling1D
 from tensorflow.keras.layers import Activation
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import Concatenate
+from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Input
+from tensorflow.keras.utils import plot_model
 
 
 # ToDo: Generate a proper docstring
@@ -22,8 +24,7 @@ class Cerebro:
     def conv_activation_pool(layer_input: int, nf: int = 32, sf: int = 3,
                              st: int = 1, act: str = "relu", ps: int = 3,
                              do: float = 0.25, pdd: str = "same"):
-        x = Conv1D(filters=nf, kernel_size=sf, strides=st, padding=pdd)(layer_input)
-        x = Activation(act)(x)
+        x = Conv1D(filters=nf, kernel_size=sf, activation=act, strides=st, padding=pdd)(layer_input)
         x = BatchNormalization()(x)
         x = MaxPooling1D(pool_size=ps)(x)
         x = Dropout(do)(x)
@@ -31,8 +32,7 @@ class Cerebro:
 
     @staticmethod
     def dense_act_batchnorm_dropout(inputs: int, neurons: int, activation: str = "relu", dropout: float = 0.5):
-        x = Dense(neurons)(inputs)
-        x = Activation(activation)(x)
+        x = Dense(neurons, activation=activation)(inputs)
         x = BatchNormalization()(x)
         x = Dropout(dropout)(x)
         return x
@@ -40,17 +40,17 @@ class Cerebro:
     @staticmethod
     def build_input_spec_branch(inputs, number_neurons: int, final_act: str = "relu"):
         # CONV => RELU => POOL (I)
-        x = Cerebro.conv_activation_pool(inputs, 32, 3, 1, "relu", 3, 0.25, "same")
+        x = Cerebro.conv_activation_pool(inputs, 64, 10, 1, "relu", 3, 0.25, "same")
 
         # CONV => RELU => POOL (II)
-        x = Cerebro.conv_activation_pool(x, 32, 3, 1, "relu", 3, 0.25, "same")
+        x = Cerebro.conv_activation_pool(x, 32, 5, 1, "relu", 3, 0.25, "same")
 
         # CONV => RELU => POOL (III)
-        x = Cerebro.conv_activation_pool(x, 32, 3, 1, "relu", 3, 0.25, "same")
+        x = Cerebro.conv_activation_pool(x, 32, 3, 1, "relu", 3, 0.10, "same")
 
         # Output from input spectrum branch
-        x = Dense(number_neurons)(x)
-        x = Activation(final_act, name="spectra_intermediate")(x)
+        x = Flatten()(x)
+        x = Dense(number_neurons, activation=final_act, name="spectra_intermediate")(x)
         return x
 
     @staticmethod
@@ -61,9 +61,12 @@ class Cerebro:
         # 126 neurons, relu, 25% dropout
         x = Cerebro.dense_act_batchnorm_dropout(x, 64, "relu", 0.25)
 
+        # 32 neurons, relu, 10% dropout
+        x = Cerebro.dense_act_batchnorm_dropout(x, 32, "relu", 0.25)
+
         # Output from input magnitudes branch
-        x = Dense(number_neurons)(x)
-        x = Activation(final_act, name="magnitude_intermediate")(x)
+        x = Flatten()(x)
+        x = Dense(number_neurons, activation=final_act, name="magnitude_intermediate")(x)
         return x
 
     @staticmethod
@@ -74,12 +77,15 @@ class Cerebro:
         # 256 neurons, relu, 25% dropout
         x = Cerebro.dense_act_batchnorm_dropout(x, 256, "relu", 0.25)
 
+        # 256 neurons, relu, 25% dropout
+        x = Cerebro.dense_act_batchnorm_dropout(x, 256, "relu", 0.25)
+
         # 128 neurons, relu, 10% dropout
         x = Cerebro.dense_act_batchnorm_dropout(x, 128, "relu", 0.10)
 
         # Output from output sfh branch
-        x = Dense(number_neurons, activation=final_act, name="sfh_output")(x)
-        # x = Activation(final_act, name="sfh_output")(x)
+        x = Dense(number_neurons)(x)
+        x = Activation(final_act, name="sfh_output")(x)
         return x
 
     @staticmethod
@@ -97,8 +103,8 @@ class Cerebro:
         x = Cerebro.dense_act_batchnorm_dropout(x, 128, "relu", 0.10)
 
         # Output from output sfh branch
-        x = Dense(number_neurons, activation=final_act, name="metallicity_output")(x)
-        # x = Activation(final_act, name="metallicity_output")(x)
+        x = Dense(number_neurons)(x)
+        x = Activation(final_act, name="metallicity_output")(x)
         return x
 
     @staticmethod
@@ -136,3 +142,7 @@ class Cerebro:
 
         # ToDo: WIP
         return model
+
+    @staticmethod
+    def plot(model, filename="testimage.png"):
+        plot_model(model, to_file=filename, show_shapes=True, show_layer_names=True)
