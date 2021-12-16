@@ -140,7 +140,7 @@ class Cerebro:
     def build_model(spectra_data_shape: int, magnitudes_data_shape: int,
                     number_neurons_spec: int, number_neurons_magn: int,
                     number_output_sfh: int, number_output_metal: int = None,
-                    intermediate_activation: str = "relu", final_activation: str = "linear"):
+                    intermediate_activation: str = "relu", final_activation: str = "linear", explicit: bool = False):
         if number_output_metal is None:
             number_output_metal = number_output_sfh
 
@@ -149,8 +149,10 @@ class Cerebro:
         input_magn = Input(shape=(magnitudes_data_shape, 1), name="magnitude_input")
 
         # Input Branches
-        input_spec_branch = Cerebro.build_input_spec_branch(input_spec, number_neurons_spec, intermediate_activation)
-        input_magn_branch = Cerebro.build_input_magn_branch(input_magn, number_neurons_magn, intermediate_activation)
+        input_spec_branch = Cerebro.build_input_spec_branch(input_spec, number_neurons_spec,
+                                                            intermediate_activation, explicit)
+        input_magn_branch = Cerebro.build_input_magn_branch(input_magn, number_neurons_magn,
+                                                            intermediate_activation, explicit)
 
         print(input_spec_branch.shape)
         print(input_magn_branch.shape)
@@ -159,9 +161,9 @@ class Cerebro:
         intermediate_concatted = Concatenate(axis=-1)([input_spec_branch, input_magn_branch])
 
         metal_branch = Cerebro.build_output_metallicity_branch(intermediate_concatted,
-                                                               number_output_metal, final_activation)
+                                                               number_output_metal, final_activation, explicit)
         sfh_branch = Cerebro.build_output_sfh_branch(intermediate_concatted,
-                                                     number_output_sfh, final_activation)
+                                                     number_output_sfh, final_activation, explicit)
 
         model = Model(
             inputs=[input_spec, input_magn],
@@ -173,5 +175,5 @@ class Cerebro:
         return model
 
     @staticmethod
-    def plot(model, filename="testimage.png"):
+    def graph(model, filename="testimage.png"):
         plot_model(model, to_file=filename, show_shapes=True, show_layer_names=True)

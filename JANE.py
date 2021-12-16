@@ -187,10 +187,11 @@ def main():
 
     model = Cerebro.build_model(spectra_data_shape=3761, magnitudes_data_shape=5,
                                 number_neurons_spec=256, number_neurons_magn=32,
-                                number_output_sfh=10, number_output_metal=10)
+                                number_output_sfh=10, number_output_metal=10,
+                                explicit=False)
     model.summary()
 
-    Cerebro.plot(model, "tstimage.png")
+    Cerebro.graph(model, "tstimage.png")
 
 
 if __name__ == "__main__":
