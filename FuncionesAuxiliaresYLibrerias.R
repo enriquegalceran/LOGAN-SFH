@@ -27,16 +27,18 @@ getT0FromMu <- function(mu, tau)
 # Wavelength Range in MUSE
 wavelengthRangeInMUSE <- c(4750, 9350)  # Ang
 
-findClosestInVector <- function(number, vector, returnIndex=FALSE){
-  if (returnIndex){
-    return(which.min(abs(vector-number)))
+findClosestInVector <- function(number, vector, returnIndex = FALSE) {
+  if (returnIndex) {
+    return(which.min(abs(vector - number)))
   } else {
-    return(vector[which.min(abs(vector-number))])
+    return(vector[which.min(abs(vector - number))])
   }
 }
 
 # Conseguir memoria ram de las variables y objetos
-sort(sapply(ls(),function(x){object.size(get(x))}))
+sort(sapply(ls(), function(x) {
+  object.size(get(x))
+}))
 
 wavelength2rgb <- function(l) {
   r = 0
@@ -447,10 +449,12 @@ exportData <- function(df,
                        fileformat = ".csv") {
   spectraOutput = data.frame(df$flux)
   filtersOutput = data.frame(df$out)
-  parametOutput = data.frame(agevec = df$agevec,
-                             massvec = df$massvec,
-                             SFR = df$SFR,
-                             Z = df$Zvec)
+  parametOutput = data.frame(
+    agevec = df$agevec,
+    massvec = df$massvec,
+    SFR = df$SFR,
+    Z = df$Zvec
+  )
   
   filedirectory = file.path(getwd(), foldername)
   # If output folder does not exist, generate it
@@ -472,33 +476,39 @@ exportData <- function(df,
 
 
 exportFITSfile <- function(df,
-                          filename,
-                          foldername = "OutputFolder",
-                          fileprefix = ""){
-  addFiltersToHeader <- function(header, filterlist){
-    header <- addComment("List of filters analysed.", header=header)
-    for (i in 1:length(filterlist)){
-      header <- addKwv(paste("filter", i, sep=""), filterlist[i], header=header)
+                           filename,
+                           foldername = "OutputFolder",
+                           fileprefix = "") {
+  addFiltersToHeader <- function(header, filterlist) {
+    header <- addComment("List of filters analysed.", header = header)
+    for (i in 1:length(filterlist)) {
+      header <-
+        addKwv(paste("filter", i, sep = ""), filterlist[i], header = header)
     }
     return(header)
   }
   
-  addColumnInformation <- function(header, columnnames, columnform=NULL){
-    header <- addComment("Columns information:", header=header)
-    for (i in 1:length(columnnames)){
-      header <- addKwv(paste("TTYPE", i, sep=""), columnnames[i], header=header)
-      if (!is.null(columnform))
-        header <- addKwv(paste("TFORM", i, sep=""), columnform[i], header=header)
+  addColumnInformation <-
+    function(header, columnnames, columnform = NULL) {
+      header <- addComment("Columns information:", header = header)
+      for (i in 1:length(columnnames)) {
+        header <-
+          addKwv(paste("TTYPE", i, sep = ""), columnnames[i], header = header)
+        if (!is.null(columnform))
+          header <-
+            addKwv(paste("TFORM", i, sep = ""), columnform[i], header = header)
+      }
+      return(header)
     }
-    return(header)
-  }
   
   spectraOutput = data.frame(df$flux)
   filtersOutput = data.frame(df$out)
-  parametOutput = data.frame(agevec = df$agevec,
-                             massvec = df$massvec,
-                             SFR = df$SFR,
-                             Z = df$Zvec)
+  parametOutput = data.frame(
+    agevec = df$agevec,
+    massvec = df$massvec,
+    SFR = df$SFR,
+    Z = df$Zvec
+  )
   
   filedirectory = file.path(getwd(), foldername)
   # If output folder does not exist, generate it
@@ -512,11 +522,14 @@ exportFITSfile <- function(df,
   matrixFlux = data.matrix(spectraOutput[1:2])
   
   # make main header
-  header <- makeFITSimHdr(matrixFlux,
-                          c1 = "FITS file Flux",
-                          ctypen = c("wave", "flux"),
-                          cunitn = c("A", "erg/s/cm**2/A"))
-  header <- addColumnInformation(header, attributes(matrixFlux)$dimnames[[2]])
+  header <- makeFITSimHdr(
+    matrixFlux,
+    c1 = "FITS file Flux",
+    ctypen = c("wave", "flux"),
+    cunitn = c("A", "erg/s/cm**2/A")
+  )
+  header <-
+    addColumnInformation(header, attributes(matrixFlux)$dimnames[[2]])
   # Check if file exists and remove if necessary
   if (file.exists(paste(filedirectory, "/Spectr_", filename, sep = ""))) {
     #Delete file if it exists
@@ -524,22 +537,27 @@ exportFITSfile <- function(df,
   }
   # Write file
   cat("Exporting Spectr_", filename, " ...\n", sep = "")
-  writeFITSim(matrixFlux,
-              file = paste(filedirectory, "/Spectr_", filename, sep = ""),
-              header=header)
+  writeFITSim(
+    matrixFlux,
+    file = paste(filedirectory, "/Spectr_", filename, sep = ""),
+    header = header
+  )
   
   
   ############################################################
   ########## Filters
   
-  matrixFilters <- data.matrix(filtersOutput[,2:3])
+  matrixFilters <- data.matrix(filtersOutput[, 2:3])
   
-  header <- makeFITSimHdr(matrixFilters,
-                          c1 = "FITS file Filters",
-                          ctypen = c("cenwave", "out"),
-                          cunitn = c("A", "mag"))
+  header <- makeFITSimHdr(
+    matrixFilters,
+    c1 = "FITS file Filters",
+    ctypen = c("cenwave", "out"),
+    cunitn = c("A", "mag")
+  )
   header <- addFiltersToHeader(header, df$out$filter)
-  header <- addColumnInformation(header, attributes(matrixFilters)$dimnames[[2]])
+  header <-
+    addColumnInformation(header, attributes(matrixFilters)$dimnames[[2]])
   
   # Check if file exists and remove if necessary
   if (file.exists(paste(filedirectory, "/Filter_", filename, sep = ""))) {
@@ -548,9 +566,11 @@ exportFITSfile <- function(df,
   }
   # Write file
   cat("Exporting Filter_", filename, " ...\n", sep = "")
-  writeFITSim(matrixFilters,
-              file = paste(filedirectory, "/Filter_", filename, sep = ""),
-              header=header)
+  writeFITSim(
+    matrixFilters,
+    file = paste(filedirectory, "/Filter_", filename, sep = ""),
+    header = header
+  )
   
   ############################################################
   ########## Parameters
@@ -558,16 +578,19 @@ exportFITSfile <- function(df,
   matrixParamt <- data.matrix(parametOutput)
   
   header <- makeFITSimHdr(matrixParamt)
-  header <- addColumnInformation(header, attributes(matrixParamt)$dimnames[[2]])
+  header <-
+    addColumnInformation(header, attributes(matrixParamt)$dimnames[[2]])
   # Check if file exists and remove if necessary
   if (file.exists(paste(filedirectory, "/Paramt_", filename, sep = "")))
     file.remove(paste(filedirectory, "/Paramt_", filename, sep = ""))
   
   # Write file
   cat("Exporting Paramt_", filename, " ...\n", sep = "")
-  writeFITSim(matrixParamt,
-              file = paste(filedirectory, "/Paramt_", filename, sep = ""),
-              header=header)
+  writeFITSim(
+    matrixParamt,
+    file = paste(filedirectory, "/Paramt_", filename, sep = ""),
+    header = header
+  )
 }
 
 
@@ -576,12 +599,12 @@ exportFITSfile <- function(df,
 
 readFITSfile <- function(filename,
                          foldername = "OutputFolder",
-                         fileprefix = ""){
+                         fileprefix = "") {
   # Update filename
   filedirectory = file.path(getwd(), foldername)
   filename = paste(filedirectory, "/", fileprefix, filename, sep = "")
-  if (substr(filename, nchar(filename)-5, nchar(filename)) != ".fits")
-    filename <- paste(filename, ".fits", sep="")
+  if (substr(filename, nchar(filename) - 5, nchar(filename)) != ".fits")
+    filename <- paste(filename, ".fits", sep = "")
   
   # Read File
   dfRead <-  readFITS(filename)
@@ -589,21 +612,20 @@ readFITSfile <- function(filename,
   # Generate list of column names
   cNames <- c()
   for (i in 1:length(dfRead$hdr))
-    if (grepl("TTYPE", dfRead$hdr[i], fixed=TRUE))
-      cNames <- c(cNames, dfRead$hdr[i+1])
+    if (grepl("TTYPE", dfRead$hdr[i], fixed = TRUE))
+      cNames <- c(cNames, dfRead$hdr[i + 1])
   
   # Read Subgroup
   dfData <- data.frame(dfRead$imDat)
   colnames(dfData) <- cNames
-
+  
   return(dfData)
 }
 
 
 
 
-customWaveout <- function(fluxObject, waveout){
-  
+customWaveout <- function(fluxObject, waveout) {
   outObject = fluxObject
   
   waveoutLog = log10(waveout)
@@ -612,105 +634,87 @@ customWaveout <- function(fluxObject, waveout){
   attenLog = log10(fluxObject$lum_atten)
   
   outObject$wave_lum = waveout
-  outObject$lum_unatten = 10^approxfun(waveLog, unattenLog, rule=2)(waveoutLog)
-  outObject$lum_atten = 10^approxfun(waveLog, attenLog, rule=2)(waveoutLog)
+  outObject$lum_unatten = 10 ^ approxfun(waveLog, unattenLog, rule = 2)(waveoutLog)
+  outObject$lum_atten = 10 ^ approxfun(waveLog, attenLog, rule = 2)(waveoutLog)
   return(outObject)
 }
 
 
-interpolateToWaveout <- function(x1, y1, waveout, returnVector=FALSE,
-                                 offset=0.5, resolution.mult=20,
-                                 interpolate=FALSE){
-  if (interpolate){
-    # If interpolate is TRUE, simply interpolate for the xnew (waveout)
+interpolateToWaveout <- function(x1,
+                                 y1,
+                                 waveout,
+                                 returnList = FALSE,
+                                 offset = 0.5,
+                                 n.points.integrate = 50,
+                                 interpolate = FALSE,
+                                 method.to.evaluate = "mean") {
+  if (interpolate) {
+    # If interpolate is TRUE, simply interpolate for the xnew (waveout).
+    # This is NOT ADVISED if the NEW RESOLUTION IS SMALLER.
     waveoutL = log10(waveout)
     x1L = log10(x1)
     y1L = log10(y1)
-    spect = 10^approxfun(x1L, y1L, rule=2)(waveoutL)
-    if (!returnVector){
+    spect = 10 ^ approxfun(x1L, y1L, rule = 2)(waveoutL)
+    if (!returnList) {
       return(spect)
     } else {
-      return(list(wave=waveout, spect=spect))
+      return(list(wave = waveout, spect = spect))
     }
   } else {
     # If interpolate is FALSE, calculate the average values for the points for the new x
     
-    # offset calculates where the limit for the bin limit will be placed:
+    # offset calculates where the bin limits will be placed:
     # the centerpoint c_i between two consecutive points (x_i and x_i+1, with x_i+1 > x_i) will be placed at
     # c_i <- (x_i+1 - x_i+1) * offset + x_i
     # the new evaluation will be:
     # y_i <- index in data where value corresponds to x=c_i
     # f_new(x_i) <- mean(data[y_i-1 : y_i])
     
-    # First generate a high resolution interpolation n.points = length(waveout) * resolution.mult
-    # Testing: A = SFHfunc(massfunc_dtau, forcemass=1e10, stellpop=EMILESCombined, filters=filters, emission=TRUE, emission_scale = "SFR", mSFR = 10, mpeak=7, mtau = 0.5)
-    if (FALSE){
-      filtersHST <- c("F275W", "F336W", "F438W", "F555W", "F814W")
-      filters <- list()
-      for (filter in filtersHST) {
-        # TODO: see speclib regarding location of data files.
-        filters[[filter]] <-
-          read.table(
-            paste0("FiltersHST/HST_WFC3_UVIS2.", filter, ".dat"),
-            col.names = c("wave", "response")
-          )
-      }
-      EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
-      Stars = SFHfunc(
-        speclib = EMILESCombined,
-        filters = filters,
-        massfunc = massfunc_dtau,
-        mSFR = 100,
-        mpeak = 10,
-        emission = TRUE,
-        emission_scale = "SFR",
-        Z=0.02
-      )
-      waveout = seq(4700, 9400, 1.25)
-      offset=0.5
-      resolution.mult=20
-      x1 = Stars$flux$wave
-      y1 = Stars$flux$flux
-      xlimplot = c(4500, 9600)
-      ylimplot = c(1e-16, 3e-15)
-      plot(x1, y1, type="l", main="espectro original", xlim=xlimplot, ylim=ylimplot)
+    if (offset < 0 || offset > 1) {
+      stop("'offset' needs to be within [0,1]")
     }
-    length.waveout = length(waveout)
     
     # Initialize Y
-    newy = numeric(length(waveout))
+    last.w = length(waveout)
+    newy = numeric(last.w)
     
     # Iterate over every new waveout and define limits for integration
-    for (i in 1:length.waveout){
-      
+    for (i in 1:last.w) {
       # Separate between first, last and rest
-      if (i == 1){
-        left = 3*waveout[1]/2 - waveout[2]/2
-        right = (waveout[1] + waveout[2])/2
-      } else if (i == length.waveout){
-        left = (waveout[length.waveout - 1] + waveout[length.waveout]) / 2
-        right = 3/2 * waveout[length.waveout] - waveout[length.waveout - 1] / 2
+      if (i == 1) {
+        left  = waveout[1] -
+                    (waveout[2] - waveout[1]) * (1 - offset)
+        right = waveout[1] +
+                    (waveout[2] - waveout[1]) * offset
+        
+      } else if (i == last.w) {
+        left  = waveout[last.w - 1] + 
+                    (waveout[last.w] - waveout[last.w - 1]) * offset
+        right = waveout[last.w] + 
+                    (waveout[last.w] - waveout[last.w -1]) * offset
+        
       } else {
-        left = (waveout[i-1] + waveout[i])/2
-        right = (waveout[i] + waveout[i+1])/2
+        left  = waveout[i - 1] +
+                    (waveout[i] - waveout[i - 1]) * offset
+        right = waveout[i]   +
+                    (waveout[i + 1] - waveout[i]) * offset
       }
       
-      # Calculate for i the new y waveout
-      newy[i] = sum(
-        interpolateToWaveout(
-          x1,
-          y1,
-          seq(left, right, length.out = resolution.mult),
-          interpolate = TRUE
-        )
-      ) / (resolution.mult)
+      # Once we know the limits between which we need to integrate,
+      # interpolate a higher resolution (n.points.integrate) x vector
+      # and interpolate the new values (using logs).
+      tmp = interpolateToWaveout(x1,
+                                 y1,
+                                 seq(left, right, length.out = n.points.integrate),
+                                 interpolate = TRUE)
       
+      # Obtain the final value from this vector (mean/mode)
+      if (method.to.evaluate == "mean") {
+        newy[i] = mean(tmp)
+      } else if (method.to.evaluate == "mode") {
+        newy[i] = mode(tmp)
+      }
     }
-    
-    
-    plot(waveout, newy, type="l")
-    
-    
   }
 }
 
@@ -725,8 +729,8 @@ qdiffCustom <- function (vec, pad0 = TRUE) {
 }
 
 
-pltComparison <- function(object1, object2, mode=NULL){
-  if (is.null(mode)){
+pltComparison <- function(object1, object2, mode = NULL) {
+  if (is.null(mode)) {
     cat("Mode has the following accepted values:\ndifference1\ndifference2")
   }
   print("inside Function")
@@ -745,52 +749,70 @@ pltComparison <- function(object1, object2, mode=NULL){
     y12 = object1$lum_atten[insideRangeIdx1]
     y21 = object2$lum_unatten[insideRangeIdx2]
     y22 = object2$lum_atten[insideRangeIdx2]
-  
+    
     # Margins
-    xLim = c(min(c(x1, x2), na.rm=TRUE), max(c(x1, x2), na.rm=TRUE))
-    yLim = c(min(c(y11, y12, y21, y22), na.rm=TRUE),
-             max(c(y11, y12, y21, y22), na.rm=TRUE))
+    xLim = c(min(c(x1, x2), na.rm = TRUE), max(c(x1, x2), na.rm = TRUE))
+    yLim = c(min(c(y11, y12, y21, y22), na.rm = TRUE),
+             max(c(y11, y12, y21, y22), na.rm = TRUE))
     xLim = log10(xLim)
     yLim = log10(yLim)
-    xLim = xLim + c(-1, +1) * margin * (xLim[2] - xLim[1]) / 2
-    yLim = yLim + c(-1, +1) * margin * (yLim[2] - yLim[1]) / 2
-    xLim = 10^xLim
-    yLim = 10^yLim
+    xLim = xLim + c(-1,+1) * margin * (xLim[2] - xLim[1]) / 2
+    yLim = yLim + c(-1,+1) * margin * (yLim[2] - yLim[1]) / 2
+    xLim = 10 ^ xLim
+    yLim = 10 ^ yLim
   }
   
-  par(oma=c(1, 1, 4, 3))    # Outer margins
-  par(mai=c(0, 0.5, 0, 0))    # internal margins
-  layout(matrix(c(1,1,1,1,1,2,2),
-                nrow=7,ncol=1,
-                byrow=TRUE))
+  par(oma = c(1, 1, 4, 3))    # Outer margins
+  par(mai = c(0, 0.5, 0, 0))    # internal margins
+  layout(matrix(
+    c(1, 1, 1, 1, 1, 2, 2),
+    nrow = 7,
+    ncol = 1,
+    byrow = TRUE
+  ))
   
-  plot(object1$wave_lum, object1$lum_unatten, log="xy", xlim=xLim, ylim=yLim,
-       ylab="Luminosity (Lsol)", type="l", col="blue", xaxt="n")
-  lines(object1$wave_lum, object1$lum_atten, col='green')
-  lines(object2$wave_lum, object2$lum_unatten, col='red')
-  lines(object2$wave_lum, object2$lum_atten, col='maroon')
-  abline(v=wavelengthRangeInMUSE[1], col="black")
-  abline(v=wavelengthRangeInMUSE[2], col="black")
-  legend('topright',
-         legend=c("Unatt-O", "Atten-O", "Unatt-Y+O", "Atten-Y+O", "MUSE"),
-         col=c('blue', 'green', 'red', 'maroon', 'black'),
-         lty=c(1, 1, 1, 1), cex=0.75
+  plot(
+    object1$wave_lum,
+    object1$lum_unatten,
+    log = "xy",
+    xlim = xLim,
+    ylim = yLim,
+    ylab = "Luminosity (Lsol)",
+    type = "l",
+    col = "blue",
+    xaxt = "n"
+  )
+  lines(object1$wave_lum, object1$lum_atten, col = 'green')
+  lines(object2$wave_lum, object2$lum_unatten, col = 'red')
+  lines(object2$wave_lum, object2$lum_atten, col = 'maroon')
+  abline(v = wavelengthRangeInMUSE[1], col = "black")
+  abline(v = wavelengthRangeInMUSE[2], col = "black")
+  legend(
+    'topright',
+    legend = c("Unatt-O", "Atten-O", "Unatt-Y+O", "Atten-Y+O", "MUSE"),
+    col = c('blue', 'green', 'red', 'maroon', 'black'),
+    lty = c(1, 1, 1, 1),
+    cex = 0.75
   )
   
-  par(mai=c(0.5, 0.5, 0, 0))
-  if (mode=="difference1"){
-    y21b = interpolateToWaveout(x2, y21, x1, returnVector = TRUE)
-    y22b = interpolateToWaveout(x2, y22, x1, returnVector = TRUE)
+  par(mai = c(0.5, 0.5, 0, 0))
+  if (mode == "difference1") {
+    y21b = interpolateToWaveout(x2, y21, x1, returnList = TRUE)
+    y22b = interpolateToWaveout(x2, y22, x1, returnList = TRUE)
     differenceUnatten = y11 - y21b
     differenceUnattenAbs = abs(differenceUnatten)
-    reldifferenceUnatten = differenceUnattenAbs/y11*100
+    reldifferenceUnatten = differenceUnattenAbs / y11 * 100
     signUnatten = differenceUnatten == differenceUnattenAbs
     colorDifference = 1 * signUnatten
     sectors = c(1)
     tmpSign = signUnatten[1]
-    if (tmpSign){colSectors = c("green")} else {colSectors = c("red")}
-    for (i in 1:length(signUnatten)){
-      if (signUnatten[i] != tmpSign){
+    if (tmpSign) {
+      colSectors = c("green")
+    } else {
+      colSectors = c("red")
+    }
+    for (i in 1:length(signUnatten)) {
+      if (signUnatten[i] != tmpSign) {
         sectors = c(sectors, i)
         tmpSign = signUnatten[i]
         if (tmpSign) {
@@ -802,46 +824,80 @@ pltComparison <- function(object1, object2, mode=NULL){
     }
     sectors = c(sectors, i)
     
-    plot(x1[1], reldifferenceUnatten[1], log="xy", xlim=xLim, 
-         ylim=c(min(reldifferenceUnatten), max(reldifferenceUnatten)),
-         xlab="Wavelength (Ang)",
-         ylab="Relative (%)", type="l", col="blue")
-    legend("topright", legend=c("positive", "negative"),
-           lty=c(1, 1), col=c("green", "red"))
+    plot(
+      x1[1],
+      reldifferenceUnatten[1],
+      log = "xy",
+      xlim = xLim,
+      ylim = c(min(reldifferenceUnatten), max(reldifferenceUnatten)),
+      xlab = "Wavelength (Ang)",
+      ylab = "Relative (%)",
+      type = "l",
+      col = "blue"
+    )
+    legend(
+      "topright",
+      legend = c("positive", "negative"),
+      lty = c(1, 1),
+      col = c("green", "red")
+    )
     
-    for (i in 1:(length(sectors)-1)){
-      lines(x1[sectors[i]:sectors[i+1]],
-            reldifferenceUnatten[sectors[i]:sectors[i+1]],
-            col=colSectors[i])
+    for (i in 1:(length(sectors) - 1)) {
+      lines(x1[sectors[i]:sectors[i + 1]],
+            reldifferenceUnatten[sectors[i]:sectors[i + 1]],
+            col = colSectors[i])
     }
-  } else if (mode == "difference2"){
-    y21b = interpolateToWaveout(x2, y21, x1, returnVector = TRUE)
-    y22b = interpolateToWaveout(x2, y22, x1, returnVector = TRUE)
+  } else if (mode == "difference2") {
+    y21b = interpolateToWaveout(x2, y21, x1, returnList = TRUE)
+    y22b = interpolateToWaveout(x2, y22, x1, returnList = TRUE)
     differenceUnatten = y11 - y21b
-    reldifferenceUnatten = differenceUnatten/y11*100
+    reldifferenceUnatten = differenceUnatten / y11 * 100
     differenceAtten = y11 - y21b
-    reldifferenceAtten = differenceAtten/y11*100
+    reldifferenceAtten = differenceAtten / y11 * 100
     
-    plot(x1, reldifferenceUnatten, log="x", xlim=xLim, 
-         ylim=c(min(reldifferenceUnatten), max(reldifferenceUnatten)),
-         xlab="Wavelength (Ang)",
-         ylab="Relative difference (%)", type="l", col="blue")
-    lines(x1, reldifferenceAtten, col="blue")
-    abline(h=0, col="black")
+    plot(
+      x1,
+      reldifferenceUnatten,
+      log = "x",
+      xlim = xLim,
+      ylim = c(min(reldifferenceUnatten), max(reldifferenceUnatten)),
+      xlab = "Wavelength (Ang)",
+      ylab = "Relative difference (%)",
+      type = "l",
+      col = "blue"
+    )
+    lines(x1, reldifferenceAtten, col = "blue")
+    abline(h = 0, col = "black")
   } else if (mode == "division") {
-    y21b = interpolateToWaveout(x2, y21, x1, returnVector = TRUE)
-    y22b = interpolateToWaveout(x2, y22, x1, returnVector = TRUE)
-    differenceUnatten = log10(y21b/y11)
-    differenceAtten = log10(y22b/y12)
-    plot(x1, differenceUnatten, log="x", xlim=xLim, 
-         ylim=c(min(c(differenceUnatten, differenceAtten)), max(c(differenceUnatten, differenceAtten))),
-         xlab="Wavelength (Ang)",
-         ylab="[(Y+O)/O]", type="l", col="blue")
-    lines(x1, differenceAtten, col="green")
-    abline(h=0, col="black")
-    abline(v=wavelengthRangeInMUSE[1], col="black")
-    abline(v=wavelengthRangeInMUSE[2], col="black")
-    legend("topright", legend=c("Unatten", "Atten"), col=c("blue", "green"), lty=c(1,1))
+    y21b = interpolateToWaveout(x2, y21, x1, returnList = TRUE)
+    y22b = interpolateToWaveout(x2, y22, x1, returnList = TRUE)
+    differenceUnatten = log10(y21b / y11)
+    differenceAtten = log10(y22b / y12)
+    plot(
+      x1,
+      differenceUnatten,
+      log = "x",
+      xlim = xLim,
+      ylim = c(min(
+        c(differenceUnatten, differenceAtten)
+      ), max(
+        c(differenceUnatten, differenceAtten)
+      )),
+      xlab = "Wavelength (Ang)",
+      ylab = "[(Y+O)/O]",
+      type = "l",
+      col = "blue"
+    )
+    lines(x1, differenceAtten, col = "green")
+    abline(h = 0, col = "black")
+    abline(v = wavelengthRangeInMUSE[1], col = "black")
+    abline(v = wavelengthRangeInMUSE[2], col = "black")
+    legend(
+      "topright",
+      legend = c("Unatten", "Atten"),
+      col = c("blue", "green"),
+      lty = c(1, 1)
+    )
   } else {
     cat("Esta opción todavía no está considerada.")
   }
@@ -850,8 +906,8 @@ pltComparison <- function(object1, object2, mode=NULL){
 }
 
 
-convertAny2decimal <- function(x, old=16){
-  if (old > 62){
+convertAny2decimal <- function(x, old = 16) {
+  if (old > 62) {
     stop("Maximum order is 62.")
   } else if (old <= 0) {
     stop("Minimum order is 1.")
@@ -860,9 +916,9 @@ convertAny2decimal <- function(x, old=16){
   dic <- c(0:9, letters[1:26], LETTERS[1:26])
   tmp = 0
   tmpi = 0
-  while (x != ""){
+  while (x != "") {
     t <- match(substr(x, nchar(x), nchar(x)), dic) - 1
-    tmp = tmp + old**tmpi*t
+    tmp = tmp + old ** tmpi * t
     tmpi = tmpi + 1
     x = substr(x, 1, nchar(x) - 1)
   }
@@ -870,24 +926,24 @@ convertAny2decimal <- function(x, old=16){
 }
 
 
-convertDecimal2Any <- function(x, new=16){
-  if (new > 62){
+convertDecimal2Any <- function(x, new = 16) {
+  if (new > 62) {
     stop("Maximum order is 62.")
   } else if (new <= 0) {
     stop("Minimum order is 1.")
   }
   dic <- c(0:9, letters[1:26], LETTERS[1:26])
   tmp = ""
-  while (x > 0){
-    tmp = paste0(dic[x%%new + 1], tmp)
-    x = (x - x%%new)/new
+  while (x > 0) {
+    tmp = paste0(dic[x %% new + 1], tmp)
+    x = (x - x %% new) / new
   }
   return(tmp)
 }
 
 
-convertAny2Any <- function(x, old=10, new=16){
-  if (old > 62 | new > 62){
+convertAny2Any <- function(x, old = 10, new = 16) {
+  if (old > 62 | new > 62) {
     stop("Maximum order is 62.")
   } else if (old <= 0 | new <= 0) {
     stop("Minimum order is 1.")
@@ -895,9 +951,3 @@ convertAny2Any <- function(x, old=10, new=16){
   dic <- c(0:9, letters[1:26], LETTERS[1:26])
   convertDecimal2Any(convertAny2decimal(x, old), new)
 }
-
-
-
-
-
-
