@@ -618,15 +618,99 @@ customWaveout <- function(fluxObject, waveout){
 }
 
 
-interpolateToWaveout <- function(x1, y1, waveout, returnVector=FALSE){
-  waveoutL = log10(waveout)
-  x1L = log10(x1)
-  y1L = log10(y1)
-  spect = 10^approxfun(x1L, y1L, rule=2)(waveoutL)
-  if (returnVector){
-    return(spect)
+interpolateToWaveout <- function(x1, y1, waveout, returnVector=FALSE,
+                                 offset=0.5, resolution.mult=20,
+                                 interpolate=FALSE){
+  if (interpolate){
+    # If interpolate is TRUE, simply interpolate for the xnew (waveout)
+    waveoutL = log10(waveout)
+    x1L = log10(x1)
+    y1L = log10(y1)
+    spect = 10^approxfun(x1L, y1L, rule=2)(waveoutL)
+    if (!returnVector){
+      return(spect)
+    } else {
+      return(list(wave=waveout, spect=spect))
+    }
   } else {
-    return(list(wave=waveout, spect=spect))
+    # If interpolate is FALSE, calculate the average values for the points for the new x
+    
+    # offset calculates where the limit for the bin limit will be placed:
+    # the centerpoint c_i between two consecutive points (x_i and x_i+1, with x_i+1 > x_i) will be placed at
+    # c_i <- (x_i+1 - x_i+1) * offset + x_i
+    # the new evaluation will be:
+    # y_i <- index in data where value corresponds to x=c_i
+    # f_new(x_i) <- mean(data[y_i-1 : y_i])
+    
+    # First generate a high resolution interpolation n.points = length(waveout) * resolution.mult
+    # Testing: A = SFHfunc(massfunc_dtau, forcemass=1e10, stellpop=EMILESCombined, filters=filters, emission=TRUE, emission_scale = "SFR", mSFR = 10, mpeak=7, mtau = 0.5)
+    if (FALSE){
+      filtersHST <- c("F275W", "F336W", "F438W", "F555W", "F814W")
+      filters <- list()
+      for (filter in filtersHST) {
+        # TODO: see speclib regarding location of data files.
+        filters[[filter]] <-
+          read.table(
+            paste0("FiltersHST/HST_WFC3_UVIS2.", filter, ".dat"),
+            col.names = c("wave", "response")
+          )
+      }
+      EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
+      Stars = SFHfunc(
+        speclib = EMILESCombined,
+        filters = filters,
+        massfunc = massfunc_dtau,
+        mSFR = 100,
+        mpeak = 10,
+        emission = TRUE,
+        emission_scale = "SFR",
+        Z=0.02
+      )
+      waveout = seq(4700, 9400, 1.25)
+      offset=0.5
+      resolution.mult=20
+      x1 = Stars$flux$wave
+      y1 = Stars$flux$flux
+      xlimplot = c(4500, 9600)
+      ylimplot = c(1e-16, 3e-15)
+      plot(x1, y1, type="l", main="espectro original", xlim=xlimplot, ylim=ylimplot)
+    }
+    length.waveout = length(waveout)
+    
+    # Initialize Y
+    newy = numeric(length(waveout))
+    
+    # Iterate over every new waveout and define limits for integration
+    for (i in 1:length.waveout){
+      
+      # Separate between first, last and rest
+      if (i == 1){
+        left = 3*waveout[1]/2 - waveout[2]/2
+        right = (waveout[1] + waveout[2])/2
+      } else if (i == length.waveout){
+        left = (waveout[length.waveout - 1] + waveout[length.waveout]) / 2
+        right = 3/2 * waveout[length.waveout] - waveout[length.waveout - 1] / 2
+      } else {
+        left = (waveout[i-1] + waveout[i])/2
+        right = (waveout[i] + waveout[i+1])/2
+      }
+      
+      # Calculate for i the new y waveout
+      newy[i] = sum(
+        interpolateToWaveout(
+          x1,
+          y1,
+          seq(left, right, length.out = resolution.mult),
+          interpolate = TRUE
+        )
+      ) / (resolution.mult)
+      
+    }
+    
+    
+    plot(waveout, newy, type="l")
+    
+    
   }
 }
 
@@ -639,7 +723,6 @@ qdiffCustom <- function (vec, pad0 = TRUE) {
     return(vec[2:length(vec)] - vec[1:(length(vec) - 1)])
   }
 }
-
 
 
 pltComparison <- function(object1, object2, mode=NULL){
