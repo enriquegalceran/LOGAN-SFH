@@ -98,7 +98,44 @@ if (FALSE){
 
 ls1 = sort(list.files(outputFolder))
 
-# waveout = seq(4700, 9400, 1.25)
+## Probar interpolar
+if (TRUE){
+  waveout = seq(4700, 9400, 1.25)
+  filtersHST <- c("F275W", "F336W", "F438W", "F555W", "F814W")
+  filters <- list()
+  for (filter in filtersHST) {
+    filters[[filter]] <-
+      read.table(
+        paste("FiltersHST/HST_WFC3_UVIS2.", filter, ".dat", sep = ""),
+        col.names = c("wave", "response")
+      )
+  }
+  
+  Stars = SFHfunc(
+    speclib = EMILESCombined,
+    filters = filters,
+    massfunc = massfunc_dtau,
+    mSFR = 100,
+    mpeak = 10,
+    emission = TRUE,
+    emission_scale = "SFR",
+    Z=0.02
+  )
+  plot(Stars$flux$wave, Stars$flux$flux, type="l", log="xy",
+       xlim=c(4650, 9500), ylim=c(8e-16, 2.5e-15), main="original")
+  newy = interpolateToWaveout(x1=Stars$flux$wave,
+                              y1=Stars$flux$flux,
+                              waveout=waveout,
+                              offset=0.5,
+                              n.points.integrate = 50,
+                              method.to.evaluate = "mean")
+  plot(waveout, newy, type="l", log="xy",
+       xlim=c(4650, 9500), ylim=c(8e-16, 2.5e-15), main="nuevo")
+  
+}
+
+
+
 # wave = seq(4700, 9400, 1.25)
 # agevec = c(6300000,7900000,10000000,12600000,15800000,20000000,25100000,
 #            31600000,39800000,50100000,63100000,70800000,79400000,89100000,

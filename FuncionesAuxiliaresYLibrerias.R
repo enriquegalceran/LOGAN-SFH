@@ -715,6 +715,7 @@ interpolateToWaveout <- function(x1,
         newy[i] = mode(tmp)
       }
     }
+    return(newy)
   }
 }
 
