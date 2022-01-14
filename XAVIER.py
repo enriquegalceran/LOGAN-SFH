@@ -13,6 +13,7 @@ from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Input
 from tensorflow.keras.utils import plot_model
+import tensorflow.keras.backend as kerasbackend
 
 
 # ToDo: Generate a proper docstring
@@ -177,3 +178,10 @@ class Cerebro:
     @staticmethod
     def graph(model, filename="testimage.png"):
         plot_model(model, to_file=filename, show_shapes=True, show_layer_names=True)
+
+    @staticmethod
+    def smape_loss(y_true, y_pred):
+        epsilon = 0.1
+        summ = kerasbackend.maximum(kerasbackend.abs(y_true) + kerasbackend.abs(y_pred) + epsilon, 0.5 + epsilon)
+        smape = kerasbackend.abs(y_pred - y_true) / summ * 2.0
+        return smape
