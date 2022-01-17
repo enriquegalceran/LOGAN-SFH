@@ -708,11 +708,11 @@ interpolateToWaveout <- function(x1,
                                  seq(left, right, length.out = n.points.integrate),
                                  interpolate = TRUE)
       
-      # Obtain the final value from this vector (mean/mode)
+      # Obtain the final value from this vector (mean/median)
       if (method.to.evaluate == "mean") {
         newy[i] = mean(tmp)
-      } else if (method.to.evaluate == "mode") {
-        newy[i] = mode(tmp)
+      } else if (method.to.evaluate == "median") {
+        newy[i] = median(tmp)
       }
     }
     return(newy)
