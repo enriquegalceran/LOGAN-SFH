@@ -952,3 +952,100 @@ convertAny2Any <- function(x, old = 10, new = 16) {
   dic <- c(0:9, letters[1:26], LETTERS[1:26])
   convertDecimal2Any(convertAny2decimal(x, old), new)
 }
+
+
+convertAgevecToOutputScale <- function(agevector, datavector, new_scale=NULL, max.age=13.8e9, n.splits=10, method="mean", return_scale=FALSE) {
+  # Converts Agevector (based on the Library [EMILESCombined]) to a smaller vector (for the CNN output).
+  if (new_scale == "defaultlog1" || is.null(new_scale)) {
+    new_scale = c(0, 6.3, 7.9, 10, 12.6, 15.8, 20, 25.1, 31.6, 39.8, 50.1, 63.1, 70.8,
+                  130, 255, 510, 900, 1800, 3200, 6400, 12600)
+  } else if (new_scale == "defaultlog2") {
+    new_scale = c(0, 10, 32, 50.5, 130, 255, 510, 900, 1800, 3200, 6400, 12600)
+  } else if (new_scale == "lovell"){
+    new_scale = c(0, 32, 68, 147, 316, 681, 1470, 3160, 12460)
+  } else if (new_scale == "newlog") {
+    # Separate into n.splits bins (log)
+    agevec.below.max = agevector[agevector<max.age]
+    log_agevec = log10(agevec.below.max)
+    
+    # Split homogeneously among the values
+    age_split <- split(agevec.below.max, cut(seq_along(log_agevec), n.splits, labels = FALSE))
+    
+    # Keep the last value (this gives the max value for the bin)
+    new_scale = c(0)
+    for (i in 1:length(age_split)){
+      new_scale = c(new_scale, age_split[[i]][length(age_split[[i]])]/1000000)
+    }
+  } # ToDo: Maybe a 3rd default value that uses 
+  
+  # Identify which values of the agevector should go in each bin. NA if a value is above the max value (las element in new_scale)
+  separations <- cut(agevector, new_scale * 1000000, labels = FALSE, include.lowest = TRUE)
+  
+  # Separate the data according to the x value
+  data_groups <- split(datavector, separations)
+  age_groups <- split(agevector, separations)
+  
+  # Consolidate the data using mean or median
+  out <- c()
+  age <- c()
+  width <- c()
+  for (i in 1:length(data_groups)) {
+    # First, get the data into the new bins
+    if (method == "mean") {
+      tmp <- mean(data_groups[[i]])
+    } else if (method == "median") {
+      tmp <- median(data_groups[[i]])
+    }
+    out <- c(out, tmp)
+    
+    width <- c(width, length(age_groups[[i]]))
+    
+    # Second, get the ages of the bins
+    if (width[i] == 1){
+      age <- c(age, age_groups[[i]])
+    } else {
+      # age <- c(age, mean(age_groups[[i]]))
+      age <- c(age, 10^mean(log10(age_groups[[i]])))
+    }
+  }
+  if (return_scale){
+    output = list(age=age, data=out, width=width, new_scale=new_scale)
+  } else {
+    output = list(age=age, data=out, width=width)
+  }
+  return(output)
+}
+
+
+# Test code for convertAgevecToOutputScale
+# ToDo: REMOVE THIS. THIS SHOULD NOT BE IN THE FINAL VERSION
+if (FALSE){
+  agevec = c(6300000,7900000,10000000,12600000,15800000,20000000,25100000,
+             31600000,39800000,50100000,63100000,70800000,79400000,89100000,
+             100000000,112200000,125900000,141300000,158500000,177800000,
+             199500000,223900000,251200000,281800000,316200000,354800000,
+             398100000,446700000,501200000,562300000,631000000,707900000,
+             794300000,891300000,1000000000,1122000000,1258900000,1412500000,
+             1584900000, 1778300000,1995300000,2238700000,2511900000,
+             2818400000,3162300000,3548100000,3981100000,4466800000,
+             5011900000,5623400000,6309600000,7079500000,7943300000,
+             8912500000,10000000000,11220200000,12589300000,14125400000,
+             15848900000,17782800000)
+  SFR = c(4.053394, 4.056097, 4.059647, 4.064046, 4.069467, 4.076593,
+          4.085262, 4.096336, 4.110347, 4.128012, 4.150411, 4.163734,
+          4.178662, 4.195561, 4.214628, 4.236069, 4.260270, 4.287633,
+          4.318393, 4.353160, 4.392572, 4.437295, 4.487852, 4.545175,
+          4.610454, 4.684771, 4.769502, 4.866350, 4.977191, 5.104323,
+          5.250973, 5.419895, 5.615865, 5.843919, 6.109948, 6.422230,
+          6.790676, 7.227889, 7.750286, 8.378643, 9.140618, 10.072396,
+          11.223518, 12.659710, 14.471767, 16.784642, 19.774125, 23.682655,
+          28.852069, 35.743129, 44.952373, 57.121647, 72.533088, 89.625037,
+          100.000000, 93.595870)
+  output = convertAgevecToOutputScale(agevec, SFR, return_scale=TRUE)
+  
+  plot(output$age, output$data, log="x", xlim=c(4e6, 2e10), ylim=c(3, 110), pch=3, cex=2, main="log10mean")
+  points(Stars$agevec, Stars$SFR, pch=4, cex=1.5)
+  for (i in output$new_scale){
+    abline(v=i * 1000000)
+  }
+}
