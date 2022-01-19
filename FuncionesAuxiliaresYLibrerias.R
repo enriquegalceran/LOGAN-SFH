@@ -954,7 +954,13 @@ convertAny2Any <- function(x, old = 10, new = 16) {
 }
 
 
-convertAgevecToOutputScale <- function(agevector, datavector, new_scale=NULL, max.age=13.8e9, n.splits=10, method="mean", return_scale=FALSE) {
+convertAgevecToOutputScale <- function(agevector,
+                                       datavector,
+                                       new_scale=NULL,
+                                       max.age=13.8e9,
+                                       n.splits=10,
+                                       method="mean",
+                                       return_scale=FALSE) {
   # Converts Agevector (based on the Library [EMILESCombined]) to a smaller vector (for the CNN output).
   if (new_scale == "defaultlog1" || is.null(new_scale)) {
     new_scale = c(0, 6.3, 7.9, 10, 12.6, 15.8, 20, 25.1, 31.6, 39.8, 50.1, 63.1, 70.8,
