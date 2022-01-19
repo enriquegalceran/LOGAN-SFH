@@ -6,78 +6,76 @@ source("LOGAN.R")
 library(ProSpect)
 
 
-massParams = list(
-  dtau=list(
-    name="dtau",
-    func=massfunc_dtau,
-    mSFR=10,
-    mpeak=seq(7,14.2,0.3),
-    mtau=seq(0.5,3.5, 0.2)
-  ),
-  snorm=list(
-    name="snorm",
-    func=massfunc_snorm,
-    mSFR=10,
-    mpeak=seq(7,14.2,0.3),
-    mperiod=seq(0.5,1.5, 0.2),
-    mskew=seq(-0.5, 1, 0.1)
-  )
-)
+# massParams = list(
+#   dtau=list(
+#     name="dtau",
+#     func=massfunc_dtau,
+#     mSFR=10,
+#     mpeak=seq(7,14.2,0.3),
+#     mtau=seq(0.5,3.5, 0.2)
+#   ),
+#   snorm=list(
+#     name="snorm",
+#     func=massfunc_snorm,
+#     mSFR=10,
+#     mpeak=seq(7,14.2,0.3),
+#     mperiod=seq(0.5,1.5, 0.2),
+#     mskew=seq(-0.5, 1, 0.1)
+#   )
+# )
 
 massParams2 = list(
   dtau=list(
     name="dtau",
     func=massfunc_dtau,
-    mpeak=c(seq(8,12,2)),
-    mtau=c(2, 3)
+    mpeak=c(seq(2,12,0.2)),
+    mtau=seq(1, 3, 0.2)
   )
 )
 
-massParams3 = list(
-  dtau=list(
-    name="dtau",
-    func=massfunc_dtau,
-    mpeak=8,
-    mtau=2
-  )
-)
+# massParams3 = list(
+#   dtau=list(
+#     name="dtau",
+#     func=massfunc_dtau,
+#     mpeak=8,
+#     mtau=2
+#   )
+# )
 
 
-massParams4 = list(
-  dtau=list(
-    name="dtau",
-    func=massfunc_dtau,
-    mSFR=10,
-    mpeak=c(7,8,14),
-    mtau=c(2,3)
-  ),
-  snorm=list(
-    name="snorm",
-    func=massfunc_snorm,
-    mSFR=10,
-    mpeak=c(7,8,9,10),
-    mperiod=5,
-    mskew=c(0.5, 1, 1.5)
-  )
-)
-
-
+# massParams4 = list(
+#   dtau=list(
+#     name="dtau",
+#     func=massfunc_dtau,
+#     mSFR=10,
+#     mpeak=c(7,8,14),
+#     mtau=c(2,3)
+#   ),
+#   snorm=list(
+#     name="snorm",
+#     func=massfunc_snorm,
+#     mSFR=10,
+#     mpeak=c(7,8,9,10),
+#     mperiod=5,
+#     mskew=c(0.5, 1, 1.5)
+#   )
+# )
 
 
 ZParams = list(
   func=Zfunc_massmap_box,
   Zstart=1e-4,
   yield=0.03,
-  Zfinal=c(0.02, 0.03)
+  Zfinal=seq(0.02, 0.06, 0.02)
 )
 
 
-ZParams2 = list(
-  func=Zfunc_massmap_box,
-  Zstart=1e-4,
-  yield=0.03,
-  Zfinal=0.02
-)
+# ZParams2 = list(
+#   func=Zfunc_massmap_box,
+#   Zstart=1e-4,
+#   yield=0.03,
+#   Zfinal=0.02
+# )
 
 
 EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
@@ -99,7 +97,7 @@ if (FALSE){
 ls1 = sort(list.files(outputFolder))
 
 ## Probar interpolar
-if (TRUE){
+if (FALSE){
   waveout = seq(4700, 9400, 1.25)
   filtersHST <- c("F275W", "F336W", "F438W", "F555W", "F814W")
   filters <- list()
@@ -149,17 +147,17 @@ if (TRUE){
 #            8912500000,10000000000,11220200000,12589300000,14125400000,
 #            15848900000,17782800000)
 
-generateSpecFromParams(massParams = massParams4,
+generateSpecFromParams(massParams = massParams2,
                        ZParams = ZParams,
                        folderPath = outputFolder,
                        absolutePath = absolutePath,
-                       randomSamples = 1,
+                       randomSamples = 5,
                        speclib = EMILESCombined,
-                       confirmation = FALSE,
+                       confirmation = TRUE,
                        verbose=1,
-                       verboseSteps=1,
+                       verboseSteps=10,
                        filters="default",
-                       cleanOutputFolder=TRUE,
+                       cleanOutputFolder=FALSE,
                        bytesForPython=10e6,
                        singleOutput=TRUE)
 
@@ -201,10 +199,6 @@ cat("Total DISK Size: ", bytes2Human(length(ls2)*262144),
 
 dfRead <- readFITS(file.path(outputFolder, ls2[1]))
 
-
-
-save(massParams, file="fname.RData")  #Binary! Not Human-readable
-?save
 
 
 

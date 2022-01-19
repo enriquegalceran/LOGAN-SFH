@@ -230,7 +230,9 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   hdrIn <- addFiltersToHeaderSingle(hdrIn, filters)
   hdrIn <- addKwv("NSpectra", spectra.points,note="Number of SpectraPoints", header=hdrIn)
   hdrIn <- addKwv("NFilters", n.filters, note="Number of Filters", header=hdrIn)
+  hdrIn <- addKwv("NRows", dim(inputMatrix)[1] - 1, note="Number of Rows", header=hdrIn)
   hdrIn <- addComment("First row (ID=0) has the X values of the corresponding column if applicable", hdrIn)
+
   
   
   #####
@@ -277,4 +279,146 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   
   # Return UUIDs for the metadata file
   return(objectUUID)
+}
+
+
+interpolateToWaveout <- function(x1,
+                                 y1,
+                                 waveout,
+                                 returnList = FALSE,
+                                 offset = 0.5,
+                                 n.points.integrate = 50,
+                                 interpolate = FALSE,
+                                 method.to.evaluate = "mean") {
+  if (interpolate) {
+    # If interpolate is TRUE, simply interpolate for the xnew (waveout).
+    # This is NOT ADVISED if the NEW RESOLUTION IS SMALLER.
+    waveoutL = log10(waveout)
+    x1L = log10(x1)
+    y1L = log10(y1)
+    spect = 10 ^ approxfun(x1L, y1L, rule = 2)(waveoutL)
+    if (!returnList) {
+      return(spect)
+    } else {
+      return(list(wave = waveout, spect = spect))
+    }
+  } else {
+    # If interpolate is FALSE, calculate the average values for the points for the new x
+    
+    # offset calculates where the bin limits will be placed:
+    # the centerpoint c_i between two consecutive points (x_i and x_i+1, with x_i+1 > x_i) will be placed at
+    # c_i <- (x_i+1 - x_i+1) * offset + x_i
+    # the new evaluation will be:
+    # y_i <- index in data where value corresponds to x=c_i
+    # f_new(x_i) <- mean(data[y_i-1 : y_i])
+    
+    if (offset < 0 || offset > 1) {
+      stop("'offset' needs to be within [0,1]")
+    }
+    
+    # Initialize Y
+    last.w = length(waveout)
+    newy = numeric(last.w)
+    
+    # Iterate over every new waveout and define limits for integration
+    for (i in 1:last.w) {
+      # Separate between first, last and rest
+      if (i == 1) {
+        left  = waveout[1] -
+          (waveout[2] - waveout[1]) * (1 - offset)
+        right = waveout[1] +
+          (waveout[2] - waveout[1]) * offset
+        
+      } else if (i == last.w) {
+        left  = waveout[last.w - 1] + 
+          (waveout[last.w] - waveout[last.w - 1]) * offset
+        right = waveout[last.w] + 
+          (waveout[last.w] - waveout[last.w -1]) * offset
+        
+      } else {
+        left  = waveout[i - 1] +
+          (waveout[i] - waveout[i - 1]) * offset
+        right = waveout[i]   +
+          (waveout[i + 1] - waveout[i]) * offset
+      }
+      
+      # Once we know the limits between which we need to integrate,
+      # interpolate a higher resolution (n.points.integrate) x vector
+      # and interpolate the new values (using logs).
+      tmp = interpolateToWaveout(x1,
+                                 y1,
+                                 seq(left, right, length.out = n.points.integrate),
+                                 interpolate = TRUE)
+      
+      # Obtain the final value from this vector (mean/median)
+      if (method.to.evaluate == "mean") {
+        newy[i] = mean(tmp)
+      } else if (method.to.evaluate == "median") {
+        newy[i] = median(tmp)
+      }
+    }
+    
+    if (!returnList) {
+      return(newy)
+    } else {
+      return(list(wave = waveout, flux = newy))
+    }
+  }
+}
+
+convertAgevecToOutputScale <- function(agevector, datavector, new_scale=NULL, max.age=13.8e9, n.splits=10, method="mean", return_scale=FALSE) {
+  # Converts Agevector (based on the Library [EMILESCombined]) to a smaller vector (for the CNN output).
+  if (new_scale == "defaultlog1" || is.null(new_scale)) {
+    new_scale = c(0, 6.3, 7.9, 10, 12.6, 15.8, 20, 25.1, 31.6, 39.8, 50.1, 63.1, 70.8,
+                  130, 255, 510, 900, 1800, 3200, 6400, 12600)
+  } else if (new_scale == "defaultlog2") {
+    new_scale = c(0, 10, 32, 50.5, 130, 255, 510, 900, 1800, 3200, 6400, 12600)
+  } else if (new_scale == "lovell"){
+    new_scale = c(0, 32, 68, 147, 316, 681, 1470, 3160, 12460)
+  } else if (new_scale == "newlog") {
+    # Separate into n.splits bins (log)
+    agevec.below.max = agevector[agevector<max.age]
+    log_agevec = log10(agevec.below.max)
+    
+    # Split homogeneously among the values
+    age_split <- split(agevec.below.max, cut(seq_along(log_agevec), n.splits, labels = FALSE))
+    
+    # Keep the last value (this gives the max value for the bin)
+    new_scale = c(0)
+    for (i in 1:length(age_split)){
+      new_scale = c(new_scale, age_split[[i]][length(age_split[[i]])]/1000000)
+    }
+  } # ToDo: Maybe a 3rd default value that uses 
+  
+  # Identify which values of the agevector should go in each bin. NA if a value is above the max value (las element in new_scale)
+  separations <- cut(agevector, new_scale * 1000000, labels = FALSE, include.lowest = TRUE)
+  
+  # Separate the data according to the x value
+  data_groups <- suppressWarnings(split(datavector, separations))
+  age_groups <- suppressWarnings(split(agevector, separations))
+
+  # Consolidate the data using mean or median
+  out <- c()
+  age <- c()
+  width <- c()
+  for (i in 1:length(data_groups)) {
+    # First, get the data into the new bins
+    if (method == "mean") {
+      tmp <- mean(data_groups[[i]])
+    } else if (method == "median") {
+      tmp <- median(data_groups[[i]])
+    }
+    out <- c(out, tmp)
+    width <- c(width, length(age_groups[[i]]))
+    
+    # Second, get the ages of the bins
+    age <- c(age, 10^mean(log10(age_groups[[i]])))
+
+  }
+  if (return_scale){
+    output = list(age=age, data=out, width=width, new_scale=new_scale)
+  } else {
+    output = list(age=age, data=out, width=width)
+  }
+  return(output)
 }

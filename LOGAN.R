@@ -50,15 +50,6 @@ generateSpecFromParams <- function(massParams="default",
   }
   
   
-  interpolateToWaveout <- function(inputMatrix, waveout){
-    waveoutL = log10(waveout)
-    x1L = log10(inputMatrix[,1])
-    y1L = log10(inputMatrix[,2])
-    spect = 10^approxfun(x1L, y1L, rule=2)(waveoutL)
-    return(data.frame(wave=waveout, flux=spect))
-  }
-  
-  
   argumentsToHeaders <- function(params, noteParams=NULL){
     out <- list(keyword=c(), value=c(), note=rep("", length(params)))
     for (i in 1:length(params)){
@@ -147,7 +138,7 @@ generateSpecFromParams <- function(massParams="default",
     units = units[betterUnits/3 + 1]
     return(paste0(toString(round(B, decimals)), units, "B"))
   }
-   
+  
    
   #####
   # Preprocess data
@@ -380,6 +371,9 @@ generateSpecFromParams <- function(massParams="default",
   
   
   if (confirmation){
+    cat(paste0("Expected time to complete: ",
+               round(totalNumberOfCases * 50.5 / 3200, 2), " minute(s) - ",
+               round(totalNumberOfCases * 50.5 / 3200 / 60, 2), " hour(s)."))
     confirmation <- readline(prompt = paste0("Continue operation for ", totalNumberOfCases, " combinations? ([Y]/N) "))
     if (!any(confirmation == c("", "y", "Y", "yes", "YES"))){
       stop("User stopped execution.")
@@ -387,17 +381,17 @@ generateSpecFromParams <- function(massParams="default",
   }
   
   # Initiate the matrix that will contain all of the data
+  agevec_new = convertAgevecToOutputScale(agevec, agevec, new_scale = "defaultlog1", return_scale = TRUE)
   numberColumnsIn = length(waveout) + length(filters) + 1    # Add 1 for the ID
-  # numberColumnsLa = 2 * length(agevec) + 1                   # Add 1 for the ID
-  numberColumnsLa = 2 * 56 + 1                               # 56 should be the length of the Agevector, but it includes very long sizes, so this may generate some problems in the future TODO check this!
+  numberColumnsLa = 2 * length(agevec_new$age) + 1           # Add 1 for the ID
   completeDataMatrixIn <- matrix(, nrow=totalNumberOfCases + 1, ncol= numberColumnsIn)
   completeDataMatrixLa <- matrix(, nrow=totalNumberOfCases + 1, ncol= numberColumnsLa)
-  # ToDo: set the first row correctly (Corregir lo de 56)
   completeDataMatrixIn[1, ] = c(0, waveout, seq(1:length(filters)))
-  completeDataMatrixLa[1, ] = c(0, agevec[1:56], agevec[1:56])
+  completeDataMatrixLa[1, ] = c(0, agevec_new$age, agevec_new$age)
   
   # Order of parameters for the metadata
   orderParameters = c()
+
   filterData = NULL
   
   #####
@@ -515,6 +509,21 @@ generateSpecFromParams <- function(massParams="default",
                                 )
         
         
+        # Rescale the outputs according to the desired network requirements
+        # SFR
+        # print("---===============-----")
+        tmp_output = convertAgevecToOutputScale(spectraObject$agevec, spectraObject$SFR)
+        spectraObject$SFR = tmp_output$data
+        # massvec
+        tmp_output = convertAgevecToOutputScale(spectraObject$agevec, spectraObject$massvec)
+        spectraObject$massvec = tmp_output$data
+        # Zvec
+        tmp_output = convertAgevecToOutputScale(spectraObject$agevec, spectraObject$Zvec)
+        spectraObject$Zvec = tmp_output$data
+        # agevec
+        tmp_output = convertAgevecToOutputScale(spectraObject$agevec, spectraObject$agevec)
+        spectraObject$agevec = suppressWarnings(tmp_output$data)       
+        
         #####
         # Generate new data according to errors defined
         # Error resampling is done BEFORE waveout
@@ -527,7 +536,7 @@ generateSpecFromParams <- function(massParams="default",
           #####
           # Adjust spectra's Wavelength according to waveout if not NULL
           if (!is.null(waveout)){
-            spectraObject$flux = interpolateToWaveout(spectraObject$flux, waveout)
+            spectraObject$flux = interpolateToWaveout(lapply(spectraObject$flux["wave"], as.numeric)[[1]], lapply(spectraObject$flux["flux"], as.numeric)[[1]], waveout, returnList=TRUE)
           } 
           
 
@@ -580,9 +589,9 @@ generateSpecFromParams <- function(massParams="default",
             
             # New row to be added (Input)
             # ID, spectra, Magnitudes
-            newRowIn <- c(absoluteCountCases, spectraObject$flux$flux, spectraObject$out$out)  # ESTO ES LO QUE SALE NULL!!! # TODO
+            newRowIn <- c(absoluteCountCases, spectraObject$flux$flux, spectraObject$out$out)
             newRowLa <- c(absoluteCountCases, spectraObject$SFR, spectraObject$Zvec)
-            
+
             # Add new row to the Matrix
             completeDataMatrixIn[absoluteCountCases + 1, ] = newRowIn
             completeDataMatrixLa[absoluteCountCases + 1, ] = newRowLa
@@ -673,7 +682,9 @@ generateSpecFromParams <- function(massParams="default",
     cat(paste0("New Files Generated: ",  filesAtEnd - nfilesAtStart, "\n"))
     cat(paste0("Individual Cases Computed: ",  (filesAtEnd - nfilesAtStart) / 2, "\n"))
     cat("Time:\n")
-    print(proc.time() - ptm)
+    now = proc.time()
+    print(now - ptm)
+    cat(paste0(" ", round(unname((now - ptm)[3])/60, 2), " minute(s) - ", round(unname((now - ptm)[3])/3600, 2), " hour(s) -\n"))
     cat(" -------- FINISHED --------\n")
   }
   
