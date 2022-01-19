@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import math
 import argparse
+from datetime import datetime
 from astropy.io import fits
 import matplotlib.pyplot as plt
 import os
@@ -92,31 +93,31 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
               labels_path: str = "/Volumes/Elements/Outputs/Label_20211213T154548_HjCktf.fits",
               size_inputs=None,
               size_magnitudes=None,
-              size_labels=None) -> typing.Tuple[np.array, np.array, np.array, np.array]:
+              size_labels=None) -> typing.Tuple[np.array, np.array, np.array, np.array, np.array, np.array]:
     # ToDo: argparse these variables
 
     # Verify data is in 32 bits
     verify32bits(input_path)
     verify32bits(labels_path)
 
-    print("Loading inputs...")
+    print("[INFO] Loading inputs...")
     with fits.open(input_path) as hdul:
         input_data = hdul[0].data
         input_header = hdul[0].header
 
-    print("Loading label...")
+    print("[INFO] Loading label...")
     with fits.open(labels_path) as hdul:
         label_data = hdul[0].data
         label_header = hdul[0].header
 
-    print("Input Data shape:", input_data.shape)
+    print("[INFO] Input Data shape:", input_data.shape)
 
     # Read the arrays from files
     input_lenght_spectra = input_header["nspectra"]
     input_length_filters = input_header["nfilters"]
     label_agevec = label_header["nagevec"]
-    lambda_input_spectra = input_data[1:input_lenght_spectra + 1, 0]
-    agevec_label = label_data[1:label_agevec + 1, 0]
+    spectra_lambda = input_data[1:input_lenght_spectra + 1, 0]
+    agevec = label_data[1:label_agevec + 1, 0]
     input_spectra = input_data[1:input_lenght_spectra + 1, 1:]
     input_magnitudes = input_data[input_lenght_spectra + 1:, 1:]
     label_sfh = label_data[1:label_agevec + 1, 1:]
@@ -127,22 +128,7 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
     label_sfh = label_sfh.transpose()
     label_z = label_z.transpose()
 
-    # If array size does not match, transform accordingly
-    # ToDo: Make sure that there is no need to resize. If there is no need, this next section can be removed.
-    if size_inputs is not None:
-        x_old_input = input_data[1:input_lenght_spectra + 1, 0]
-        old_spectra = input_data[1:input_lenght_spectra + 1, 1:]
-        old_magnitudes = input_data[input_lenght_spectra + 1:, 1:]
-        print(len(x_old_input))
-        print(x_old_input)
-        print(type(x_old_input))
-        print(input_data.shape)
-        print(x_old_input.shape)
-        print(old_spectra.shape)
-        print(old_magnitudes.shape)
-        # new_x, new_y = reshape_array(x_old_input, )
-
-    return input_spectra, input_magnitudes, label_sfh, label_z
+    return input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec
 
 
 def verify32bits(filepath, verbose=1):
@@ -256,17 +242,13 @@ def getparametersfromid(filename, id_searched, verbose=0):
 
 
 def main():
-    # Get the parameter with which the data was generated from ID and metadatafile
-    # for id_ in range(1, 73):
-    #     getparametersfromid("MetadataOutput.json", id_, verbose=1)
-
     # ToDo: Generate an argparser.
 
     # ToDo: Beautify the parameters
     # Parameters
     epochs = 50  # Number of epochs
     init_lr = 1e-3  # Initial learning rate
-    bs = 10  # batches
+    bs = 32  # batches
     # Train, val and test sizes
     train_size = 0.70
     val_size = 0.10
@@ -274,20 +256,22 @@ def main():
     random.seed(42)  # Set seed for testing purposes
     traintestrandomstate = 42  # Random state for train test split (default = None)
     traintestshuffle = True  # Shuffle data before splitting into train test (default = True)
-    loss_function_used = "cossentropy"  # Define which lossfunction should be used ("crossentropy"/"SMAPE"
-    path_output_model = "/Volumes/Elements/Outputs/trained_model.h5"
+    loss_function_used = "crossentropy"  # Define which lossfunction should be used ("crossentropy"/"SMAPE"
+    data_path = "/Volumes/Elements/Outputs/"
+    data_sufix = "20220119T154253_Hr3TXx"
+    path_output_model_path = "/Volumes/Elements/Outputs/"
     # path_output_plots = "/Volumes/Elements/Outputs/plot"
     path_output_plots = "plot"
 
     # Load Data
     print("[INFO] Loading data...")
-    input_spectra, input_magnitudes, label_sfh, label_z = loadfiles(input_path="/Volumes/Elements/Outputs"
-                                                                               "/Input_20211216T131741_riyW3M.fits",
-                                                                    labels_path="/Volumes/Elements/Outputs"
-                                                                                "/Label_20211216T131741_riyW3M.fits")
+    input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec = \
+        loadfiles(input_path=data_path + "Input_" + data_sufix + ".fits",
+                  labels_path=data_path + "Label_" + data_sufix + ".fits")
     # ToDo: Shuffle inputs and labels (together!!)
 
     print(f"""
+    Variable sizes:
         Input_spectra: {input_spectra.shape} - {convert_bytes(input_spectra.nbytes)}
         Input_magnitudes: {input_magnitudes.shape} - {convert_bytes(input_magnitudes.nbytes)}
         Label_sfh: {label_sfh.shape} - {convert_bytes(label_sfh.nbytes)}
@@ -295,7 +279,7 @@ def main():
         """)
 
     # Split the data into training+validation and testing
-    assert train_size + val_size + test_size == 1, "The sum of the three train sizes has to add up to '1.0'."
+    assert train_size + val_size + test_size == 1, "The sum of the three train/val/test sizes has to add up to '1.0'."
     train_val_size = train_size + val_size
     split_trainval_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z,
                                            test_size=test_size,
@@ -329,7 +313,7 @@ def main():
     print("[INFO] Building model...")
     model = Cerebro.build_model(spectra_data_shape=3761, magnitudes_data_shape=5,
                                 number_neurons_spec=256, number_neurons_magn=32,
-                                number_output_sfh=56, number_output_metal=56,       # ToDo: This should be around 8-10
+                                number_output_sfh=trainLabSfh.shape[1], number_output_metal=trainLabZ.shape[1],
                                 explicit=False)
     model.summary()
     # Cerebro.graph(model, "tstimage.png")
@@ -351,9 +335,10 @@ def main():
     else:
         raise ValueError("loss_function_used not defined/not one of the accepted values!")
 
+    # Loss weight for the two different branches
     loss_weights = {
         "sfh_output": 1.0,
-        "metallicity_output": 1.0
+        "metallicity_output": 0.8
     }
 
     # Initialize optimizer and compile the model
@@ -362,6 +347,11 @@ def main():
     model.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=["accuracy"])
 
     # Train model
+    continue_with_training = input("Continue training? [Y]/N")
+    if continue_with_training in ["N", "no", "stop"]:
+        exit(1)
+
+    print("[INFO] Start training...")
     train_history = model.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
                               y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ},
                               validation_data=({"spectra_input": testSpect, "magnitude_input": testMag},
@@ -372,7 +362,9 @@ def main():
 
     # save the model to disk
     print("[INFO] serializing network...")
-    model.save(path_output_model, save_format="h5")
+    path_model = path_output_model_path + "/test_model_" + data_sufix + "_" + datetime.now().strftime("%d%m%YT%H%M%S") + ".h5"
+    print("[INFO] Model stored in", path_model)
+    model.save(path_model, save_format="h5")
 
     ############
     # ToDo: Consolidate into a single function
