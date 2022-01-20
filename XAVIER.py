@@ -55,10 +55,10 @@ class Cerebro:
     @staticmethod
     def build_input_spec_branch(inputs, number_neurons: int, final_act: str = "relu", explicit: bool = False):
         # CONV => RELU => POOL (I)
-        x = Cerebro.conv_activation_pool(inputs, 64, 10, 1, "relu", 3, 0.25, "same", explicit)
+        x = Cerebro.conv_activation_pool(inputs, 128, 30, 1, "relu", 3, 0.25, "same", explicit)
 
         # CONV => RELU => POOL (II)
-        x = Cerebro.conv_activation_pool(x, 32, 5, 1, "relu", 3, 0.25, "same", explicit)
+        x = Cerebro.conv_activation_pool(x, 64, 10, 1, "relu", 3, 0.25, "same", explicit)
 
         # CONV => RELU => POOL (III)
         x = Cerebro.conv_activation_pool(x, 32, 3, 1, "relu", 3, 0.10, "same", explicit)
@@ -73,23 +73,21 @@ class Cerebro:
         return x
 
     @staticmethod
-    def build_input_magn_branch(inputs: int, number_neurons: int, final_act: str = "relu", explicit: bool = False):
-        # 256 neurons, relu, 50% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(inputs, 128, "relu", 0.5, explicit)
+    def build_input_magn_branch(inputs: int, number_output_neurons_mag: int, final_act: str = "relu", explicit: bool = False):
 
-        # 126 neurons, relu, 25% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(x, 64, "relu", 0.25, explicit)
+        # 32 neurons, relu, 25% dropout
+        x = Cerebro.dense_act_batchnorm_dropout(inputs, 32, "relu", 0.25, explicit)
 
-        # 32 neurons, relu, 10% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(x, 32, "relu", 0.25, explicit)
+        # 16 neurons, relu, 10% dropout
+        x = Cerebro.dense_act_batchnorm_dropout(x, 16, "relu", 0.25, explicit)
 
         # Output from input magnitudes branch
         x = Flatten()(x)
         if explicit:
-            x = Dense(number_neurons)(x)
+            x = Dense(number_output_neurons_mag)(x)
             x = Activation(activation=final_act, name="magnitude_intermediate")(x)
         else:
-            x = Dense(number_neurons, activation=final_act, name="magnitude_intermediate")(x)
+            x = Dense(number_output_neurons_mag, activation=final_act, name="magnitude_intermediate")(x)
         return x
 
     @staticmethod
