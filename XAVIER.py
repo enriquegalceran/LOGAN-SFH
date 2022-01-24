@@ -73,7 +73,8 @@ class Cerebro:
         return x
 
     @staticmethod
-    def build_input_magn_branch(inputs: int, number_output_neurons_mag: int, final_act: str = "relu", explicit: bool = False):
+    def build_input_magn_branch(inputs: int, number_output_neurons_mag: int,
+                                final_act: str = "relu", explicit: bool = False):
 
         # 32 neurons, relu, 25% dropout
         x = Cerebro.dense_act_batchnorm_dropout(inputs, 32, "relu", 0.25, explicit)
@@ -153,9 +154,6 @@ class Cerebro:
         input_magn_branch = Cerebro.build_input_magn_branch(input_magn, number_neurons_magn,
                                                             intermediate_activation, explicit)
 
-        print(input_spec_branch.shape)
-        print(input_magn_branch.shape)
-
         # Concatenate both input branches
         intermediate_concatted = Concatenate(axis=-1)([input_spec_branch, input_magn_branch])
 
@@ -170,7 +168,6 @@ class Cerebro:
             name="cerebro"
         )
 
-        # ToDo: WIP
         return model
 
     @staticmethod
