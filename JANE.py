@@ -20,6 +20,7 @@ from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split
 from imutils import paths
 
+# ToDo: make sure range vs xrange for memory usage
 
 # ToDo: Move this function to an auxilliary function list
 def convert_bytes(size_bytes, decimals: int = 2, base_mult: int = 1024):
@@ -241,6 +242,45 @@ def getparametersfromid(filename, id_searched, verbose=0):
         return final_dictionary
 
 
+def standardize_dataset(input_spectra, input_magnitudes,
+                        label_sfh, label_z,
+                        method_input=1, method_label=None):
+
+    if method_label is None:
+        method_label = method_input
+
+    # Inputs
+    input_spectra_out = standardize_single_dataset(input_spectra, method_input)
+    input_magnitudes_out = standardize_single_dataset(input_magnitudes, method_input)
+
+    # Labels
+    label_sfh_out = standardize_single_dataset(label_sfh, method_label)
+    label_z_out = standardize_single_dataset(label_z, method_label)
+
+    return input_spectra_out, input_magnitudes_out, label_sfh_out, label_z_out
+
+
+def standardize_single_dataset(data, method):
+    if method == 0:
+        # Skip normalization
+        output = data
+    elif method == 1:
+        # Normalize spectra for the middle_value = 1
+        center_idx = int(len(data[0, :]) / 2 - 0.5)
+        output = data / data[:, center_idx][:, None]
+    elif method == 2:
+        # Divide by the average
+        output = data / data.mean(axis=0, keepdims=True)
+    elif method == 3:
+        # ToDo: Not implemented.
+        # Stretch out and normalize to mean=1, std=1. (Maybe mean=0.5 or mean=0)
+        Warning("Not implemented for method == 3")
+        output = data
+    else:
+        raise ValueError("method used out of bounds.")
+    return output
+
+
 def main():
     # ToDo: Generate an argparser.
 
@@ -256,8 +296,9 @@ def main():
     random.seed(42)  # Set seed for testing purposes
     traintestrandomstate = 42  # Random state for train test split (default = None)
     traintestshuffle = True  # Shuffle data before splitting into train test (default = True)
-    loss_function_used = "crossentropy"  # Define which lossfunction should be used ("crossentropy"/"SMAPE"
-    data_path = "/Volumes/Elements/Outputs/"
+    loss_function_used = "SMAPE"  # Define which lossfunction should be used ("crossentropy"/"SMAPE")
+    # data_path = "/Volumes/Elements/Outputs/"
+    data_path = ""
     data_sufix = "20220119T154253_Hr3TXx"
     path_output_model_path = "/Volumes/Elements/Outputs/"
     # path_output_plots = "/Volumes/Elements/Outputs/plot"
@@ -269,6 +310,10 @@ def main():
         loadfiles(input_path=data_path + "Input_" + data_sufix + ".fits",
                   labels_path=data_path + "Label_" + data_sufix + ".fits")
     # ToDo: Shuffle inputs and labels (together!!)
+
+    # Normalize the data
+    input_spectra, input_magnitudes, label_sfh, label_z = \
+        standardize_dataset(input_spectra, input_magnitudes, label_sfh, label_z)
 
     print(f"""
     Variable sizes:
