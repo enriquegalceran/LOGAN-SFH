@@ -178,6 +178,13 @@ class Cerebro:
         sfh_arguments = separate_by_prefix(kwargs, sfh_prefix)
         metal_arguments = separate_by_prefix(kwargs, metal_prefix)
 
+        # Remove 'inputs' from dictionary if it was included. This would clash, as it gives multiple instances of
+        # the same argument
+        spectr_arguments.pop("inputs", None)
+        magnit_arguments.pop("inputs", None)
+        sfh_arguments.pop("inputs", None)
+        metal_arguments.pop("inputs", None)
+
         return spectr_arguments, magnit_arguments, sfh_arguments, metal_arguments
 
     @staticmethod
@@ -186,6 +193,7 @@ class Cerebro:
         # Set the hard-coded parameters (input and output shapes)
         spectra_data_shape = (3761, 1)
         magnitudes_data_shape = (5, 1)
+        agevector_data_shape = 17
 
         # Define the default arguments for each branch
         spectr_arguments = {"branch_type": "cnn", "number_layers": 3, "neurons_first_layer": 128,
@@ -200,11 +208,11 @@ class Cerebro:
                           "final_layer_name": "magnitude_intermediate"}
         sfh_arguments = {"branch_type": "dense", "layers": [512, 256, 256, 128], "act": "relu",
                          "dropout": [0.5, 0.25, 0.25, 0.1], "explicit": explicit,
-                         "output": 2, "output_neurons": 17, "final_act": "relu",
+                         "output": 2, "output_neurons": agevector_data_shape, "final_act": "relu",
                          "final_layer_name": "sfh_output"}
         metal_arguments = {"branch_type": "dense", "layers": [512, 256, 256, 128], "act": "relu",
                            "dropout": [0.5, 0.25, 0.25, 0.1], "explicit": explicit,
-                           "output": 2, "output_neurons": 17, "final_act": "relu",
+                           "output": 2, "output_neurons": agevector_data_shape, "final_act": "relu",
                            "final_layer_name": "metallicity_output"}
 
         # Input Layers
@@ -220,12 +228,12 @@ class Cerebro:
 
         # Input Branches
         input_spec_branch = Cerebro.build_iterative_branch(input_spec, **spectr_arguments)
-
         input_magn_branch = Cerebro.build_iterative_branch(input_magn, **magn_arguments)
 
-        # Concatenate both input branches
+        # Concatenate Both Input Branches
         intermediate_concatted = Concatenate(axis=-1)([input_spec_branch, input_magn_branch])
 
+        # Output Branches
         metal_branch = Cerebro.build_iterative_branch(intermediate_concatted, **metal_arguments)
         sfh_branch = Cerebro.build_iterative_branch(intermediate_concatted, **sfh_arguments)
 

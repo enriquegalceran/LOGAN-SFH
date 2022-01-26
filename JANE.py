@@ -260,8 +260,9 @@ def main(**main_kwargs):
     del split_train_val
 
     # Build model
+    ############################################################################
     print("[INFO] Building model...")
-    custom_kwargs = {}
+    custom_kwargs = {"spect_inputs": 0}
     model = Cerebro.build_model(**custom_kwargs, **main_kwargs)
     model.summary()
     # Cerebro.graph(model, "tstimage3.png")
@@ -295,9 +296,9 @@ def main(**main_kwargs):
     model.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=["accuracy"])
 
     # Train model
-    continue_with_training = input("Continue training? [Y]/N")
-    if continue_with_training in ["N", "no", "stop"]:
-        exit(1)
+    continue_with_training = input("Continue training? [Y]/N ")
+    if continue_with_training.lower() in ["n", "no", "stop"]:
+        raise KeyboardInterrupt('User stopped the execution.')
 
     print("[INFO] Start training...")
     train_history = model.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
@@ -360,4 +361,3 @@ def main(**main_kwargs):
 
 if __name__ == "__main__":
     main()
-    # Cerebro.build_model(1, 2, 3)
