@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import os
 import json
 import random
+import sys
 
 from TESSA import convert_bytes, print_train_test_val_sizes, standardize_dataset
 from XAVIER import Cerebro
@@ -188,7 +189,7 @@ def getparametersfromid(filename, id_searched, verbose=0):
         return final_dictionary
 
 
-def main():
+def main(**main_kwargs):
     # ToDo: Generate an argparser.
 
     # ToDo: Beautify the parameters
@@ -227,6 +228,7 @@ def main():
         """)
 
     # Split the data into training+validation and testing
+    # ToDo: this section will be deprecated with the Cross-Validation
     assert train_size + val_size + test_size == 1, "The sum of the three train/val/test sizes has to add up to '1.0'."
     train_val_size = train_size + val_size
     split_trainval_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z,
@@ -259,12 +261,10 @@ def main():
 
     # Build model
     print("[INFO] Building model...")
-    model = Cerebro.build_model(spectra_data_shape=3761, magnitudes_data_shape=5,
-                                number_neurons_spec=256, number_neurons_magn=32,
-                                number_output_sfh=trainLabSfh.shape[1], number_output_metal=trainLabZ.shape[1],
-                                explicit=False)
+    custom_kwargs = {}
+    model = Cerebro.build_model(**custom_kwargs, **main_kwargs)
     model.summary()
-    # Cerebro.graph(model, "tstimage.png")
+    # Cerebro.graph(model, "tstimage3.png")
 
     # Define loss. Can be different functions. Right now, only crossentropy and smape.
     if loss_function_used == "crossentropy":
@@ -360,3 +360,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # Cerebro.build_model(1, 2, 3)

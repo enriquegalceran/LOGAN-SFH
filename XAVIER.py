@@ -7,6 +7,8 @@ from tensorflow.keras.layers import BatchNormalization, Conv1D, MaxPooling1D, Ac
     Dropout, Concatenate, Flatten, Dense, Input
 from tensorflow.keras.utils import plot_model
 import tensorflow.keras.backend as kerasbackend
+import sys
+import inspect
 
 
 # ToDo: Generate a proper docstring
@@ -52,7 +54,9 @@ class Cerebro:
                                neurons_first_layer: int = 128,
                                progression=0.5, filter_size=30,
                                stride=1, act="relu", pool_size=3, dropout=0.25,
-                               neurons_last_layer: int = None, explicit: bool = False):
+                               neurons_last_layer: int = None, explicit: bool = False,
+                               output: int = 1, output_neurons: int = 20, final_act: str = "relu",
+                               final_layer_name: str = None):
         """
         Generate a branch with lists. Used for CV.
         branch_type needs to be 'cnn' or 'dense'.
@@ -73,6 +77,12 @@ class Cerebro:
         :param dropout:
         :param neurons_last_layer:
         :param explicit:
+        :param output:              output == 0 -> no output
+                                    output == 1 -> output with Flatten (input branches)
+                                    output == 2 -> output without Flatten (output branches)
+        :param output_neurons:
+        :param final_act:
+        :param final_layer_name:
         :return:
         """
         # Initialize x
@@ -96,7 +106,7 @@ class Cerebro:
             else:
                 parameter = [parameter for _ in range(n_layers)]
             return parameter
-        filter_size = verify_list(filter_size, "kernel_size", number_layers)
+        filter_size = verify_list(filter_size, "filter_size", number_layers)
         stride = verify_list(stride, "stride", number_layers)
         act = verify_list(act, "act", number_layers)
         pool_size = verify_list(pool_size, "pool_size", number_layers)
@@ -126,119 +136,98 @@ class Cerebro:
         else:
             raise ValueError("branch_type needs to be 'cnn' or 'dense'.")
 
-        return x
+        # Output
+        if output == 0:
+            return x
+        elif output == 1:
+            x = Flatten()(x)
 
-
-    @staticmethod
-    def build_input_spec_branch(inputs, number_output_neurons_spect: int,
-                                final_act: str = "relu", explicit: bool = False):
-        # CONV => RELU => POOL (I)
-        x = Cerebro.conv_activation_pool(inputs, 128, 30, 1, "relu", 3, 0.25, "same", explicit)
-
-        # CONV => RELU => POOL (II)
-        x = Cerebro.conv_activation_pool(x, 64, 10, 1, "relu", 3, 0.25, "same", explicit)
-
-        # CONV => RELU => POOL (III)
-        x = Cerebro.conv_activation_pool(x, 32, 3, 1, "relu", 3, 0.10, "same", explicit)
-
-        # Output from input spectrum branch
-        x = Flatten()(x)
         if explicit:
-            x = Dense(number_output_neurons_spect)(x)
-            x = Activation(activation=final_act, name="spectra_intermediate")(x)
+            x = Dense(output_neurons)(x)
+            x = Activation(activation=final_act, name=final_layer_name)(x)
         else:
-            x = Dense(number_output_neurons_spect, activation=final_act, name="spectra_intermediate")(x)
+            x = Dense(output_neurons, activation=final_act, name=final_layer_name)(x)
+
         return x
 
     @staticmethod
-    def build_input_magn_branch(inputs: int, number_output_neurons_mag: int,
-                                final_act: str = "relu", explicit: bool = False):
+    def splitkwargs(spectra_prefix="spect_", magnitude_prefix="magn_", sfh_prefix="sfh_", metal_prefix="metal_",
+                    **kwargs):
+        """
+        Splits kwargs given to build_model depending on the prefix.
+        Returns variables with which to update the arguments for each branch.
 
-        # 32 neurons, relu, 25% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(inputs, 32, "relu", 0.25, explicit)
+        :param spectra_prefix:
+        :param magnitude_prefix:
+        :param sfh_prefix:
+        :param metal_prefix:
+        :param kwargs:
+        :return:
+        """
 
-        # 16 neurons, relu, 10% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(x, 16, "relu", 0.25, explicit)
+        def separate_by_prefix(args, prefix):
+            dictionary = dict()
+            for key, value in args.items():
+                if prefix in key:
+                    dictionary[key[len(prefix):]] = value
+            return dictionary
 
-        # Output from input magnitudes branch
-        x = Flatten()(x)
-        if explicit:
-            x = Dense(number_output_neurons_mag)(x)
-            x = Activation(activation=final_act, name="magnitude_intermediate")(x)
-        else:
-            x = Dense(number_output_neurons_mag, activation=final_act, name="magnitude_intermediate")(x)
-        return x
+        # For each prefix, filter out the
+        spectr_arguments = separate_by_prefix(kwargs, spectra_prefix)
+        magnit_arguments = separate_by_prefix(kwargs, magnitude_prefix)
+        sfh_arguments = separate_by_prefix(kwargs, sfh_prefix)
+        metal_arguments = separate_by_prefix(kwargs, metal_prefix)
 
-    @staticmethod
-    def build_output_sfh_branch(inputs: int, number_neurons: int, final_act: str = "linear", explicit: bool = False):
-        # 512 neurons, relu, 50% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(inputs, 512, "relu", 0.5, explicit)
-
-        # 256 neurons, relu, 25% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(x, 256, "relu", 0.25, explicit)
-
-        # 256 neurons, relu, 25% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(x, 256, "relu", 0.25, explicit)
-
-        # 128 neurons, relu, 10% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(x, 128, "relu", 0.10, explicit)
-
-        # Output from output sfh branch
-        if explicit:
-            x = Dense(number_neurons)(x)
-            x = Activation(activation=final_act, name="sfh_output")(x)
-        else:
-            x = Dense(number_neurons, activation=final_act, name="sfh_output")(x)
-        return x
+        return spectr_arguments, magnit_arguments, sfh_arguments, metal_arguments
 
     @staticmethod
-    def build_output_metallicity_branch(inputs: int, number_neurons: int,
-                                        final_act: str = "linear", explicit: bool = False):
-        # 512 neurons, relu, 50% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(inputs, 512, "relu", 0.5, explicit)
+    def build_model(explicit: bool = False, **kwargs):
 
-        # 256 neurons, relu, 25% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(x, 256, "relu", 0.25, explicit)
+        # Set the hard-coded parameters (input and output shapes)
+        spectra_data_shape = (3761, 1)
+        magnitudes_data_shape = (5, 1)
 
-        # 256 neurons, relu, 25% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(x, 256, "relu", 0.25, explicit)
-
-        # 128 neurons, relu, 10% dropout
-        x = Cerebro.dense_act_batchnorm_dropout(x, 128, "relu", 0.10, explicit)
-
-        # Output from output sfh branch
-        if explicit:
-            x = Dense(number_neurons)(x)
-            x = Activation(activation=final_act, name="metallicity_output")(x)
-        else:
-            x = Dense(number_neurons, activation=final_act, name="metallicity_output")(x)
-        return x
-
-    @staticmethod
-    def build_model(spectra_data_shape: int, magnitudes_data_shape: int,
-                    number_neurons_spec: int, number_neurons_magn: int,
-                    number_output_sfh: int, number_output_metal: int = None,
-                    intermediate_activation: str = "relu", final_activation: str = "linear", explicit: bool = False):
-        if number_output_metal is None:
-            number_output_metal = number_output_sfh
+        # Define the default arguments for each branch
+        spectr_arguments = {"branch_type": "cnn", "number_layers": 3, "neurons_first_layer": 128,
+                            "progression": 0.5, "filter_size": [30, 10, 3], "stride": 1, "act": "relu",
+                            "pool_size": 3, "dropout": [0.25, 0.25, 0.10], "explicit": explicit,
+                            "output": 1, "output_neurons": 128, "final_act": "relu",
+                            "final_layer_name": "spectra_intermediate"}
+        magn_arguments = {"branch_type": "dense", "number_layers": 2, "neurons_first_layer": 64,
+                          "progression": 0.5, "act": "relu",
+                          "dropout": 0.25, "explicit": explicit,
+                          "output": 1, "output_neurons": 32, "final_act": "relu",
+                          "final_layer_name": "magnitude_intermediate"}
+        sfh_arguments = {"branch_type": "dense", "layers": [512, 256, 256, 128], "act": "relu",
+                         "dropout": [0.5, 0.25, 0.25, 0.1], "explicit": explicit,
+                         "output": 2, "output_neurons": 17, "final_act": "relu",
+                         "final_layer_name": "sfh_output"}
+        metal_arguments = {"branch_type": "dense", "layers": [512, 256, 256, 128], "act": "relu",
+                           "dropout": [0.5, 0.25, 0.25, 0.1], "explicit": explicit,
+                           "output": 2, "output_neurons": 17, "final_act": "relu",
+                           "final_layer_name": "metallicity_output"}
 
         # Input Layers
-        input_spec = Input(shape=(spectra_data_shape, 1), name="spectra_input")
-        input_magn = Input(shape=(magnitudes_data_shape, 1), name="magnitude_input")
+        input_spec = Input(shape=spectra_data_shape, name="spectra_input")
+        input_magn = Input(shape=magnitudes_data_shape, name="magnitude_input")
+
+        # Split kwargs for each branch and update
+        spectr_kwarg, magnit_kwarg, sfh_kwarg, metal_kwarg = Cerebro.splitkwargs(**kwargs)
+        spectr_arguments.update(spectr_kwarg)
+        magn_arguments.update(magnit_kwarg)
+        sfh_arguments.update(sfh_kwarg)
+        metal_arguments.update(metal_kwarg)
 
         # Input Branches
-        input_spec_branch = Cerebro.build_input_spec_branch(input_spec, number_neurons_spec,
-                                                            intermediate_activation, explicit)
-        input_magn_branch = Cerebro.build_input_magn_branch(input_magn, number_neurons_magn,
-                                                            intermediate_activation, explicit)
+        input_spec_branch = Cerebro.build_iterative_branch(input_spec, **spectr_arguments)
+
+        input_magn_branch = Cerebro.build_iterative_branch(input_magn, **magn_arguments)
 
         # Concatenate both input branches
         intermediate_concatted = Concatenate(axis=-1)([input_spec_branch, input_magn_branch])
 
-        metal_branch = Cerebro.build_output_metallicity_branch(intermediate_concatted,
-                                                               number_output_metal, final_activation, explicit)
-        sfh_branch = Cerebro.build_output_sfh_branch(intermediate_concatted,
-                                                     number_output_sfh, final_activation, explicit)
+        metal_branch = Cerebro.build_iterative_branch(intermediate_concatted, **metal_arguments)
+        sfh_branch = Cerebro.build_iterative_branch(intermediate_concatted, **sfh_arguments)
 
         model = Model(
             inputs=[input_spec, input_magn],
