@@ -3,15 +3,8 @@
 # eXtragalactic Artificial-neural-network Visualizer and identifIER
 
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import BatchNormalization
-from tensorflow.keras.layers import Conv1D
-from tensorflow.keras.layers import MaxPooling1D
-from tensorflow.keras.layers import Activation
-from tensorflow.keras.layers import Dropout
-from tensorflow.keras.layers import Concatenate
-from tensorflow.keras.layers import Flatten
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import Input
+from tensorflow.keras.layers import BatchNormalization, Conv1D, MaxPooling1D, Activation, \
+    Dropout, Concatenate, Flatten, Dense, Input
 from tensorflow.keras.utils import plot_model
 import tensorflow.keras.backend as kerasbackend
 
@@ -22,20 +15,22 @@ import tensorflow.keras.backend as kerasbackend
 
 class Cerebro:
     @staticmethod
-    def conv_activation_pool(layer_input: int, nf: int = 32, sf: int = 3,
-                             st: int = 1, act: str = "relu", ps: int = 3,
-                             do: float = 0.25, pdd: str = "same", explicit: bool = False):
+    def conv_activation_pool(layer_input: int, n_filters: int = 32, filter_size: int = 3,
+                             stride: int = 1, act: str = "relu", pool_size: int = 3,
+                             dropout: float = 0.25, padding: str = "same", explicit: bool = False):
         if explicit:
-            x = Conv1D(filters=nf, kernel_size=sf, strides=st, padding=pdd)(layer_input)
+            x = Conv1D(filters=n_filters, kernel_size=filter_size,
+                       strides=stride, padding=padding)(layer_input)
             x = Activation(activation=act)(x)
             x = BatchNormalization()(x)
-            x = MaxPooling1D(pool_size=ps)(x)
-            x = Dropout(do)(x)
+            x = MaxPooling1D(pool_size=pool_size)(x)
+            x = Dropout(dropout)(x)
         else:
-            x = Conv1D(filters=nf, kernel_size=sf, activation=act, strides=st, padding=pdd)(layer_input)
+            x = Conv1D(filters=n_filters, kernel_size=filter_size, activation=act,
+                       strides=stride, padding=padding)(layer_input)
             x = BatchNormalization()(x)
-            x = MaxPooling1D(pool_size=ps)(x)
-            x = Dropout(do)(x)
+            x = MaxPooling1D(pool_size=pool_size)(x)
+            x = Dropout(dropout)(x)
         return x
 
     @staticmethod
@@ -53,7 +48,90 @@ class Cerebro:
         return x
 
     @staticmethod
-    def build_input_spec_branch(inputs, number_neurons: int, final_act: str = "relu", explicit: bool = False):
+    def build_iterative_branch(inputs, branch_type: str, layers: list = None, number_layers: int = None,
+                               neurons_first_layer: int = 128,
+                               progression=0.5, filter_size=30,
+                               stride=1, act="relu", pool_size=3, dropout=0.25,
+                               neurons_last_layer: int = None, explicit: bool = False):
+        """
+        Generate a branch with lists. Used for CV.
+        branch_type needs to be 'cnn' or 'dense'.
+        For the variables [filter_size, stride, act, pool_size, dropout], if the input is a list, the list will be used,
+        if it is a single value, a list with each value will be used.
+        Either layers or number_layers needs to be provided.
+
+        :param inputs:
+        :param branch_type:
+        :param layers:
+        :param number_layers:
+        :param neurons_first_layer:
+        :param progression:
+        :param filter_size:
+        :param stride:
+        :param act:
+        :param pool_size:
+        :param dropout:
+        :param neurons_last_layer:
+        :param explicit:
+        :return:
+        """
+        # Initialize x
+        x = None
+
+        # Define number of layers
+        if layers is not None:
+            number_layers = len(layers)
+        elif number_layers is not None:
+            layers = [int(neurons_first_layer * (progression ** i)) for i in range(1, number_layers + 1)]
+        else:
+            raise ValueError("Either layers or number_layers needs to be provided.")
+        # Las layer can be overwritten
+        if neurons_last_layer is not None:
+            layers[-1] = neurons_last_layer
+
+        # Verify that input variables are lists or single elements.
+        def verify_list(parameter, parameter_str, n_layers):
+            if type(parameter) is list:
+                assert len(parameter) == n_layers, f"Length of {parameter_str} is inconsistent"
+            else:
+                parameter = [parameter for _ in range(n_layers)]
+            return parameter
+        filter_size = verify_list(filter_size, "kernel_size", number_layers)
+        stride = verify_list(stride, "stride", number_layers)
+        act = verify_list(act, "act", number_layers)
+        pool_size = verify_list(pool_size, "pool_size", number_layers)
+        dropout = verify_list(dropout, "dropout", number_layers)
+
+        # Generate branch layers
+        if branch_type.lower() == "cnn":
+            for i_layer in range(number_layers):
+                if i_layer == 0:
+                    x = Cerebro.conv_activation_pool(layer_input=inputs, n_filters=layers[i_layer],
+                                                     filter_size=filter_size[i_layer], stride=stride[i_layer],
+                                                     act=act[i_layer], pool_size=pool_size[i_layer],
+                                                     dropout=dropout[i_layer], padding="same", explicit=explicit)
+                else:
+                    x = Cerebro.conv_activation_pool(layer_input=x, n_filters=layers[i_layer],
+                                                     filter_size=filter_size[i_layer], stride=stride[i_layer],
+                                                     act=act[i_layer], pool_size=pool_size[i_layer],
+                                                     dropout=dropout[i_layer], padding="same", explicit=explicit)
+        elif branch_type.lower() == "dense":
+            for i_layer in range(number_layers):
+                if i_layer == 0:
+                    x = Cerebro.dense_act_batchnorm_dropout(inputs=inputs, neurons=layers[i_layer], act=act[i_layer],
+                                                            dropout=dropout[i_layer], explicit=explicit)
+                else:
+                    x = Cerebro.dense_act_batchnorm_dropout(inputs=x, neurons=layers[i_layer], act=act[i_layer],
+                                                            dropout=dropout[i_layer], explicit=explicit)
+        else:
+            raise ValueError("branch_type needs to be 'cnn' or 'dense'.")
+
+        return x
+
+
+    @staticmethod
+    def build_input_spec_branch(inputs, number_output_neurons_spect: int,
+                                final_act: str = "relu", explicit: bool = False):
         # CONV => RELU => POOL (I)
         x = Cerebro.conv_activation_pool(inputs, 128, 30, 1, "relu", 3, 0.25, "same", explicit)
 
@@ -66,10 +144,10 @@ class Cerebro:
         # Output from input spectrum branch
         x = Flatten()(x)
         if explicit:
-            x = Dense(number_neurons)(x)
+            x = Dense(number_output_neurons_spect)(x)
             x = Activation(activation=final_act, name="spectra_intermediate")(x)
         else:
-            x = Dense(number_neurons, activation=final_act, name="spectra_intermediate")(x)
+            x = Dense(number_output_neurons_spect, activation=final_act, name="spectra_intermediate")(x)
         return x
 
     @staticmethod
