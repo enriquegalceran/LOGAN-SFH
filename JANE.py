@@ -18,9 +18,6 @@ from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 
 
-# ToDo: make sure range vs xrange for memory usage
-
-
 def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548_HjCktf.fits",
               labels_path: str = "/Volumes/Elements/Outputs/Label_20211213T154548_HjCktf.fits",
               size_inputs=None,
