@@ -10,20 +10,19 @@ import os
 import json
 import random
 import sys
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RandomizedSearchCV
+from keras.wrappers.scikit_learn import KerasRegressor
 
-from TESSA import convert_bytes, print_train_test_val_sizes, standardize_dataset
+
+from TESSA import convert_bytes, print_train_test_sizes, standardize_dataset
 from XAVIER import Cerebro
 
-# For execution
-from tensorflow.keras.optimizers import Adam
-from sklearn.model_selection import train_test_split
+print("[INFO] Finished Importing")
 
 
 def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548_HjCktf.fits",
               labels_path: str = "/Volumes/Elements/Outputs/Label_20211213T154548_HjCktf.fits",
-              size_inputs=None,
-              size_magnitudes=None,
-              size_labels=None,
               method_input=1,
               method_label=None) -> typing.Tuple[np.array, np.array, np.array, np.array, np.array, np.array]:
     """
@@ -198,9 +197,9 @@ def main(**main_kwargs):
     init_lr = 1e-3  # Initial learning rate
     bs = 32  # batches
     # Train, val and test sizes
-    train_size = 0.70
-    val_size = 0.10
+    train_size = 0.80
     test_size = 0.20
+    cv = 5
     random.seed(42)  # Set seed for testing purposes
     traintestrandomstate = 42  # Random state for train test split (default = None)
     traintestshuffle = True  # Shuffle data before splitting into train test (default = True)
@@ -229,132 +228,118 @@ def main(**main_kwargs):
 
     # Split the data into training+validation and testing
     # ToDo: this section will be deprecated with the Cross-Validation
-    assert train_size + val_size + test_size == 1, "The sum of the three train/val/test sizes has to add up to '1.0'."
-    train_val_size = train_size + val_size
-    split_trainval_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z,
-                                           test_size=test_size,
-                                           train_size=train_val_size,
-                                           random_state=traintestrandomstate,
-                                           shuffle=traintestshuffle)
-    (trainvalSpect, testSpect,
-     trainvalMag, testMag,
-     trainvalLabSfh, testLabSfh,
-     trainvalLabZ, testLabZ) = split_trainval_test
-
-    # Split the training+validation into training and validation
-    split_train_val = train_test_split(trainvalSpect, trainvalMag, trainvalLabSfh, trainvalLabZ,
-                                       test_size=val_size / train_val_size,
-                                       train_size=train_size / train_val_size,
-                                       random_state=traintestrandomstate,
-                                       shuffle=traintestshuffle)
-    (trainSpect, valSpect,
-     trainMag, valMag,
-     trainLabSfh, valLabSfh,
-     trainLabZ, valLabZ) = split_train_val
+    assert train_size + test_size == 1, "The sum of the three train/val/test sizes has to add up to '1.0'."
+    split_train_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z,
+                                        test_size=test_size,
+                                        train_size=train_size,
+                                        random_state=traintestrandomstate,
+                                        shuffle=traintestshuffle)
+    (trainSpect, testSpect,
+     trainMag, testMag,
+     trainLabSfh, testLabSfh,
+     trainLabZ, testLabZ) = split_train_test
 
     # Verify the size of the
-    print_train_test_val_sizes(split_trainval_test, split_train_val,
-                               main_title="Sizes of diferent sets (Train, Val, Test)")
-    # "split" tuples can be removed now
-    del split_trainval_test
-    del split_train_val
+    print_train_test_sizes(split_train_test, main_title="Sizes of diferent sets (Train, Test)")
+    # "split" tuple can be removed now
+    del split_train_test
 
-    # Build model
     ############################################################################
+    # Build model
     print("[INFO] Building model...")
-    custom_kwargs = {"spect_inputs": 0}
-    model = Cerebro.build_model(**custom_kwargs, **main_kwargs)
-    model.summary()
+    custom_kwargs_model = {"spect_inputs": 0}
+    # model = Cerebro.build_model(epochs=epochs, loss_function_used=loss_function_used, init_lr=init_lr,
+    #                             **custom_kwargs_model, **main_kwargs)
+    # model.summary()
     # Cerebro.graph(model, "tstimage3.png")
 
-    # Define loss. Can be different functions. Right now, only crossentropy and smape.
-    if loss_function_used == "crossentropy":
-        # Standard crossentropy
-        losses = {
-            "sfh_output": "categorical_crossentropy",
-            "metallicity_output": "categorical_crossentropy"
-        }
-    elif loss_function_used == "SMAPE":
-        # SMAPE
-        # Note: indicate the function, do not call it. (i.e.: 'Cerebro.smape_loss'; NOT 'Crebro.smape_loss()')
-        losses = {
-            "sfh_output": Cerebro.smape_loss,
-            "metallicity_output": Cerebro.smape_loss
-        }
-    else:
-        raise ValueError("loss_function_used not defined/not one of the accepted values!")
+    ############################################################################
+    # Cross Validation
+    # Define Regressor Model
+    model_estimator = KerasRegressor(build_fn=Cerebro.build_model, verbose=1, **custom_kwargs_model)
 
-    # Loss weight for the two different branches
-    loss_weights = {
-        "sfh_output": 1.0,
-        "metallicity_output": 0.8
-    }
+    # Set parameters that will generate the grid
+    # Here is where all the parameters will go (regarding 'spect_', ...)
+    epochs = [30, 50, 100, 150]
+    batches = [25, 50, 100, 150, 200]
+    param_grid = dict(epochs=epochs, batch_size=batches)
 
-    # Initialize optimizer and compile the model
-    print("[INFO] Compiling model...")
-    opt = Adam(lr=init_lr, decay=init_lr / epochs)
-    model.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=["accuracy"])
-
+    grid = RandomizedSearchCV(estimator=model_estimator, param_distributions=param_grid,
+                              cv=cv, random_state=traintestrandomstate)
     # Train model
     continue_with_training = input("Continue training? [Y]/N ")
     if continue_with_training.lower() in ["n", "no", "stop"]:
         raise KeyboardInterrupt('User stopped the execution.')
-
     print("[INFO] Start training...")
-    train_history = model.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
-                              y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ},
-                              validation_data=({"spectra_input": testSpect, "magnitude_input": testMag},
-                                               {"sfh_output": testLabSfh, "metallicity_output": testLabZ}),
-                              epochs=epochs,
-                              batch_size=bs,
-                              verbose=1)
+    grid_result = grid.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
+                           y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ})
 
-    # save the model to disk
-    print("[INFO] serializing network...")
-    path_model = path_output_model_path + "/test_model_" + data_sufix + "_" + datetime.now().strftime("%d%m%YT%H%M%S") + ".h5"
-    print("[INFO] Model stored in", path_model)
-    model.save(path_model, save_format="h5")
+    # print results
+    print(grid_result)
 
-    ############
-    # ToDo: Consolidate into a single function
-    # plot the total loss, category loss, and color loss
-    loss_names = ["loss", "sfh_output_loss", "metallicity_output_loss"]
-    plt.style.use("ggplot")
-    (fig, ax) = plt.subplots(3, 1, figsize=(13, 13))
-    # loop over the loss names
-    for (i, l) in enumerate(loss_names):
-        # plot the loss for both the training and validation data
-        title = "Loss for {}".format(l) if l != "loss" else "Total loss"
-        ax[i].set_title(title)
-        ax[i].set_xlabel("Epoch #")
-        ax[i].set_ylabel("Loss")
-        ax[i].plot(np.arange(0, epochs), train_history.history[l], label=l)
-        ax[i].plot(np.arange(0, epochs), train_history.history["val_" + l], label="val_" + l)
-        ax[i].legend()
-    # save the losses figure
-    plt.tight_layout()
-    plt.savefig("{}_losses.png".format(path_output_plots))
-    print("[INFO] Loss image stored in {}_losses.png".format(path_output_plots))
-    plt.close()
+    print(f'Best Accuracy for {grid_result.best_score_:.4} using {grid_result.best_params_}')
+    means = grid_result.cv_results_['mean_test_score']
+    stds = grid_result.cv_results_['std_test_score']
+    params = grid_result.cv_results_['params']
+    for mean, stdev, param in zip(means, stds, params):
+        print(f'mean={mean:.4}, std={stdev:.4} using {param}')
 
-    # create a new figure for the accuracies
-    accuracy_names = ["sfh_output_accuracy", "metallicity_output_accuracy"]
-    plt.style.use("ggplot")
-    (fig, ax) = plt.subplots(2, 1, figsize=(8, 8))
-    # loop over the accuracy names
-    for (i, l) in enumerate(accuracy_names):
-        # plot the loss for both the training and validation data
-        ax[i].set_title("Accuracy for {}".format(l))
-        ax[i].set_xlabel("Epoch #")
-        ax[i].set_ylabel("Accuracy")
-        ax[i].plot(np.arange(0, epochs), train_history.history[l], label=l)
-        ax[i].plot(np.arange(0, epochs), train_history.history["val_" + l], label="val_" + l)
-        ax[i].legend()
-    # save the accuracies figure
-    plt.tight_layout()
-    plt.savefig("{}_accs.png".format(path_output_plots))
-    print("[INFO] Acc image stored in {}_accs.png".format(path_output_plots))
-    plt.close()
+
+
+    # train_history = model.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
+    #                           y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ},
+    #                           validation_data=({"spectra_input": testSpect, "magnitude_input": testMag},
+    #                                            {"sfh_output": testLabSfh, "metallicity_output": testLabZ}),
+    #                           epochs=epochs,
+    #                           batch_size=bs,
+    #                           verbose=1)
+    #
+    # # save the model to disk
+    # print("[INFO] serializing network...")
+    # path_model = path_output_model_path + "/test_model_" + data_sufix + "_" + datetime.now().strftime("%d%m%YT%H%M%S") + ".h5"
+    # print("[INFO] Model stored in", path_model)
+    # model.save(path_model, save_format="h5")
+
+    # ############
+    # # ToDo: Consolidate into a single function
+    # # plot the total loss, category loss, and color loss
+    # loss_names = ["loss", "sfh_output_loss", "metallicity_output_loss"]
+    # plt.style.use("ggplot")
+    # (fig, ax) = plt.subplots(3, 1, figsize=(13, 13))
+    # # loop over the loss names
+    # for (i, l) in enumerate(loss_names):
+    #     # plot the loss for both the training and validation data
+    #     title = "Loss for {}".format(l) if l != "loss" else "Total loss"
+    #     ax[i].set_title(title)
+    #     ax[i].set_xlabel("Epoch #")
+    #     ax[i].set_ylabel("Loss")
+    #     ax[i].plot(np.arange(0, epochs), train_history.history[l], label=l)
+    #     ax[i].plot(np.arange(0, epochs), train_history.history["val_" + l], label="val_" + l)
+    #     ax[i].legend()
+    # # save the losses figure
+    # plt.tight_layout()
+    # plt.savefig("{}_losses.png".format(path_output_plots))
+    # print("[INFO] Loss image stored in {}_losses.png".format(path_output_plots))
+    # plt.close()
+    #
+    # # create a new figure for the accuracies
+    # accuracy_names = ["sfh_output_accuracy", "metallicity_output_accuracy"]
+    # plt.style.use("ggplot")
+    # (fig, ax) = plt.subplots(2, 1, figsize=(8, 8))
+    # # loop over the accuracy names
+    # for (i, l) in enumerate(accuracy_names):
+    #     # plot the loss for both the training and validation data
+    #     ax[i].set_title("Accuracy for {}".format(l))
+    #     ax[i].set_xlabel("Epoch #")
+    #     ax[i].set_ylabel("Accuracy")
+    #     ax[i].plot(np.arange(0, epochs), train_history.history[l], label=l)
+    #     ax[i].plot(np.arange(0, epochs), train_history.history["val_" + l], label="val_" + l)
+    #     ax[i].legend()
+    # # save the accuracies figure
+    # plt.tight_layout()
+    # plt.savefig("{}_accs.png".format(path_output_plots))
+    # print("[INFO] Acc image stored in {}_accs.png".format(path_output_plots))
+    # plt.close()
 
     print("[INFO] Finished!")
 

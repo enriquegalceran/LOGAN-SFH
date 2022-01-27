@@ -6,6 +6,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import BatchNormalization, Conv1D, MaxPooling1D, Activation, \
     Dropout, Concatenate, Flatten, Dense, Input
 from tensorflow.keras.utils import plot_model
+from tensorflow.keras.optimizers import Adam
 import tensorflow.keras.backend as kerasbackend
 import sys
 import inspect
@@ -188,7 +189,9 @@ class Cerebro:
         return spectr_arguments, magnit_arguments, sfh_arguments, metal_arguments
 
     @staticmethod
-    def build_model(explicit: bool = False, **kwargs):
+    def build_model(epochs: int, loss_function_used: str, loss_function_used_metal: str = None,
+                    init_lr: float = 1e-3, loss_weights: tuple = (1.0, 0.8),
+                    explicit: bool = False, **kwargs):
 
         # Set the hard-coded parameters (input and output shapes)
         spectra_data_shape = (3761, 1)
@@ -242,6 +245,31 @@ class Cerebro:
             outputs=[metal_branch, sfh_branch],
             name="cerebro"
         )
+
+        if loss_function_used == "SMAPE":
+            # SMAPE
+            # Note: indicate the function, do not call it. (i.e.: 'Cerebro.smape_loss'; NOT 'Crebro.smape_loss()')
+            print("[INFO] Custom SMAPE is being used.")
+            loss_function_used = Cerebro.smape_loss
+
+        if loss_function_used_metal is None:
+            loss_function_used_metal = loss_function_used
+
+        losses = {
+            "sfh_output": loss_function_used,
+            "metallicity_output": loss_function_used_metal
+        }
+
+        # Loss weight for the two different branches
+        loss_weights = {
+            "sfh_output": loss_weights[0],
+            "metallicity_output": loss_weights[1]
+        }
+
+        # Initialize optimizer and compile the model
+        print("[INFO] Compiling model...")
+        opt = Adam(lr=init_lr, decay=init_lr / epochs)
+        model.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=["accuracy"])
 
         return model
 

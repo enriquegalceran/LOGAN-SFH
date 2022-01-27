@@ -21,21 +21,19 @@ def convert_bytes(size_bytes, decimals: int = 2, base_mult: int = 1024):
     return "%s %s" % (s, size_name[i])
 
 
-def print_train_test_val_sizes(split1, split2, main_title=""):
+def print_train_test_sizes(split1, main_title=""):
     """
-    Outputs a table with the sizes of the different groups. Useful for debug.
-    Inputs are first split (train+val, test) and second split (train, val).
+    Outputs a table with the sizes of the different groups. Useful for debugging.
     :param split1:
-    :param split2:
     :param main_title:
     :return:
     """
     data = [
-        [' ', 'train', 'val', 'test'],
-        ['Spect', str(split2[0].shape), str(split2[1].shape), str(split1[1].shape)],
-        ['Magnitudes', str(split2[2].shape), str(split2[3].shape), str(split1[3].shape)],
-        ['SFH', str(split2[4].shape), str(split2[5].shape), str(split1[5].shape)],
-        ['Metallicity', str(split2[6].shape), str(split2[7].shape), str(split1[7].shape)]
+        [' ', 'train', 'test'],
+        ['Spect', str(split1[0].shape), str(split1[1].shape)],
+        ['Magnitudes', str(split1[2].shape), str(split1[3].shape)],
+        ['SFH', str(split1[4].shape), str(split1[5].shape)],
+        ['Metallicity', str(split1[6].shape), str(split1[7].shape)]
     ]
     print_table(data, main_title)
 
