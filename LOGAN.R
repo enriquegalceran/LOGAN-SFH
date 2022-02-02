@@ -584,9 +584,8 @@ generateSpecFromParams <- function(massParams="default",
                                forcemass = forcemass
                                )
           } else {
-            # Generate a single for for every element
-            # ToDo: Generate a function that, given an ID and parameters, gives out the parameters and generates a single file based on the data provided
-            
+            # Generate a single for every element
+
             # New row to be added (Input)
             # ID, spectra, Magnitudes
             newRowIn <- c(absoluteCountCases, spectraObject$flux$flux, spectraObject$out$out)
