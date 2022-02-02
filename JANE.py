@@ -1,19 +1,24 @@
 # -*- coding: utf-8 -*-
 # Just A Network Executor
+
+
+# help("modules")
+# help("modules tensorflow")
 import typing
 
 import numpy as np
-from datetime import datetime
+# from datetime import datetime
 from astropy.io import fits
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
+# import sys
 import os
 import json
 import random
-import sys
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import RandomizedSearchCV
-from keras.wrappers.scikit_learn import KerasRegressor
-
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+from sklearn.pipeline import Pipeline
+from scikeras.wrappers import KerasRegressor, KerasClassifier
 
 from TESSA import convert_bytes, print_train_test_sizes, standardize_dataset
 from XAVIER import Cerebro
@@ -203,7 +208,7 @@ def main(**main_kwargs):
     random.seed(42)  # Set seed for testing purposes
     traintestrandomstate = 42  # Random state for train test split (default = None)
     traintestshuffle = True  # Shuffle data before splitting into train test (default = True)
-    loss_function_used = "SMAPE"  # Define which lossfunction should be used ("crossentropy"/"SMAPE")
+    loss_function_used = "SMAPE"  # Define which lossfunction should be used (i.e. "SMAPE")
     # data_path = "/Volumes/Elements/Outputs/"
     data_path = ""
     data_sufix = "20220119T154253_Hr3TXx"
@@ -247,7 +252,7 @@ def main(**main_kwargs):
     ############################################################################
     # Build model
     print("[INFO] Building model...")
-    custom_kwargs_model = {"spect_inputs": 0}
+    custom_kwargs_model = {"spect_neurons_first_layer": 256}
     # model = Cerebro.build_model(epochs=epochs, loss_function_used=loss_function_used, init_lr=init_lr,
     #                             **custom_kwargs_model, **main_kwargs)
     # model.summary()
@@ -256,23 +261,43 @@ def main(**main_kwargs):
     ############################################################################
     # Cross Validation
     # Define Regressor Model
-    model_estimator = KerasRegressor(build_fn=Cerebro.build_model, verbose=1, **custom_kwargs_model)
+    model_estimator = KerasRegressor(build_fn=Cerebro.build_model, verbose=1)
+    # param_distributions = custom_kwargs_model,
 
     # Set parameters that will generate the grid
     # Here is where all the parameters will go (regarding 'spect_', ...)
-    epochs = [30, 50, 100, 150]
-    batches = [25, 50, 100, 150, 200]
-    param_grid = dict(epochs=epochs, batch_size=batches)
+    # clf__epochs = [30, 50, 100, 150]
+    # clf__batches = [25, 50, 100, 150, 200]
+    # param_grid = dict(clf__epochs=clf__epochs, clf__batches=clf__batches)
+    # param_grid.update(custom_kwargs_model)
 
-    grid = RandomizedSearchCV(estimator=model_estimator, param_distributions=param_grid,
-                              cv=cv, random_state=traintestrandomstate)
+    keras_pipeline = Pipeline([("scaler", StandardScaler()),
+                               ("clf", KerasRegressor(
+                                   build_fn=Cerebro.build_model))
+                               ])
+    param_grid = {'clf__batch_size': [64, 128, 256],
+                  'clf__epochs': [5, 10, 15],
+                  'clf__verbose': [1],
+                  'clf__spect_neurons_first_layer': [256]
+                  }
+
+    # grid = RandomizedSearchCV(estimator=keras_pipeline, param_distributions=param_grid,
+    #                           cv=cv, random_state=traintestrandomstate)
+    grid = GridSearchCV(estimator=keras_pipeline, param_grid=param_grid, cv=cv)
+
     # Train model
-    continue_with_training = input("Continue training? [Y]/N ")
+    continue_with_training = input("Continue training? [Y]/N \n")
     if continue_with_training.lower() in ["n", "no", "stop"]:
         raise KeyboardInterrupt('User stopped the execution.')
     print("[INFO] Start training...")
-    grid_result = grid.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
-                           y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ})
+
+    print(trainSpect.shape)
+    print(trainMag.shape)
+    # grid_result = grid.fit(X={"spectra_input": trainSpect, "magnitude_input": trainMag},
+    #                        y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ})
+
+    grid_result = grid.fit(X=trainSpect,
+                           y=trainLabSfh)
 
     # print results
     print(grid_result)
@@ -283,8 +308,6 @@ def main(**main_kwargs):
     params = grid_result.cv_results_['params']
     for mean, stdev, param in zip(means, stds, params):
         print(f'mean={mean:.4}, std={stdev:.4} using {param}')
-
-
 
     # train_history = model.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
     #                           y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ},

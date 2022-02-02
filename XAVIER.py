@@ -2,12 +2,12 @@
 # XAVIER
 # eXtragalactic Artificial-neural-network Visualizer and identifIER
 
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import BatchNormalization, Conv1D, MaxPooling1D, Activation, \
+from keras.models import Model
+from keras.layers import BatchNormalization, Conv1D, MaxPooling1D, Activation, \
     Dropout, Concatenate, Flatten, Dense, Input
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.optimizers import Adam
-import tensorflow.keras.backend as kerasbackend
+import keras.backend as kerasbackend
 import sys
 import inspect
 
@@ -197,6 +197,8 @@ class Cerebro:
         spectra_data_shape = (3761, 1)
         magnitudes_data_shape = (5, 1)
         agevector_data_shape = 17
+
+        # ToDo: use kernel_initializer in Dense and CNN
 
         # Define the default arguments for each branch
         spectr_arguments = {"branch_type": "cnn", "number_layers": 3, "neurons_first_layer": 128,
