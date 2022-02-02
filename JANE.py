@@ -1,19 +1,23 @@
 # -*- coding: utf-8 -*-
 # Just A Network Executor
+
+# help("modules")
+# help("modules tensorflow")
 import typing
 
 import numpy as np
-from datetime import datetime
+# from datetime import datetime
 from astropy.io import fits
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
+import sys
 import os
 import json
 import random
-import sys
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import RandomizedSearchCV
-from keras.wrappers.scikit_learn import KerasRegressor
-
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
+from sklearn.pipeline import Pipeline
+from scikeras.wrappers import KerasRegressor, KerasClassifier
 
 from TESSA import convert_bytes, print_train_test_sizes, standardize_dataset
 from XAVIER import Cerebro
@@ -248,10 +252,11 @@ def main(**main_kwargs):
     # Build model
     print("[INFO] Building model...")
     custom_kwargs_model = {"spect_inputs": 0}
-    # model = Cerebro.build_model(epochs=epochs, loss_function_used=loss_function_used, init_lr=init_lr,
-    #                             **custom_kwargs_model, **main_kwargs)
-    # model.summary()
-    # Cerebro.graph(model, "tstimage3.png")
+    model = Cerebro.build_model(epochs=epochs, loss_function_used=loss_function_used, init_lr=init_lr,
+                                **custom_kwargs_model, **main_kwargs)
+    model.summary()
+    Cerebro.graph(model, "tstimage4.png")
+    sys.exit(1)
 
     ############################################################################
     # Cross Validation
