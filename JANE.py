@@ -27,17 +27,16 @@ print("[INFO] Finished Importing")
 
 def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548_HjCktf.fits",
               labels_path: str = "/Volumes/Elements/Outputs/Label_20211213T154548_HjCktf.fits",
-              method_input=1,
+              method_standardize_spectra=1,
+              method_standardize_magnitudes=1,
               method_label=None) -> typing.Tuple[np.array, np.array, np.array, np.array, np.array, np.array]:
     """
     Load the dataset from file.
 
     :param input_path:
     :param labels_path:
-    :param size_inputs:
-    :param size_magnitudes:
-    :param size_labels:
-    :param method_input:
+    :param method_standardize_spectra:
+    :param method_standardize_magnitudes:
     :param method_label:
     :return:
     """
@@ -77,7 +76,9 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
 
     input_spectra, input_magnitudes, label_sfh, label_z = \
         standardize_dataset(input_spectra, input_magnitudes, label_sfh, label_z,
-                            method_input=method_input, method_label=method_label)
+                            method_standardize_spectra=method_standardize_spectra,
+                            method_standardize_magnitudes=method_standardize_magnitudes,
+                            method_label=method_label)
 
     return input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec
 
@@ -192,7 +193,7 @@ def getparametersfromid(filename, id_searched, verbose=0):
         return final_dictionary
 
 
-def main(**main_kwargs):
+def main(do_not_verify=True, **main_kwargs):
     # ToDo: Generate an argparser.
 
     # ToDo: Beautify the parameters
@@ -243,6 +244,12 @@ def main(**main_kwargs):
      trainLabSfh, testLabSfh,
      trainLabZ, testLabZ) = split_train_test
 
+    # Concatenate inputs for single model
+    trainData = np.concatenate([trainSpect, trainMag], axis=1)
+    trainLabels = np.concatenate([trainLabSfh, trainLabZ], axis=1)
+    testData = np.concatenate([testSpect, testMag], axis=1)
+    testLabels = np.concatenate([testLabSfh, testLabZ], axis=1)
+
     # Verify the size of the
     print_train_test_sizes(split_train_test, main_title="Sizes of diferent sets (Train, Test)")
     # "split" tuple can be removed now
@@ -250,36 +257,35 @@ def main(**main_kwargs):
 
     ############################################################################
     # Build model
-    print("[INFO] Building model...")
-    custom_kwargs_model = {"spect_inputs": 0}
-    model = Cerebro.build_model(epochs=epochs, loss_function_used=loss_function_used, init_lr=init_lr,
-                                **custom_kwargs_model, **main_kwargs)
-    model.summary()
-    Cerebro.graph(model, "tstimage4.png")
-    sys.exit(1)
+    # ToDo: This section will not be needed once the CV works
+    # print("[INFO] Building model...")
+    # model = Cerebro.build_model(epochs=epochs, loss_function_used=loss_function_used, init_lr=init_lr,
+    #                             **custom_kwargs_model, **main_kwargs)
+    # model.summary()
+    # Cerebro.graph(model, "tstimage4.png")
 
     ############################################################################
     # Cross Validation
     # Define Regressor Model
-    model_estimator = KerasRegressor(build_fn=Cerebro.build_model, verbose=1, **custom_kwargs_model)
+    model_estimator, param_grid = method_name()
 
-    # Set parameters that will generate the grid
-    # Here is where all the parameters will go (regarding 'spect_', ...)
-    epochs = [30, 50, 100, 150]
-    batches = [25, 50, 100, 150, 200]
-    param_grid = dict(epochs=epochs, batch_size=batches)
+    # grid = RandomizedSearchCV(estimator=model_estimator, param_distributions=param_grid,
+    #                           cv=cv, random_state=traintestrandomstate, verbose=3)
+    grid = GridSearchCV(estimator=model_estimator, param_grid=param_grid,
+                        cv=cv, verbose=5)
 
-    grid = RandomizedSearchCV(estimator=model_estimator, param_distributions=param_grid,
-                              cv=cv, random_state=traintestrandomstate)
     # Train model
-    continue_with_training = input("Continue training? [Y]/N ")
-    if continue_with_training.lower() in ["n", "no", "stop"]:
-        raise KeyboardInterrupt('User stopped the execution.')
+    if not do_not_verify:
+        continue_with_training = input("Continue training? [Y]/N ")
+        if continue_with_training.lower() in ["n", "no", "stop"]:
+            raise KeyboardInterrupt('User stopped the execution.')
     print("[INFO] Start training...")
-    grid_result = grid.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
-                           y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ})
+    grid_result = grid.fit(X=trainData, y=trainLabels)
+    # grid_result = grid.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
+    #                        y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ})
 
     # print results
+    print("\n\n\n")
     print(grid_result)
 
     print(f'Best Accuracy for {grid_result.best_score_:.4} using {grid_result.best_params_}')
@@ -347,6 +353,18 @@ def main(**main_kwargs):
     # plt.close()
 
     print("[INFO] Finished!")
+
+
+def method_name():
+    custom_kwargs_model = {"magn_neurons_first_layer": [64]}
+    model_estimator = KerasRegressor(model=Cerebro.build_model, verbose=1, **custom_kwargs_model)
+    # Set parameters that will generate the grid
+    # Here is where all the parameters will go (regarding 'spect_', ...)
+    epochs = [1]
+    batches = [25, 50, 200]
+    param_grid = dict(epochs=epochs, batch_size=batches)
+    param_grid.update(custom_kwargs_model)
+    return model_estimator, param_grid
 
 
 if __name__ == "__main__":

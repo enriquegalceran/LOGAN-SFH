@@ -98,6 +98,7 @@ ls1 = sort(list.files(outputFolder))
 
 ## Probar interpolar
 if (FALSE){
+  EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
   waveout = seq(4700, 9400, 1.25)
   filtersHST <- c("F275W", "F336W", "F438W", "F555W", "F814W")
   filters <- list()
@@ -117,7 +118,9 @@ if (FALSE){
     mpeak = 10,
     emission = TRUE,
     emission_scale = "SFR",
-    Z=0.02
+    Z=Zfunc_massmap_box,
+    Zstart=1e-4,
+    Zfinal=0.1
   )
   plot(Stars$flux$wave, Stars$flux$flux, type="l", log="xy",
        xlim=c(4650, 9500), ylim=c(8e-16, 2.5e-15), main="original")

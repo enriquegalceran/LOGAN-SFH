@@ -190,8 +190,8 @@ class Cerebro:
         return spectr_arguments, magnit_arguments, sfh_arguments, metal_arguments
 
     @staticmethod
-    def build_model(epochs: int, input_mode: str = "single", loss_function_used: str = "relu", loss_function_used_metal: str = None,
-                    init_lr: float = 1e-3, loss_weights: tuple = (1.0, 0.8),
+    def build_model(epochs: int = 50, input_mode: str = "single", loss_function_used: str = "SMAPE",
+                    loss_function_used_metal: str = None, init_lr: float = 1e-3, loss_weights: tuple = (1.0, 0.8),
                     explicit: bool = False, **kwargs):
 
         # Set the hard-coded parameters (input and output shapes)
@@ -277,16 +277,22 @@ class Cerebro:
         if loss_function_used_metal is None:
             loss_function_used_metal = loss_function_used
 
-        losses = {
-            "sfh_output": loss_function_used,
-            "metallicity_output": loss_function_used_metal
-        }
+        if input_mode == "double":
+            losses = {
+                "sfh_output": loss_function_used,
+                "metallicity_output": loss_function_used_metal
+            }
 
-        # Loss weight for the two different branches
-        loss_weights = {
-            "sfh_output": loss_weights[0],
-            "metallicity_output": loss_weights[1]
-        }
+            # Loss weight for the two different branches
+            loss_weights = {
+                "sfh_output": loss_weights[0],
+                "metallicity_output": loss_weights[1]
+            }
+        elif input_mode == "single":
+            losses = loss_function_used
+            loss_weights = None
+        else:
+            raise ValueError(f"'in_layer' is {input_mode}, and should be either 'single' or 'double'.")
 
         # Initialize optimizer and compile the model
         print("[INFO] Compiling model...")

@@ -71,14 +71,16 @@ def print_table(tabl_data, main_title='', col_separation='| ', min_length=0):
 
 def standardize_dataset(input_spectra, input_magnitudes,
                         label_sfh, label_z,
-                        method_input=1, method_label=None):
-
+                        method_standardize_spectra=1,
+                        method_standardize_magnitudes=1,
+                        method_label=None):
+    # ToDo: standardize magnitudes
     if method_label is None:
-        method_label = method_input
+        method_label = method_standardize_spectra
 
     # Inputs
-    input_spectra_out = standardize_single_dataset(input_spectra, method_input)
-    input_magnitudes_out = standardize_single_dataset(input_magnitudes, method_input)
+    input_spectra_out = standardize_single_dataset(input_spectra, method_standardize_spectra)
+    input_magnitudes_out = standardize_single_dataset(input_magnitudes, method_standardize_spectra)
 
     # Labels
     label_sfh_out = standardize_single_dataset(label_sfh, method_label)
