@@ -267,58 +267,23 @@ def main(do_not_verify=True, **main_kwargs):
     ############################################################################
     # Cross Validation
     # Define Regressor Model
-    # model_estimator = KerasRegressor(build_fn=Cerebro.build_model, verbose=1)
-    # param_distributions = custom_kwargs_model,
 
     # Set parameters that will generate the grid
     # Here is where all the parameters will go (regarding 'spect_', ...)
-    # clf__epochs = [30, 50, 100, 150]
-    # clf__batches = [25, 50, 100, 150, 200]
-    # param_grid = dict(clf__epochs=clf__epochs, clf__batches=clf__batches)
-    # param_grid.update(custom_kwargs_model)
+    param_grid = dict(
+        epochs=[1],
+        batch_size=[25, 50, 200],
+        magn_neurons_first_layer=[64, 128],
+    )
+    print("param_grid", param_grid)
 
-    keras_pipeline = Pipeline([("scaler", StandardScaler()),
-                               ("clf", KerasRegressor(
-                                   build_fn=Cerebro.build_model))
-                               ])
-    param_grid = {'clf__batch_size': [64, 128, 256],
-                  'clf__epochs': [5, 10, 15],
-                  'clf__verbose': [1],
-                  'clf__spect_neurons_first_layer': [256]
-                  }
+    estimator = KerasRegressor(build_fn=Cerebro.build_model, verbose=1, **param_grid)
+    print("estimator", estimator.get_params().keys())
 
-    # grid = RandomizedSearchCV(estimator=keras_pipeline, param_distributions=param_grid,
-    #                           cv=cv, random_state=traintestrandomstate)
-    grid = GridSearchCV(estimator=keras_pipeline, param_grid=param_grid, cv=cv)
-
-    # Train model
-    continue_with_training = input("Continue training? [Y]/N \n")
-    if continue_with_training.lower() in ["n", "no", "stop"]:
-        raise KeyboardInterrupt('User stopped the execution.')
-    print("[INFO] Start training...")
-
-    print(trainSpect.shape)
-    print(trainMag.shape)
-    # grid_result = grid.fit(X={"spectra_input": trainSpect, "magnitude_input": trainMag},
-    #                        y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ})
-
-    grid_result = grid.fit(X=trainSpect,
-                           y=trainLabSfh)
-    custom_kwargs_model = {"magn_neurons_first_layer": [64]}
-    estimator = KerasRegressor(model=Cerebro.build_model, verbose=1, **custom_kwargs_model)
-    # Set parameters that will generate the grid
-    # Here is where all the parameters will go (regarding 'spect_', ...)
-    epochs1 = [1]
-    batches = [25, 50, 200]
-    grid1 = dict(epochs=epochs1, batch_size=batches)
-    grid1.update(custom_kwargs_model)
-    result = estimator, grid1
-    model_estimator, param_grid = result
-
-    # grid = RandomizedSearchCV(estimator=model_estimator, param_distributions=param_grid,
-    #                           cv=cv, random_state=traintestrandomstate, verbose=3)
-    grid = GridSearchCV(estimator=model_estimator, param_grid=param_grid,
-                        cv=cv, verbose=5)
+    grid = RandomizedSearchCV(estimator=estimator, param_distributions=param_grid,
+                              cv=cv, random_state=traintestrandomstate, verbose=3)
+    # grid = GridSearchCV(estimator=estimator, param_grid=param_grid, cv=cv, verbose=5)
+    # print("grid", grid.get_params().keys())
 
     # Train model
     if not do_not_verify:
@@ -326,7 +291,9 @@ def main(do_not_verify=True, **main_kwargs):
         if continue_with_training.lower() in ["n", "no", "stop"]:
             raise KeyboardInterrupt('User stopped the execution.')
     print("[INFO] Start training...")
-    grid_result = grid.fit(X=trainData, y=trainLabels)
+    grid_result = grid.fit(trainData, trainLabels)
+
+
     # grid_result = grid.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
     #                        y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ})
 
