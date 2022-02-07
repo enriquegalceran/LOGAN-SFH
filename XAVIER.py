@@ -4,10 +4,11 @@
 
 from keras.models import Model
 from keras.layers import BatchNormalization, Conv1D, MaxPooling1D, Activation, \
-    Dropout, Concatenate, Flatten, Dense, Input
+    Dropout, Concatenate, Flatten, Dense, Input, Lambda
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.optimizers import Adam
 import keras.backend as kerasbackend
+import tensorflow as tf
 import sys
 import inspect
 
@@ -189,13 +190,14 @@ class Cerebro:
         return spectr_arguments, magnit_arguments, sfh_arguments, metal_arguments
 
     @staticmethod
-    def build_model(epochs: int, loss_function_used: str, loss_function_used_metal: str = None,
-                    init_lr: float = 1e-3, loss_weights: tuple = (1.0, 0.8),
+    def build_model(epochs: int = 50, input_mode: str = "single", loss_function_used: str = "SMAPE",
+                    loss_function_used_metal: str = None, init_lr: float = 1e-3, loss_weights: tuple = (1.0, 0.8),
                     explicit: bool = False, **kwargs):
 
         # Set the hard-coded parameters (input and output shapes)
         spectra_data_shape = (3761, 1)
         magnitudes_data_shape = (5, 1)
+        single_data_shape = (3766, 1)
         agevector_data_shape = 17
 
         # ToDo: use kernel_initializer in Dense and CNN
@@ -221,8 +223,16 @@ class Cerebro:
                            "final_layer_name": "metallicity_output"}
 
         # Input Layers
-        input_spec = Input(shape=spectra_data_shape, name="spectra_input")
-        input_magn = Input(shape=magnitudes_data_shape, name="magnitude_input")
+        if input_mode == "double":
+            input_spec = Input(shape=spectra_data_shape, name="spectra_input")
+            input_magn = Input(shape=magnitudes_data_shape, name="magnitude_input")
+            input_layer = None  # Defined for compatibility
+        elif input_mode == "single":
+            input_layer = Input(shape=single_data_shape, name="single_input")
+            input_spec = Lambda(lambda x: tf.expand_dims(x[:, :spectra_data_shape[0], 0], -1))(input_layer)
+            input_magn = Lambda(lambda x: tf.expand_dims(x[:, spectra_data_shape[0]:, 0], -1))(input_layer)
+        else:
+            raise ValueError(f"'in_layer' is {input_mode}, and should be either 'single' or 'double'.")
 
         # Split kwargs for each branch and update
         spectr_kwarg, magnit_kwarg, sfh_kwarg, metal_kwarg = Cerebro.splitkwargs(**kwargs)
@@ -242,11 +252,23 @@ class Cerebro:
         metal_branch = Cerebro.build_iterative_branch(intermediate_concatted, **metal_arguments)
         sfh_branch = Cerebro.build_iterative_branch(intermediate_concatted, **sfh_arguments)
 
-        model = Model(
-            inputs=[input_spec, input_magn],
-            outputs=[metal_branch, sfh_branch],
-            name="cerebro"
-        )
+        # Concatenate Output for single i/o and Define Model
+        if input_mode == "double":
+            model = Model(
+                inputs=[input_spec, input_magn],
+                outputs=[metal_branch, sfh_branch],
+                name="cerebro_double"
+            )
+        elif input_mode == "single":
+            # Concatenate output
+            output_layer = Concatenate(axis=-1)([sfh_branch, metal_branch])
+            model = Model(
+                inputs=input_layer,
+                outputs=output_layer,
+                name="cerebro_single"
+            )
+        else:
+            raise ValueError(f"'in_layer' is {input_mode}, and should be either 'single' or 'double'.")
 
         if loss_function_used == "SMAPE":
             # SMAPE
@@ -257,20 +279,26 @@ class Cerebro:
         if loss_function_used_metal is None:
             loss_function_used_metal = loss_function_used
 
-        losses = {
-            "sfh_output": loss_function_used,
-            "metallicity_output": loss_function_used_metal
-        }
+        if input_mode == "double":
+            losses = {
+                "sfh_output": loss_function_used,
+                "metallicity_output": loss_function_used_metal
+            }
 
-        # Loss weight for the two different branches
-        loss_weights = {
-            "sfh_output": loss_weights[0],
-            "metallicity_output": loss_weights[1]
-        }
+            # Loss weight for the two different branches
+            loss_weights = {
+                "sfh_output": loss_weights[0],
+                "metallicity_output": loss_weights[1]
+            }
+        elif input_mode == "single":
+            losses = loss_function_used
+            loss_weights = None
+        else:
+            raise ValueError(f"'in_layer' is {input_mode}, and should be either 'single' or 'double'.")
 
         # Initialize optimizer and compile the model
         print("[INFO] Compiling model...")
-        opt = Adam(lr=init_lr, decay=init_lr / epochs)
+        opt = Adam(learning_rate=init_lr, decay=init_lr / epochs)
         model.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=["accuracy"])
 
         return model

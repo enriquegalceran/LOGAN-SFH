@@ -10,7 +10,7 @@ import numpy as np
 # from datetime import datetime
 from astropy.io import fits
 # import matplotlib.pyplot as plt
-# import sys
+import sys
 import os
 import json
 import random
@@ -28,18 +28,17 @@ print("[INFO] Finished Importing")
 
 def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548_HjCktf.fits",
               labels_path: str = "/Volumes/Elements/Outputs/Label_20211213T154548_HjCktf.fits",
-              method_input=1,
-              method_label=None) -> typing.Tuple[np.array, np.array, np.array, np.array, np.array, np.array]:
+              method_standardize_spectra=2,
+              method_standardize_magnitudes=4,
+              method__standardize_label=3) -> typing.Tuple[np.array, np.array, np.array, np.array, np.array, np.array]:
     """
     Load the dataset from file.
 
     :param input_path:
     :param labels_path:
-    :param size_inputs:
-    :param size_magnitudes:
-    :param size_labels:
-    :param method_input:
-    :param method_label:
+    :param method_standardize_spectra:
+    :param method_standardize_magnitudes:
+    :param method__standardize_label:
     :return:
     """
     # ToDo: argparse these variables
@@ -78,7 +77,9 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
 
     input_spectra, input_magnitudes, label_sfh, label_z = \
         standardize_dataset(input_spectra, input_magnitudes, label_sfh, label_z,
-                            method_input=method_input, method_label=method_label)
+                            method_standardize_spectra=method_standardize_spectra,
+                            method_standardize_magnitudes=method_standardize_magnitudes,
+                            method_standardize_label=method__standardize_label)
 
     return input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec
 
@@ -193,7 +194,7 @@ def getparametersfromid(filename, id_searched, verbose=0):
         return final_dictionary
 
 
-def main(**main_kwargs):
+def main(do_not_verify=True, **main_kwargs):
     # ToDo: Generate an argparser.
 
     # ToDo: Beautify the parameters
@@ -225,15 +226,15 @@ def main(**main_kwargs):
 
     print(f"""
     Variable sizes:
-        Input_spectra: {input_spectra.shape} - {convert_bytes(input_spectra.nbytes)}
-        Input_magnitudes: {input_magnitudes.shape} - {convert_bytes(input_magnitudes.nbytes)}
-        Label_sfh: {label_sfh.shape} - {convert_bytes(label_sfh.nbytes)}
-        Label_z: {label_z.shape} - {convert_bytes(label_z.nbytes)}
+        Input_spectra: {input_spectra.shape} - {convert_bytes(input_spectra.nbytes)} - {np.count_nonzero(np.isnan(input_spectra))} Nans
+        Input_magnitudes: {input_magnitudes.shape} - {convert_bytes(input_magnitudes.nbytes)} - {np.count_nonzero(np.isnan(input_magnitudes))} Nans
+        Label_sfh: {label_sfh.shape} - {convert_bytes(label_sfh.nbytes)} - {np.count_nonzero(np.isnan(label_sfh))} Nans
+        Label_z: {label_z.shape} - {convert_bytes(label_z.nbytes)} - {np.count_nonzero(np.isnan(label_z))} Nans
         """)
 
     # Split the data into training+validation and testing
     # ToDo: this section will be deprecated with the Cross-Validation
-    assert train_size + test_size == 1, "The sum of the three train/val/test sizes has to add up to '1.0'."
+    assert train_size + test_size == 1, "The sum of train + test sizes has to add up to '1.0'."
     split_train_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z,
                                         test_size=test_size,
                                         train_size=train_size,
@@ -244,6 +245,12 @@ def main(**main_kwargs):
      trainLabSfh, testLabSfh,
      trainLabZ, testLabZ) = split_train_test
 
+    # Concatenate inputs for single model
+    trainData = np.concatenate([trainSpect, trainMag], axis=1)
+    trainLabels = np.concatenate([trainLabSfh, trainLabZ], axis=1)
+    testData = np.concatenate([testSpect, testMag], axis=1)
+    testLabels = np.concatenate([testLabSfh, testLabZ], axis=1)
+
     # Verify the size of the
     print_train_test_sizes(split_train_test, main_title="Sizes of diferent sets (Train, Test)")
     # "split" tuple can be removed now
@@ -251,17 +258,16 @@ def main(**main_kwargs):
 
     ############################################################################
     # Build model
-    print("[INFO] Building model...")
     custom_kwargs_model = {"spect_neurons_first_layer": 256}
     # model = Cerebro.build_model(epochs=epochs, loss_function_used=loss_function_used, init_lr=init_lr,
     #                             **custom_kwargs_model, **main_kwargs)
     # model.summary()
-    # Cerebro.graph(model, "tstimage3.png")
+    # Cerebro.graph(model, "tstimage4.png")
 
     ############################################################################
     # Cross Validation
     # Define Regressor Model
-    model_estimator = KerasRegressor(build_fn=Cerebro.build_model, verbose=1)
+    # model_estimator = KerasRegressor(build_fn=Cerebro.build_model, verbose=1)
     # param_distributions = custom_kwargs_model,
 
     # Set parameters that will generate the grid
@@ -298,8 +304,34 @@ def main(**main_kwargs):
 
     grid_result = grid.fit(X=trainSpect,
                            y=trainLabSfh)
+    custom_kwargs_model = {"magn_neurons_first_layer": [64]}
+    estimator = KerasRegressor(model=Cerebro.build_model, verbose=1, **custom_kwargs_model)
+    # Set parameters that will generate the grid
+    # Here is where all the parameters will go (regarding 'spect_', ...)
+    epochs1 = [1]
+    batches = [25, 50, 200]
+    grid1 = dict(epochs=epochs1, batch_size=batches)
+    grid1.update(custom_kwargs_model)
+    result = estimator, grid1
+    model_estimator, param_grid = result
+
+    # grid = RandomizedSearchCV(estimator=model_estimator, param_distributions=param_grid,
+    #                           cv=cv, random_state=traintestrandomstate, verbose=3)
+    grid = GridSearchCV(estimator=model_estimator, param_grid=param_grid,
+                        cv=cv, verbose=5)
+
+    # Train model
+    if not do_not_verify:
+        continue_with_training = input("Continue training? [Y]/N ")
+        if continue_with_training.lower() in ["n", "no", "stop"]:
+            raise KeyboardInterrupt('User stopped the execution.')
+    print("[INFO] Start training...")
+    grid_result = grid.fit(X=trainData, y=trainLabels)
+    # grid_result = grid.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
+    #                        y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ})
 
     # print results
+    print("\n\n\n")
     print(grid_result)
 
     print(f'Best Accuracy for {grid_result.best_score_:.4} using {grid_result.best_params_}')
