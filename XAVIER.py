@@ -9,6 +9,8 @@ from tensorflow.keras.utils import plot_model
 from tensorflow.keras.optimizers import Adam
 import keras.backend as kerasbackend
 import tensorflow as tf
+from typing import Union, Type
+from tensorflow.keras import initializers
 import sys
 import inspect
 
@@ -21,17 +23,20 @@ class Cerebro:
     @staticmethod
     def conv_activation_pool(layer_input: int, n_filters: int = 32, filter_size: int = 3,
                              stride: int = 1, act: str = "relu", pool_size: int = 3,
-                             dropout: float = 0.25, padding: str = "same", explicit: bool = False):
+                             dropout: float = 0.25, padding: str = "same", explicit: bool = False,
+                             kernel_initializer: Union[str, Type[initializers.GlorotUniform]] = "glorot_uniform"):
         if explicit:
             x = Conv1D(filters=n_filters, kernel_size=filter_size,
-                       strides=stride, padding=padding)(layer_input)
+                       strides=stride, padding=padding,
+                       kernel_initializer=kernel_initializer)(layer_input)
             x = Activation(activation=act)(x)
             x = BatchNormalization()(x)
             x = MaxPooling1D(pool_size=pool_size)(x)
             x = Dropout(dropout)(x)
         else:
             x = Conv1D(filters=n_filters, kernel_size=filter_size, activation=act,
-                       strides=stride, padding=padding)(layer_input)
+                       strides=stride, padding=padding,
+                       kernel_initializer=kernel_initializer)(layer_input)
             x = BatchNormalization()(x)
             x = MaxPooling1D(pool_size=pool_size)(x)
             x = Dropout(dropout)(x)
@@ -39,14 +44,15 @@ class Cerebro:
 
     @staticmethod
     def dense_act_batchnorm_dropout(inputs: int, neurons: int, act: str = "relu",
-                                    dropout: float = 0.5, explicit: bool = False):
+                                    dropout: float = 0.5, explicit: bool = False,
+                                    kernel_initializer: Union[str, Type[initializers.GlorotUniform]] = "glorot_uniform"):
         if explicit:
-            x = Dense(neurons)(inputs)
+            x = Dense(neurons, kernel_initializer=kernel_initializer)(inputs)
             x = Activation(activation=act)(x)
             x = BatchNormalization()(x)
             x = Dropout(dropout)(x)
         else:
-            x = Dense(neurons, activation=act)(inputs)
+            x = Dense(neurons, kernel_initializer=kernel_initializer, activation=act)(inputs)
             x = BatchNormalization()(x)
             x = Dropout(dropout)(x)
         return x
@@ -58,7 +64,9 @@ class Cerebro:
                                stride=1, act="relu", pool_size=3, dropout=0.25,
                                neurons_last_layer: int = None, explicit: bool = False,
                                output: int = 1, output_neurons: int = 20, final_act: str = "relu",
-                               final_layer_name: str = None):
+                               final_layer_name: str = None,
+                               kernel_initializer: Union[str, Type[initializers.GlorotUniform]] = "glorot_uniform",
+                               ):
         """
         Generate a branch with lists. Used for CV.
         branch_type needs to be 'cnn' or 'dense'.
@@ -85,6 +93,7 @@ class Cerebro:
         :param output_neurons:
         :param final_act:
         :param final_layer_name:
+        :param kernel_initializer:
         :return:
         """
         # Initialize x
@@ -121,20 +130,24 @@ class Cerebro:
                     x = Cerebro.conv_activation_pool(layer_input=inputs, n_filters=layers[i_layer],
                                                      filter_size=filter_size[i_layer], stride=stride[i_layer],
                                                      act=act[i_layer], pool_size=pool_size[i_layer],
-                                                     dropout=dropout[i_layer], padding="same", explicit=explicit)
+                                                     dropout=dropout[i_layer], padding="same", explicit=explicit,
+                                                     kernel_initializer=kernel_initializer)
                 else:
                     x = Cerebro.conv_activation_pool(layer_input=x, n_filters=layers[i_layer],
                                                      filter_size=filter_size[i_layer], stride=stride[i_layer],
                                                      act=act[i_layer], pool_size=pool_size[i_layer],
-                                                     dropout=dropout[i_layer], padding="same", explicit=explicit)
+                                                     dropout=dropout[i_layer], padding="same", explicit=explicit,
+                                                     kernel_initializer=kernel_initializer)
         elif branch_type.lower() == "dense":
             for i_layer in range(number_layers):
                 if i_layer == 0:
                     x = Cerebro.dense_act_batchnorm_dropout(inputs=inputs, neurons=layers[i_layer], act=act[i_layer],
-                                                            dropout=dropout[i_layer], explicit=explicit)
+                                                            dropout=dropout[i_layer], explicit=explicit,
+                                                            kernel_initializer=kernel_initializer)
                 else:
                     x = Cerebro.dense_act_batchnorm_dropout(inputs=x, neurons=layers[i_layer], act=act[i_layer],
-                                                            dropout=dropout[i_layer], explicit=explicit)
+                                                            dropout=dropout[i_layer], explicit=explicit,
+                                                            kernel_initializer=kernel_initializer)
         else:
             raise ValueError("branch_type needs to be 'cnn' or 'dense'.")
 
@@ -192,27 +205,25 @@ class Cerebro:
     @staticmethod
     def build_model(epochs: int = 50, input_mode: str = "single", loss_function_used: str = "SMAPE",
                     loss_function_used_metal: str = None, init_lr: float = 1e-3, loss_weights: tuple = (1.0, 0.8),
-                    explicit: bool = False, **kwargs):
-
-        # Set the hard-coded parameters (input and output shapes)
-        spectra_data_shape = (3761, 1)
-        magnitudes_data_shape = (5, 1)
-        single_data_shape = (3766, 1)
-        agevector_data_shape = 17
-
-        # ToDo: use kernel_initializer in Dense and CNN
+                    explicit: bool = False, spectra_data_shape: tuple = (3761, 1),
+                    magnitudes_data_shape: tuple = (5, 1), single_data_shape: tuple = (3766, 1),
+                    agevector_data_shape: tuple = 17, **kwargs):
 
         # Define the default arguments for each branch
         spectr_arguments = {"branch_type": "cnn", "number_layers": 3, "neurons_first_layer": 128,
                             "progression": 0.5, "filter_size": [30, 10, 3], "stride": 1, "act": "relu",
                             "pool_size": 3, "dropout": [0.25, 0.25, 0.10], "explicit": explicit,
                             "output": 1, "output_neurons": 128, "final_act": "relu",
-                            "final_layer_name": "spectra_intermediate"}
+                            "final_layer_name": "spectra_intermediate",
+                            "kernel_initializer": "glorot_uniform",
+                            }
         magn_arguments = {"branch_type": "dense", "number_layers": 2, "neurons_first_layer": 64,
                           "progression": 0.5, "act": "relu",
                           "dropout": 0.25, "explicit": explicit,
                           "output": 1, "output_neurons": 32, "final_act": "relu",
-                          "final_layer_name": "magnitude_intermediate"}
+                          "final_layer_name": "magnitude_intermediate",
+                          "kernel_initializer": "glorot_uniform",
+                          }
         sfh_arguments = {"branch_type": "dense", "layers": [512, 256, 256, 128], "act": "relu",
                          "dropout": [0.5, 0.25, 0.25, 0.1], "explicit": explicit,
                          "output": 2, "output_neurons": agevector_data_shape, "final_act": "relu",
@@ -220,7 +231,9 @@ class Cerebro:
         metal_arguments = {"branch_type": "dense", "layers": [512, 256, 256, 128], "act": "relu",
                            "dropout": [0.5, 0.25, 0.25, 0.1], "explicit": explicit,
                            "output": 2, "output_neurons": agevector_data_shape, "final_act": "relu",
-                           "final_layer_name": "metallicity_output"}
+                           "final_layer_name": "metallicity_output",
+                           "kernel_initializer": "glorot_uniform",
+                           }
 
         # Input Layers
         if input_mode == "double":
