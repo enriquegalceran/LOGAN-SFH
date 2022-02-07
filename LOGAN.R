@@ -362,6 +362,7 @@ generateSpecFromParams <- function(massParams="default",
    
   #####
   # Calculate how many pairs are to be generated before calling the Python code.
+  # ToDo: This should maybe be removed...?
   pythonSteps = trunc(bytesForPython/expectedSizePerPair)
   cat("The Python script will be executed every ", pythonSteps, " calculations. (", bytes2Human(expectedSizePerPair * pythonSteps), "/", bytes2Human(bytesForPython), ")\n", sep="")
   pythonListFilenames = rep(NA, min(pythonSteps, totalNumberOfCases))
@@ -496,6 +497,7 @@ generateSpecFromParams <- function(massParams="default",
         #####
         # Evaluate and calculate SFH function
         spectraObject = do.call('SFHfunc', c(list(massfunc = func$func,
+                                                  Z = ZParams$func,
                                                   forcemass = forcemass,
                                                   stellpop = stellpop,
                                                   speclib = speclib,
@@ -507,7 +509,6 @@ generateSpecFromParams <- function(massParams="default",
                                              Zfunc_args
                                              )
                                 )
-        
         
         # Rescale the outputs according to the desired network requirements
         # SFR
@@ -663,7 +664,8 @@ generateSpecFromParams <- function(massParams="default",
                             onlyNoise=onlyNoise,
                             UUIDInput = UUIDs[1],
                             UUIDLabels = UUIDs[2],
-                            UUIDMetadata = UUIDs[3]
+                            UUIDMetadata = UUIDs[3],
+                            totalCases=totalNumberOfCases
                             )
                        )
     # ToDo: See if the initial variables are required to be added. Most likely, \
