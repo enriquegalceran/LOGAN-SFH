@@ -178,8 +178,8 @@ t <- generateSpecFromParams(massParams = massParams2,
                        cleanOutputFolder=FALSE,
                        bytesForPython=10e6,
                        singleOutput=TRUE)
-save(t, file="time.rda")
-# load("time.rda")
+save(t, file=file.path(outputFolder, "time.rda"))
+# load(file.path(outputFolder, "time.rda"))
 
 plot(t[, 1], t[, 2], type="l")
 n_t <- dim(t)[1]
@@ -197,14 +197,14 @@ for (j in seq(1, n_t - randomSamples, randomSamples + 1)){
   i <- i + 1
 }
 
-m_rolling <- 3
+m_rolling <- 10
 rolling_average_t <- numeric(n_gt - m_rolling)
 x_r <- seq(1:(n_gt - m_rolling))
 for (i in 1:(n_gt - m_rolling)){
   rolling_average_t[i] <- mean(gt[i:(i+m_rolling)])
 }
 
-plot (x, gt, ylim=c(min(e_gt_d)-0.1,max(e_gt_u) + 0.1))
+plot (x, gt, ylim=c(min(e_gt_d)-0.1,max(e_gt_u) + 0.1), log="y")
 segments(x, e_gt_d, x, e_gt_u)
 epsilon <- 0.1
 segments(x-epsilon, e_gt_d, x+epsilon, e_gt_d)

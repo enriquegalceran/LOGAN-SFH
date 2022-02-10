@@ -683,7 +683,7 @@ generateSpecFromParams <- function(massParams="default",
     # ToDo: See if the initial variables are required to be added. Most likely, \
     #       not all the information is required, but other variables \
     #       (like the name of the library or emission) should be saved.
-    write(jsonData, metadataName)
+    write(jsonData, file.path(folderPath, metadataName))
     if (verbose >= 1)
       cat("Metadata was stored in", metadataName, "...\n")
     
