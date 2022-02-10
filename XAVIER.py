@@ -117,6 +117,7 @@ class Cerebro:
             else:
                 parameter = [parameter for _ in range(n_layers)]
             return parameter
+
         filter_size = verify_list(filter_size, "filter_size", number_layers)
         stride = verify_list(stride, "stride", number_layers)
         act = verify_list(act, "act", number_layers)
@@ -212,7 +213,7 @@ class Cerebro:
         # Define the default arguments for each branch
         spectr_arguments = {"branch_type": "cnn", "number_layers": 3, "neurons_first_layer": 128,
                             "progression": 0.5, "filter_size": [30, 10, 3], "stride": 1, "act": "relu",
-                            "pool_size": 3, "dropout": [0.25, 0.25, 0.10], "explicit": explicit,
+                            "pool_size": 3, "dropout": 0.15, "explicit": explicit,
                             "output": 1, "output_neurons": 128, "final_act": "relu",
                             "final_layer_name": "spectra_intermediate",
                             "kernel_initializer": "glorot_uniform",
@@ -225,11 +226,11 @@ class Cerebro:
                           "kernel_initializer": "glorot_uniform",
                           }
         sfh_arguments = {"branch_type": "dense", "layers": [512, 256, 256, 128], "act": "relu",
-                         "dropout": [0.5, 0.25, 0.25, 0.1], "explicit": explicit,
+                         "dropout": [0.25, 0.25, 0.25, 0.1], "explicit": explicit,
                          "output": 2, "output_neurons": agevector_data_shape, "final_act": "relu",
                          "final_layer_name": "sfh_output"}
         metal_arguments = {"branch_type": "dense", "layers": [512, 256, 256, 128], "act": "relu",
-                           "dropout": [0.5, 0.25, 0.25, 0.1], "explicit": explicit,
+                           "dropout": [0.25, 0.25, 0.25, 0.1], "explicit": explicit,
                            "output": 2, "output_neurons": agevector_data_shape, "final_act": "relu",
                            "final_layer_name": "metallicity_output",
                            "kernel_initializer": "glorot_uniform",
