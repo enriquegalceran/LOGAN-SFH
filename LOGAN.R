@@ -301,7 +301,7 @@ generateSpecFromParams <- function(massParams="default",
   for (zPar in 2:4){
     if (verbose > 0){
       if (length(ZParams[[zPar]]) > 1){
-        cat(sprintf("%s: [%s,%s] (%d)\n",
+        cat(sprintf("%s: [%s, %s] (%d)\n",
                     names(ZParams)[zPar],
                     ZParams[[zPar]][1],
                     ZParams[[zPar]][length(ZParams[[zPar]])],
@@ -385,10 +385,13 @@ generateSpecFromParams <- function(massParams="default",
   agevec_new = convertAgevecToOutputScale(agevec, agevec, new_scale = "defaultlog1", return_scale = TRUE)
   numberColumnsIn = length(waveout) + length(filters) + 1    # Add 1 for the ID
   numberColumnsLa = 2 * length(agevec_new$age) + 1           # Add 1 for the ID
-  completeDataMatrixIn <- matrix(, nrow=totalNumberOfCases + 1, ncol= numberColumnsIn)
-  completeDataMatrixLa <- matrix(, nrow=totalNumberOfCases + 1, ncol= numberColumnsLa)
+  completeDataMatrixIn <- matrix(, nrow=totalNumberOfCases + 1, ncol=numberColumnsIn)
+  completeDataMatrixLa <- matrix(, nrow=totalNumberOfCases + 1, ncol=numberColumnsLa)
   completeDataMatrixIn[1, ] = c(0, waveout, seq(1:length(filters)))
   completeDataMatrixLa[1, ] = c(0, agevec_new$age, agevec_new$age)
+  
+  # Initiate timer matrix
+  timer_list <- matrix(, nrow=totalNumberOfCases, ncol=2)
   
   # Order of parameters for the metadata
   orderParameters = c()
@@ -400,6 +403,8 @@ generateSpecFromParams <- function(massParams="default",
   absoluteCountCases = 1
   # Time the code from here (after cleaning/not cleaning the folder)
   ptm <- proc.time()
+  timer1 <- proc.time()
+  timerverb1 <- proc.time()
   for (func in massParams){
     if (verbose > 0)
       cat(paste0("\n -------------- Starting to calculate for massfunction: ", func$name, " -------------- \n"))
@@ -567,7 +572,10 @@ generateSpecFromParams <- function(massParams="default",
                            )
           if (verbose > 0){
             if (absoluteCountCases %% verboseSteps == 0 || absoluteCountCases == 1 || absoluteCountCases == totalNumberOfCases){
-              cat(paste0(sFilename, sMass, sZ, sRNG, sCurrentMF, sTotal, "%\n"))
+              timerverb2 <- proc.time()
+              sTime = sprintf(paste0(" - ", round(unname((timerverb2 - timerverb1)[3]/min(absoluteCountCases, verboseSteps)), 2), " s/case"))
+              timerverb1 <- timerverb2
+              cat(paste0(sFilename, sMass, sZ, sRNG, sCurrentMF, sTotal, "%", sTime, "\n"))
             }
           }
           
@@ -588,13 +596,17 @@ generateSpecFromParams <- function(massParams="default",
             # Generate a single for every element
 
             # New row to be added (Input)
-            # ID, spectra, Magnitudes
+            # ID, spectra, Magnitudes, timer
             newRowIn <- c(absoluteCountCases, spectraObject$flux$flux, spectraObject$out$out)
             newRowLa <- c(absoluteCountCases, spectraObject$SFR, spectraObject$Zvec)
+            timer2 <- proc.time()
+            newRowTimer <- c(absoluteCountCases, unname((timer2 - timer1)[3]))
+            timer1 <- timer2
 
             # Add new row to the Matrix
             completeDataMatrixIn[absoluteCountCases + 1, ] = newRowIn
             completeDataMatrixLa[absoluteCountCases + 1, ] = newRowLa
+            timer_list[absoluteCountCases, ] = newRowTimer
           }
   
           # ToDo: Fix every part of the code that depends on "singleOutput"
@@ -689,4 +701,5 @@ generateSpecFromParams <- function(massParams="default",
     cat(" -------- FINISHED --------\n")
   }
   
+  return(timer_list)
 }
