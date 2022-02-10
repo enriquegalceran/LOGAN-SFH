@@ -5,6 +5,7 @@
 # help("modules")
 # help("modules tensorflow")
 import typing
+import pandas as pd
 
 import numpy as np
 # from datetime import datetime
@@ -212,7 +213,7 @@ def main(do_not_verify=True, **main_kwargs):
     loss_function_used = "SMAPE"  # Define which lossfunction should be used (i.e. "SMAPE")
     # data_path = "/Volumes/Elements/Outputs/"
     data_path = ""
-    data_sufix = "20220119T154253_Hr3TXx"
+    data_sufix = "20220209T142129_fJnn24"
     path_output_model_path = "/Volumes/Elements/Outputs/"
     # path_output_plots = "/Volumes/Elements/Outputs/plot"
     path_output_plots = "plot"
@@ -271,17 +272,27 @@ def main(do_not_verify=True, **main_kwargs):
     # Set parameters that will generate the grid
     # Here is where all the parameters will go (regarding 'spect_', ...)
     param_grid = dict(
-        epochs=[1],
-        batch_size=[25, 50, 200],
-        magn_neurons_first_layer=[64, 128],
+        epochs=[50, 75, 100],
+        batch_size=[50, 100, 200],
+        magn_neurons_first_layer=[32, 64, 128],
+        magn_number_layers=[2, 3],
+        spectr_number_layers=[4],
+        spectr_neurons_first_layer=[128, 256],
+        spectr_filter_size=[[30, 20, 10, 5], [30, 30, 10, 5], [50, 25, 10, 5], [30, 15, 10, 5], 15],
     )
     print("param_grid", param_grid)
+    number_of_combinations = 1
+    for key, value in param_grid.items():
+        print(f"{key}: {value} - {len(value)}")
+        number_of_combinations *= len(value)
+    print(f"[INFO] Number of possible combinations: {number_of_combinations}")
 
-    estimator = KerasRegressor(build_fn=Cerebro.build_model, verbose=1, **param_grid)
+    estimator = KerasRegressor(model=Cerebro.build_model, verbose=1, **param_grid)
     print("estimator", estimator.get_params().keys())
 
     grid = RandomizedSearchCV(estimator=estimator, param_distributions=param_grid,
-                              cv=cv, random_state=traintestrandomstate, verbose=3)
+                              n_iter=10,
+                              cv=cv, random_state=traintestrandomstate, verbose=1)
     # grid = GridSearchCV(estimator=estimator, param_grid=param_grid, cv=cv, verbose=5)
     # print("grid", grid.get_params().keys())
 
@@ -307,6 +318,34 @@ def main(do_not_verify=True, **main_kwargs):
     params = grid_result.cv_results_['params']
     for mean, stdev, param in zip(means, stds, params):
         print(f'mean={mean:.4}, std={stdev:.4} using {param}')
+
+
+
+
+    accuracy = grid.score(testData, testLabels)
+    pd.set_option('display.max_columns', None)
+    print(f"\n\n\nThe test accuracy score of the best model is "
+          f"{accuracy:.2f}")
+    from pprint import pprint
+
+    print("The best parameters are:")
+    pprint(grid.best_params_)
+    # get the parameter names
+    column_results = [
+        f"param_{name}" for name in param_grid.keys()]
+    column_results += [
+        "mean_test_score", "std_test_score", "rank_test_score"]
+
+    cv_results = pd.DataFrame(grid.cv_results_)
+    cv_results = cv_results[column_results].sort_values(
+        "mean_test_score", ascending=False)
+    print(cv_results)
+
+    cv_results = cv_results.set_index("rank_test_score")
+    print(cv_results["mean_test_score"][1] - cv_results["mean_test_score"][2])
+
+
+
 
     # train_history = model.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
     #                           y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ},
