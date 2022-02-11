@@ -33,7 +33,7 @@ generateSpecFromParams <- function(massParams="default",
                                    absolutePath=FALSE,
                                    bytesForPython=50e6,
                                    singleOutput=TRUE,
-                                   metadataName="MetadataOutput.json",
+                                   metadataprefix="MetaD_",
                                    ...) {
   #####
   # Functions
@@ -63,7 +63,6 @@ generateSpecFromParams <- function(massParams="default",
     }
     return(out)
   }
-  
   
   generateFilename <- function(params, mode=2, rngLength=8, addDate=TRUE, singleOutput=FALSE){
     if (mode == 1){
@@ -550,7 +549,7 @@ generateSpecFromParams <- function(massParams="default",
           # Export file
           # First calculate the filename that is going to be used
           savedParams = c(list(mfunc=func$name), massfunc_args, Zfunc_args, list(rndSample=rnd))
-          filename = generateFilename(savedParams, mode=filenamemode, rngLength=6, addDate = addDate)
+          filename = generateFilename(savedParams, mode=4, rngLength=6, addDate = addDate)
           notesParams = list(mSFR="test1234", yield="Another test note with spaces", theforcebewithyou="keyword that is not inthe other params")
           savedParams = argumentsToHeaders(savedParams, notesParams)
           
@@ -650,7 +649,7 @@ generateSpecFromParams <- function(massParams="default",
   # Store final Matrix into a FITS "image" in 2D
   if (singleOutput){
     filename = generateFilename(NULL, mode=filenamemode, rngLength=6, addDate = addDate, singleOutput=TRUE)
-    
+    print(paste0("filename:-", filename, "-"))
     filterData = spectraObject$out
     UUIDs <-exportObjectsToSingleFITS(inputMatrix = completeDataMatrixIn,
                                       labelMatrix = completeDataMatrixLa,
@@ -683,9 +682,9 @@ generateSpecFromParams <- function(massParams="default",
     # ToDo: See if the initial variables are required to be added. Most likely, \
     #       not all the information is required, but other variables \
     #       (like the name of the library or emission) should be saved.
-    write(jsonData, file.path(folderPath, metadataName))
+    write(jsonData, file.path(folderPath, paste0(metadataprefix, filename, ".json")))
     if (verbose >= 1)
-      cat("Metadata was stored in", metadataName, "...\n")
+      cat("Metadata was stored in", paste0(metadataprefix, filename, ".json"), "...\n")
     
   }
   
@@ -701,5 +700,5 @@ generateSpecFromParams <- function(massParams="default",
     cat(" -------- FINISHED --------\n")
   }
   
-  return(timer_list)
+  return(list(time=timer_list, name=filename))
 }

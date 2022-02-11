@@ -51,7 +51,7 @@ massParams3 = list(
   dtau=list(
     name="dtau",
     func=massfunc_dtau,
-    mpeak=c(8, 9, 10),
+    mpeak=c(8, 9),
     mtau=2
   )
 )
@@ -165,7 +165,7 @@ if (FALSE){
 #            8912500000,10000000000,11220200000,12589300000,14125400000,
 #            15848900000,17782800000)
 randomSamples = 5
-t <- generateSpecFromParams(massParams = massParams2,
+out <- generateSpecFromParams(massParams = massParams3,
                        ZParams = ZParams,
                        folderPath = outputFolder,
                        absolutePath = absolutePath,
@@ -178,7 +178,8 @@ t <- generateSpecFromParams(massParams = massParams2,
                        cleanOutputFolder=FALSE,
                        bytesForPython=10e6,
                        singleOutput=TRUE)
-save(t, file=file.path(outputFolder, "time.rda"))
+t = out$time
+save(t, file=file.path(outputFolder, paste0("time_", out$name, ".rda")))
 # load(file.path(outputFolder, "time.rda"))
 
 plot(t[, 1], t[, 2], type="l")

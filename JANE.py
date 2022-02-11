@@ -8,7 +8,7 @@ import typing
 import pandas as pd
 
 import numpy as np
-# from datetime import datetime
+from datetime import datetime
 from astropy.io import fits
 # import matplotlib.pyplot as plt
 import sys
@@ -49,15 +49,9 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
     verify32bits(labels_path)
 
     print("[INFO] Loading inputs...")
-    with fits.open(input_path) as hdul:
-        input_data = hdul[0].data
-        input_header = hdul[0].header
-
+    input_data, input_header = open_fits_file(input_path)
     print("[INFO] Loading label...")
-    with fits.open(labels_path) as hdul:
-        label_data = hdul[0].data
-        label_header = hdul[0].header
-
+    label_data, label_header = open_fits_file(labels_path)
     print("[INFO] Input Data shape:", input_data.shape)
 
     # Read the arrays from files
@@ -110,6 +104,7 @@ def verify32bits(filepath, verbose=1):
 def getparametersfromid(filename, id_searched, verbose=0):
     """
     Returns the parameters that were used to generate a specific piece of information given an ID and the metadata file.
+    It will verify if the the metadata has the "Combined" parameter, in which case it will seach for the subset id.
     :param verbose:
     :param filename:
     :param id_searched:
@@ -119,12 +114,32 @@ def getparametersfromid(filename, id_searched, verbose=0):
     # ToDo: Maybe verify UUIDs?
     # ToDo: Have an input that calls the R execution to generate the data again?
     # Open Metadata file
-    with open(filename) as f:
-        data = json.load(f)
+    with open(filename) as file_:
+        data = json.load(file_)
 
     if verbose > 1:
         print(json.dumps(data, indent=4, sort_keys=True))
         pass
+
+    # Verify if combined
+    try:
+        combined = data["Combined"]
+    except KeyError:
+        combined = False
+
+    # If combined, look in which subset needs to be searched.
+    # Additionally, look up which is the value that was added (and needs to be subtracted)
+    id_subset = None
+    if combined:
+        for id_subset, last_id_this_subset in enumerate(data["Last_ID"]):
+            if id_searched <= last_id_this_subset:
+                break
+
+        # Reduce id_searched according to the previous last_id, if id_subset > 0
+        if id_subset > 0:
+            id_searched -= data["Last_ID"][id_subset - 1]
+        # Reduce data to subset for the search
+        data = data[str(id_subset)]
 
     # Read parameters that will be used
     random_samples = data["randomSamples"][0]
@@ -195,6 +210,123 @@ def getparametersfromid(filename, id_searched, verbose=0):
         return final_dictionary
 
 
+def combine_datasets(file_list_sufixes, file_folder="", combined_output_sufix="combined", overwrite=True):
+    f"""
+    Combines n datasets into a single combined dataset, where n=len(file_list_sufixes).
+    The files are located in file_folder (relative or absolute path). The outputs will be stored in the same folder.
+    The three files will be called:
+        -Input_[combined_output_sufix].fits
+        -Label_[combined_output_sufix].fits
+        -MetaD_[combined_output_sufix].fits
+    
+    :param file_list_sufixes: 
+    :param file_folder: 
+    :param combined_output_sufix: 
+    :param overwrite: 
+    :return: 
+    """
+    now = datetime.now()
+
+    # Initialize variables
+    metadata_combined = {"Combined": True, "Last_ID": []}
+    last_id = None
+    in_data = None
+    in_header = None
+    lab_data = None
+
+    lab_header = None
+    for idx, file_prefix in enumerate(file_list_sufixes):
+        input_name = file_folder + "Input_" + file_prefix + ".fits"
+        label_name = file_folder + "Label_" + file_prefix + ".fits"
+        metadata_name = file_folder + "MetaD_" + file_prefix + ".json"
+
+        for file in [input_name, label_name, metadata_name]:
+            # Verify file exists
+            if not os.path.isfile(file):
+                raise FileNotFoundError(f"File {file} not found.")
+
+        # Metadata
+        with open(metadata_name) as f:
+            metadata_combined[idx] = json.load(f)
+
+        # Read data and concatenate the information
+        if idx == 0:
+            # This is the first value. It will be used as a base
+            # Input
+            in_data, in_header = open_fits_file(input_name)
+            in_header["filename"] = "Input_" + combined_output_sufix + ".fits"
+
+            # Label
+            lab_data, lab_header = open_fits_file(label_name)
+            lab_header["filename"] = "Label_" + combined_output_sufix + ".fits"
+
+            # UUIDs are no longer valid.
+            for key in ["UUIDINP", "UUIDLAB", "UUIDMET"]:
+                del in_header[key]
+                del lab_header[key]
+
+            # Add new keywords to header
+            new_header_keywords = ["Datecomb",
+                                   f"endrow{idx:02}",
+                                   f"prefix{idx:02}"]
+            new_header_values = [(now.strftime("%Y/%m/%d - %H:%M:%S"), "Date when combined"),
+                                 (in_header["nrows"], f"Last value for the {idx}-th dataset"),
+                                 (file_prefix, f"Prefix for the {idx}-th dataset")]
+            for keyw, value in zip(new_header_keywords, new_header_values):
+                in_header[keyw] = value
+                lab_header[keyw] = value
+
+            # Define last ID value
+            last_id = in_data[0, -1]
+
+        else:
+            # Read new information
+            tmp_in_data, tmp_in_header = open_fits_file(input_name)
+            tmp_lab_data, tmp_lab_header = open_fits_file(label_name)
+
+            # Update data
+            tmp_in_data = tmp_in_data[:, 1:]
+            tmp_lab_data = tmp_lab_data[:, 1:]
+            # Update IDs
+            tmp_in_data[0, :] = tmp_in_data[0, :] + last_id
+            tmp_lab_data[0, :] = tmp_lab_data[0, :] + last_id
+            last_id = tmp_in_data[0, -1]
+
+            # Concatenate data with combined array
+            in_data = np.concatenate([in_data, tmp_in_data], axis=1)
+            lab_data = np.concatenate([lab_data, tmp_lab_data], axis=1)
+
+            # Add new headers and keywords
+            new_header_keywords = [f"endrow{idx:02}",
+                                   f"prefix{idx:02}"]
+            new_header_values = [(last_id, f"Last value for the {idx}-th dataset"),
+                                 (file_prefix, f"Prefix for the {idx}-th dataset")]
+            for keyw, value in zip(new_header_keywords, new_header_values):
+                in_header[keyw] = value
+                lab_header[keyw] = value
+
+        # Add last_id to metadata
+        metadata_combined["Last_ID"].append(int(last_id))
+
+    # Save new files
+    print(f"[INFO] Saving combined Input file to Input_{combined_output_sufix}.fits ...")
+    fits.writeto(file_folder + "Input_" + combined_output_sufix + ".fits", in_data, in_header, overwrite=overwrite)
+    print(f"[INFO] Saving combined Label file to Label_{combined_output_sufix}.fits ...")
+    fits.writeto(file_folder + "Label_" + combined_output_sufix + ".fits", in_data, in_header, overwrite=overwrite)
+    print(f"[INFO] Saving combined metadata file saving to MetaD_{combined_output_sufix}.fits ...")
+    with open(file_folder + "MetaD_" + combined_output_sufix + ".json", 'w') as outfile:
+        outfile.write(json.dumps(metadata_combined, indent=4))
+
+
+def open_fits_file(filename):
+    if not os.path.isfile(filename):
+        raise FileNotFoundError(f"File {filename} not found.")
+    with fits.open(filename) as hdul:
+        data = hdul[0].data
+        header = hdul[0].header
+    return data, header
+
+
 def main(do_not_verify=True, **main_kwargs):
     # ToDo: Generate an argparser.
 
@@ -227,10 +359,10 @@ def main(do_not_verify=True, **main_kwargs):
 
     print(f"""
     Variable sizes:
-        Input_spectra: {input_spectra.shape} - {convert_bytes(input_spectra.nbytes)} - {np.count_nonzero(np.isnan(input_spectra))} Nans
-        Input_magnitudes: {input_magnitudes.shape} - {convert_bytes(input_magnitudes.nbytes)} - {np.count_nonzero(np.isnan(input_magnitudes))} Nans
-        Label_sfh: {label_sfh.shape} - {convert_bytes(label_sfh.nbytes)} - {np.count_nonzero(np.isnan(label_sfh))} Nans
-        Label_z: {label_z.shape} - {convert_bytes(label_z.nbytes)} - {np.count_nonzero(np.isnan(label_z))} Nans
+        Input_spectra: {input_spectra.shape} - {convert_bytes(input_spectra.nbytes)}
+        Input_magnitudes: {input_magnitudes.shape} - {convert_bytes(input_magnitudes.nbytes)}
+        Label_sfh: {label_sfh.shape} - {convert_bytes(label_sfh.nbytes)}
+        Label_z: {label_z.shape} - {convert_bytes(label_z.nbytes)}
         """)
 
     # Split the data into training+validation and testing
@@ -304,7 +436,6 @@ def main(do_not_verify=True, **main_kwargs):
     print("[INFO] Start training...")
     grid_result = grid.fit(trainData, trainLabels)
 
-
     # grid_result = grid.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
     #                        y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ})
 
@@ -318,9 +449,6 @@ def main(do_not_verify=True, **main_kwargs):
     params = grid_result.cv_results_['params']
     for mean, stdev, param in zip(means, stds, params):
         print(f'mean={mean:.4}, std={stdev:.4} using {param}')
-
-
-
 
     accuracy = grid.score(testData, testLabels)
     pd.set_option('display.max_columns', None)
@@ -343,9 +471,6 @@ def main(do_not_verify=True, **main_kwargs):
 
     cv_results = cv_results.set_index("rank_test_score")
     print(cv_results["mean_test_score"][1] - cv_results["mean_test_score"][2])
-
-
-
 
     # train_history = model.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
     #                           y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ},
