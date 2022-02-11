@@ -160,8 +160,9 @@ def standardize_single_dataset(data, method, input_mean_value=None):
         if input_mean_value is None:
             Warning("No input has been given for mean value. will be set to 1 (data will be unchanged).")
             input_mean_value = np.ones((data.shape[0], ))
-        # output: data - 2.5 * log10(input_mean_value)
-        output = data - 2.5 * np.log10(input_mean_value)[:, None]
+        # output: data - 2.5 * log10(input_mean_value) + 20
+        # This "+20" is added systematically to every single value
+        output = data + 2.5 * np.log10(input_mean_value)[:, None] + 20
 
     elif method == 5:
         # ToDo: Not implemented.
