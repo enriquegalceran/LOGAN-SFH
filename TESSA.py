@@ -2,7 +2,10 @@
 # TESts, Scripts and Auxilliary functions [Sage]
 
 import math
+import os
+
 import numpy as np
+from astropy.io import fits
 
 
 def convert_bytes(size_bytes, decimals: int = 2, base_mult: int = 1024):
@@ -174,3 +177,12 @@ def standardize_single_dataset(data, method, input_mean_value=None):
         raise ValueError("method used out of bounds [0-5].")
 
     return output, mean_value
+
+
+def open_fits_file(filename):
+    if not os.path.isfile(filename):
+        raise FileNotFoundError(f"File {filename} not found.")
+    with fits.open(filename) as hdul:
+        data = hdul[0].data
+        header = hdul[0].header
+    return data, header
