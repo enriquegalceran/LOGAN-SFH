@@ -11,6 +11,7 @@ import keras.backend as kerasbackend
 import tensorflow as tf
 from typing import Union, Type
 from tensorflow.keras import initializers
+from TESSA import print_build_model_parameters
 
 
 # ToDo: Generate a proper docstring
@@ -209,7 +210,7 @@ class Cerebro:
                     loss_function_used_metal: str = None, init_lr: float = 1e-3, loss_weights: tuple = (1.0, 0.8),
                     explicit: bool = False, spectra_data_shape: tuple = (3761, 1),
                     magnitudes_data_shape: tuple = (5, 1), single_data_shape: tuple = (3766, 1),
-                    agevector_data_shape=17, **kwargs):
+                    agevector_data_shape=17, verbose: int = 1, **kwargs):
 
         # Define the default arguments for each branch
         spectr_arguments = {"branch_type": "cnn", "number_layers": 3, "neurons_first_layer": 128,
@@ -288,7 +289,8 @@ class Cerebro:
         if loss_function_used == "SMAPE":
             # SMAPE
             # Note: indicate the function, do not call it. (i.e.: 'Cerebro.smape_loss'; NOT 'Crebro.smape_loss()')
-            print("[INFO] Custom SMAPE is being used.")
+            if verbose >= 1:
+                print("[INFO] Custom SMAPE is being used.")
             loss_function_used = Cerebro.smape_loss
 
         if loss_function_used_metal is None:
@@ -312,9 +314,19 @@ class Cerebro:
             raise ValueError(f"'in_layer' is {input_mode}, and should be either 'single' or 'double'.")
 
         # Initialize optimizer and compile the model
-        print("[INFO] Compiling model...")
+        if verbose >= 1:
+            print("[INFO] Compiling model...")
         opt = Adam(learning_rate=init_lr, decay=init_lr / epochs)
         model.compile(optimizer=opt, loss=losses, loss_weights=loss_weights, metrics=["accuracy"])
+
+        if verbose == 2:
+            print("[INFO] Parameters used to build the model:")
+            print_build_model_parameters(spectr_arguments, magn_arguments, sfh_arguments, metal_arguments)
+
+        if verbose >= 3:
+            print("[INFO] Model Summary:")
+            model.summary()
+
 
         return model
 

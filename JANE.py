@@ -6,6 +6,7 @@
 # help("modules tensorflow")
 import typing
 import pandas as pd
+import argparse
 
 import numpy as np
 from datetime import datetime
@@ -17,6 +18,7 @@ import random
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV
 from scikeras.wrappers import KerasRegressor
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 from TESSA import convert_bytes, print_train_test_sizes, standardize_dataset, open_fits_file
 from XAVIER import Cerebro
@@ -208,9 +210,7 @@ def getparametersfromid(filename, id_searched, verbose=0):
 
 
 def read_config_file(filename, file_folder=None, reset_file=False):
-    # Todo: Remove
-    reset_file = True
-
+    # ToDo: Config File
     if type(filename) is not str:
         raise KeyError("filename needs to be a string")
     if file_folder is None:
@@ -228,14 +228,20 @@ def read_config_file(filename, file_folder=None, reset_file=False):
 // Precede comments with two slashes ("//")
 // Comments can be placed behind 
 
-
+//////
 // General parameters
+// epochs = 100
+// batch_size = 200
+verbose = 2
 initial_learning_rate = 1e-3
-train_size = 0.8
+train_size = 0.80
 test_size = 0.20
+cv = 5
 data_path = "/Volumes/Elements/Outputs"
 data_sufix = "20220209T142129_fJnn24"
 output_model_path = "/Volumes/Elements/Outputs/"
+random_seed = 42
+traintestshuffle = True
 
 // Prefixes for each branch of the neural network
 spectra_prefix ="spect_"
@@ -249,12 +255,13 @@ metal_prefix = "metal_"
 // (If a single value is present, each layer will have the same value. If the value is a list, each value will be used
 // with the respective layer.)
 
+//////
 // Spectra branch
 spect_branch_type = "cnn"
-spect_number_layers = 3
-spect_neurons_first_layer = 128
+// spect_number_layers = 3
+// spect_neurons_first_layer = 128
 spect_progression = 0.5
-spect_filter_size = [30, 10, 3]
+// spect_filter_size = [30, 10, 3]
 spect_stride = 1
 spect_act = "relu"
 spect_pool_size = 3
@@ -266,10 +273,11 @@ spect_final_act = "relu"
 spect_final_layer_name = "spectra_intermediate"
 spect_kernel_initializer = "glorot_uniform"
 
+//////
 // Magnitudes branch
 magn_branch_type = "dense"
 magn_number_layers = 2
-magn_neurons_first_layer = 64
+// magn_neurons_first_layer = 64
 magn_progression = 0.5
 magn_act = "relu"
 magn_dropout = 0.25
@@ -280,6 +288,7 @@ magn_final_act = "relu"
 magn_final_layer_name = "magnitude_intermediate"
 magn_kernel_initializer = "glorot_uniform"
 
+//////
 // Star Formation History Branch
 sfh_branch_type = "dense"
 sfh_layers = [512, 256, 256, 128]
@@ -291,6 +300,7 @@ sfh_output_neurons = 17
 sfh_final_act = "relu"
 sfh_final_layer_name = "sfh_output"
 
+//////
 // Metallicity Branch
 metal_branch_type = "dense"
 metal_layers = [512, 256, 256, 128]
@@ -308,14 +318,21 @@ metal_kernel_initializer = "glorot_uniform"
 ////////////////////////////////////////////////////////////////////////////
 
 // Information regarding the construction of the CNN
-// Information that will be passed to the Cross-Validation needs to be placed after "CVParams = True"
+// Information that will be passed to the Cross-Validation needs to be placed AFTER "CVParams = True"
 // (Uncomment next line)
-// CVParams = True
+CVParams = True
 
 // Place the parameters that will be iterated in a list as f
-// spect_neurons_first_layer = 256
+epochs=[50, 75, 100],
+batch_size=[200, 300],
+magn_neurons_first_layer=[32, 64, 128],
+magn_number_layers=[2, 3],
+spect_number_layers=[4],
+spect_neurons_first_layer=[128, 256],
+spect_filter_size=[[30, 20, 10, 5], [30, 30, 10, 5], [50, 25, 10, 5], [30, 15, 10, 5], 15],
 
-        """
+
+"""
         # ToDo: Finish this
         with open(full_filename, 'w+') as f:
             f.writelines(content_in_file)
@@ -346,16 +363,20 @@ metal_kernel_initializer = "glorot_uniform"
         lines = f.readlines()
 
     # Verify sintax and clean list
+    cv_params = False
+    cv_parameters = dict()
     parameters = dict()
     for idx, line in enumerate(lines):
         cleaned_line = clean_line(idx, line)
         if cleaned_line is not None:
-            parameters[cleaned_line[0]] = eval(cleaned_line[1])
+            if cleaned_line[0] == "CVParams" and eval(cleaned_line[1]):
+                cv_params = True
+            if cv_params:
+                cv_parameters[cleaned_line[0]] = eval(cleaned_line[1])
+            else:
+                parameters[cleaned_line[0]] = eval(cleaned_line[1])
 
-
-    return parameters
-
-
+    return parameters, cv_parameters
 
 
 def combine_datasets(file_list_sufixes, file_folder="", combined_output_sufix="combined", overwrite=True):
@@ -468,32 +489,31 @@ def combine_datasets(file_list_sufixes, file_folder="", combined_output_sufix="c
 def main(do_not_verify=True, **main_kwargs):
     # ToDo: Generate an argparser.
 
-    # ToDo: Beautify the parameters
     # Parameters
-    epochs = 50  # Number of epochs
-    init_lr = 1e-3  # Initial learning rate
-    bs = 32  # batches
-    # Train, val and test sizes
+    parameters, cv_parameters = read_config_file("config.txt", reset_file=True)
+    # ToDo: Reset is set to True for the time being
+    # ToDo: Second function that reads and updates with the parameters for the GENERAL PARAMETERS (NOT THE MODEL ONES)
+    #  and if none is give, set to the default (hard-coded) value. Maybe a default config file instead?
     train_size = 0.80
     test_size = 0.20
-    cv = 5
-    random.seed(42)  # Set seed for testing purposes
-    traintestrandomstate = 42  # Random state for train test split (default = None)
-    traintestshuffle = True  # Shuffle data before splitting into train test (default = True)
+    cv = parameters["cv"]
+    random.seed(parameters["random_seed"])  # Set seed for testing purposes
+    traintestrandomstate = parameters["random_seed"]  # Random state for train test split (default = None)
+    traintestshuffle = parameters["traintestshuffle"]  # Shuffle data before splitting into train test (default = True)
     loss_function_used = "SMAPE"  # Define which lossfunction should be used (i.e. "SMAPE")
     # data_path = "/Volumes/Elements/Outputs/"
+    data_path = parameters["data_path"]
     data_path = ""
-    data_sufix = "20220209T142129_fJnn24"
-    output_model_path = "/Volumes/Elements/Outputs/"
+    data_sufix = parameters["data_sufix"]
+    output_model_path = parameters["output_model_path"]
     # path_output_plots = "/Volumes/Elements/Outputs/plot"
-    output_plots_path = "plot"
+    # output_plots_path = "plot"
 
     # Load Data
     print("[INFO] Loading data...")
     input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec = \
         loadfiles(input_path=data_path + "Input_" + data_sufix + ".fits",
                   labels_path=data_path + "Label_" + data_sufix + ".fits")
-    # ToDo: Shuffle inputs and labels (together!!)
 
     print(f"""
     Variable sizes:
@@ -504,7 +524,6 @@ def main(do_not_verify=True, **main_kwargs):
         """)
 
     # Split the data into training+validation and testing
-    # ToDo: this section will be deprecated with the Cross-Validation
     assert train_size + test_size == 1, "The sum of train + test sizes has to add up to '1.0'."
     split_train_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z,
                                         test_size=test_size,
@@ -517,10 +536,10 @@ def main(do_not_verify=True, **main_kwargs):
      trainLabZ, testLabZ) = split_train_test
 
     # Concatenate inputs for single model
-    trainData = np.concatenate([trainSpect, trainMag], axis=1)
-    trainLabels = np.concatenate([trainLabSfh, trainLabZ], axis=1)
-    testData = np.concatenate([testSpect, testMag], axis=1)
-    testLabels = np.concatenate([testLabSfh, testLabZ], axis=1)
+    train_data = np.concatenate([trainSpect, trainMag], axis=1)
+    train_labels = np.concatenate([trainLabSfh, trainLabZ], axis=1)
+    test_data = np.concatenate([testSpect, testMag], axis=1)
+    test_labels = np.concatenate([testLabSfh, testLabZ], axis=1)
 
     # Verify the size of the
     print_train_test_sizes(split_train_test, main_title="Sizes of diferent sets (Train, Test)")
@@ -541,15 +560,16 @@ def main(do_not_verify=True, **main_kwargs):
 
     # Set parameters that will generate the grid
     # Here is where all the parameters will go (regarding 'spect_', ...)
-    param_grid = dict(
-        epochs=[50, 75, 100],
-        batch_size=[50, 100, 200],
-        magn_neurons_first_layer=[32, 64, 128],
-        magn_number_layers=[2, 3],
-        spect_number_layers=[4],
-        spect_neurons_first_layer=[128, 256],
-        spect_filter_size=[[30, 20, 10, 5], [30, 30, 10, 5], [50, 25, 10, 5], [30, 15, 10, 5], 15],
-    )
+    # param_grid = dict(
+    #     epochs=[3, 4],
+    #     batch_size=[200, 300],
+    #     magn_neurons_first_layer=[32, 64],
+    #     magn_number_layers=[2, 3],
+    #     spect_number_layers=[4],
+    #     spect_neurons_first_layer=[128, 256],
+    #     spect_filter_size=[[30, 20, 10, 5], [30, 30, 10, 5], [50, 25, 10, 5], [30, 15, 10, 5], 15],
+    # )
+    param_grid = cv_parameters
     print("param_grid", param_grid)
     number_of_combinations = 1
     for key, value in param_grid.items():
@@ -557,12 +577,12 @@ def main(do_not_verify=True, **main_kwargs):
         number_of_combinations *= len(value)
     print(f"[INFO] Number of possible combinations: {number_of_combinations}")
 
-    estimator = KerasRegressor(model=Cerebro.build_model, verbose=1, **param_grid)
+    estimator = KerasRegressor(model=Cerebro.build_model, verbose=2, **parameters, **param_grid)
     print("estimator", estimator.get_params().keys())
 
     grid = RandomizedSearchCV(estimator=estimator, param_distributions=param_grid,
-                              n_iter=10,
-                              cv=cv, random_state=traintestrandomstate, verbose=1)
+                              n_iter=2,
+                              cv=cv, random_state=traintestrandomstate, verbose=2)
     # grid = GridSearchCV(estimator=estimator, param_grid=param_grid, cv=cv, verbose=5)
     # print("grid", grid.get_params().keys())
 
@@ -572,7 +592,21 @@ def main(do_not_verify=True, **main_kwargs):
         if continue_with_training.lower() in ["n", "no", "stop"]:
             raise KeyboardInterrupt('User stopped the execution.')
     print("[INFO] Start training...")
-    grid_result = grid.fit(trainData, trainLabels)
+    checkpointer = ModelCheckpoint('keras_convnet_model.h5', verbose=2)
+    early_stopper = EarlyStopping(monitor='loss', patience=2, verbose=2)
+    grid_result = grid.fit(train_data, train_labels, callbacks=[early_stopper])
+
+
+
+
+
+
+
+
+
+
+
+
 
     # grid_result = grid.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
     #                        y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ})
@@ -588,7 +622,7 @@ def main(do_not_verify=True, **main_kwargs):
     for mean, stdev, param in zip(means, stds, params):
         print(f'mean={mean:.4}, std={stdev:.4} using {param}')
 
-    accuracy = grid.score(testData, testLabels)
+    accuracy = grid.score(test_data, test_labels)
     pd.set_option('display.max_columns', None)
     print(f"\n\n\nThe test accuracy score of the best model is "
           f"{accuracy:.2f}")
@@ -669,5 +703,5 @@ def main(do_not_verify=True, **main_kwargs):
 
 
 if __name__ == "__main__":
-    read_config_file("config.txt")
-    # main()
+    # read_config_file("config.txt")
+    main()

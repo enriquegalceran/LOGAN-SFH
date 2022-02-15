@@ -52,6 +52,37 @@ def print_train_test_sizes(split1, main_title=""):
     print_table(data, main_title)
 
 
+def print_build_model_parameters(spectr_arguments, magn_arguments, sfh_arguments, metal_arguments, main_title=""):
+    """
+    Print Parameters for every branch's parameters
+    :param spectr_arguments:
+    :param magn_arguments:
+    :param sfh_arguments:
+    :param metal_arguments:
+    :param main_title:
+    :return:
+    """
+
+    all_keywords = [*spectr_arguments.keys(), *magn_arguments.keys(),
+                    *sfh_arguments.keys(), *metal_arguments.keys()]
+    # Remove all repeated keywords
+    all_keywords = list(set(all_keywords))
+    data = [
+        [' ', 'spectr', 'magn', 'sfh', 'metal']
+    ]
+
+    for keyword in all_keywords:
+        tmp = [keyword]
+        for branch in [spectr_arguments, magn_arguments, sfh_arguments, metal_arguments]:
+            if keyword in branch.keys():
+                tmp.append([branch[keyword]])
+            else:
+                tmp.append(["N/A"])
+        data.append(tmp)
+
+    print_table(data, main_title)
+
+
 def print_table(tabl_data, main_title='', col_separation='| ', min_length=0):
     """
     Given a table (list of lists), prints a table
