@@ -11,7 +11,7 @@ import keras.backend as kerasbackend
 import tensorflow as tf
 from typing import Union, Type
 from tensorflow.keras import initializers
-from TESSA import print_build_model_parameters
+from RAVEN import print_build_model_parameters
 
 
 # ToDo: Generate a proper docstring

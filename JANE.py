@@ -20,7 +20,7 @@ from sklearn.model_selection import RandomizedSearchCV
 from scikeras.wrappers import KerasRegressor
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 
-from TESSA import convert_bytes, print_train_test_sizes, standardize_dataset, open_fits_file
+from RAVEN import convert_bytes, print_train_test_sizes, standardize_dataset, open_fits_file
 from XAVIER import Cerebro
 
 print("[INFO] Finished Importing")

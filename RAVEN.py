@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# TESts, Scripts and Auxilliary functions [Sage]
+# Repository of Auxiliary scripts and Various spEcialized functioNs [Mystique]
 
 import math
 import os
