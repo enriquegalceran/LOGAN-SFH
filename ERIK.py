@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 # filE ReadIng and Kleaning [Magneto]
+
 import json
 import os
 import typing
+from shutil import copyfile
 from datetime import datetime
 import numpy as np
 from astropy.io import fits
@@ -82,6 +84,26 @@ def verify32bits(filepath, verbose=1):
             hdul.flush()
             if verbose == 2:
                 print(f"Correctly reduced {os.path.basename(filepath)} to -32.")
+
+
+def clean_line(idx_line, line_str):
+    line_str = line_str.strip()
+    if line_str[:2] == "//" or len(line_str) == 0:
+        return None
+
+    if line_str.count("=") != 1:
+        print(f"[ERROR WHILE READING CONFIG FILE] line {idx_line} does not have a '"
+              f"'valid number of '='. Line skipped.")
+        return None
+
+    # Check if there is a comment behind a parameter
+    if "//" in line_str:
+        line_str = line_str.split("//")[0]
+
+    split_line = line_str.split("=")
+    split_line = [x.strip() for x in split_line]    # Clean spaces
+
+    return tuple(split_line)
 
 
 def getparametersfromid(filename, id_searched, verbose=0):
@@ -194,7 +216,7 @@ def getparametersfromid(filename, id_searched, verbose=0):
 
 
 def read_config_file(filename, file_folder=None, reset_file=False):
-    # ToDo: Config File
+    # ToDo: Docstring
     if type(filename) is not str:
         raise KeyError("filename needs to be a string")
     if file_folder is None:
@@ -206,144 +228,9 @@ def read_config_file(filename, file_folder=None, reset_file=False):
     # Check if file is there. If it isn't, generate a blank file with information templat
     if not os.path.isfile(full_filename) or reset_file:
         print(f"[INFO] There is no config file. A template will be created at {os.path.join(file_folder, filename)} .")
-        content_in_file = """
-// Config File For JANE.py
-// Instructions:
-// Precede comments with two slashes ("//")
-// Comments can be placed behind 
-
-//////
-// General parameters
-// epochs = 100
-// batch_size = 200
-verbose = 2
-initial_learning_rate = 1e-3
-train_size = 0.80
-test_size = 0.20
-cv = 5
-data_path = "/Volumes/Elements/Outputs"
-data_sufix = "20220209T142129_fJnn24"
-output_model_path = "/Volumes/Elements/Outputs/"
-random_seed = 42
-traintestshuffle = True
-loss_function_used = "SMAPE"
-
-// Prefixes for each branch of the neural network
-spectra_prefix ="spect_"
-magnitude_prefix = "magn_"
-sfh_prefix = "sfh_"
-metal_prefix = "metal_"
-
-
-// Default parameters of the network.
-// These can be changed, following the method of Cerebro.build_iterative_branch.
-// (If a single value is present, each layer will have the same value. If the value is a list, each value will be used
-// with the respective layer.)
-
-//////
-// Spectra branch
-spect_branch_type = "cnn"
-// spect_number_layers = 3
-// spect_neurons_first_layer = 128
-spect_progression = 0.5
-// spect_filter_size = [30, 10, 3]
-spect_stride = 1
-spect_act = "relu"
-spect_pool_size = 3
-spect_dropout = 0.15
-spect_explicit = False
-spect_output = 1
-spect_output_neurons = 128
-spect_final_act = "relu"
-spect_final_layer_name = "spectra_intermediate"
-spect_kernel_initializer = "glorot_uniform"
-
-//////
-// Magnitudes branch
-magn_branch_type = "dense"
-magn_number_layers = 2
-// magn_neurons_first_layer = 64
-magn_progression = 0.5
-magn_act = "relu"
-magn_dropout = 0.25
-magn_explicit = False,
-magn_output = 1
-magn_output_neurons = 32
-magn_final_act = "relu"
-magn_final_layer_name = "magnitude_intermediate"
-magn_kernel_initializer = "glorot_uniform"
-
-//////
-// Star Formation History Branch
-sfh_branch_type = "dense"
-sfh_layers = [512, 256, 256, 128]
-sfh_act = "relu"
-sfh_dropout = 0.15
-sfh_explicit = False
-sfh_output = 2
-sfh_output_neurons = 17
-sfh_final_act = "relu"
-sfh_final_layer_name = "sfh_output"
-
-//////
-// Metallicity Branch
-metal_branch_type = "dense"
-metal_layers = [512, 256, 256, 128]
-metal_act = "relu"
-metal_dropout = 0.15
-metal_explicit = False
-metal_output = 2
-metal_output_neurons = 17
-metal_final_act = "relu",
-metal_final_layer_name = "metallicity_output"
-metal_kernel_initializer = "glorot_uniform"
-
-////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
-
-// Information regarding the construction of the CNN
-// Information that will be passed to the Cross-Validation needs to be placed AFTER "CVParams = True"
-// (Uncomment next line)
-CVParams = True
-
-// Place the parameters that will be iterated in a list as f
-epochs=[50, 75, 100],
-batch_size=[200, 300],
-magn_neurons_first_layer=[32, 64, 128],
-magn_number_layers=[2, 3],
-spect_number_layers=[4],
-spect_neurons_first_layer=[128, 256],
-spect_filter_size=[[30, 20, 10, 5], [30, 30, 10, 5], [50, 25, 10, 5], [30, 15, 10, 5], 15],
-
-
-"""
-        # ToDo: Finish this
-        with open(full_filename, 'w+') as f:
-            f.writelines(content_in_file)
+        copyfile("Data/default_config_file.txt", os.path.join(file_folder, filename))
 
     # Open file and read the configuration parameters.
-
-    def clean_line(idx_line, line_str):
-        line_str = line_str.strip()
-        if line_str[:2] == "//" or len(line_str) == 0:
-            return None
-
-        if line_str.count("=") != 1:
-            print(f"[ERROR WHILE READING CONFIG FILE] line {idx_line} does not have a '"
-                  f"'valid number of '='. Line skipped.")
-            return None
-
-        # Check if there is a comment behind a parameter
-        if "//" in line_str:
-            line_str = line_str.split("//")[0]
-
-        split_line = line_str.split("=")
-        split_line = [x.strip() for x in split_line]    # Clean spaces
-
-        return tuple(split_line)
-
-
     with open(full_filename, 'r') as f:
         lines = f.readlines()
 
