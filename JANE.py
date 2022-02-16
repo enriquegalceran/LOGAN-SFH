@@ -126,9 +126,7 @@ def main(do_not_verify=True, **main_kwargs):
         if continue_with_training.lower() in ["n", "no", "stop"]:
             raise KeyboardInterrupt('User stopped the execution.')
     print("[INFO] Start training...")
-    checkpointer = ModelCheckpoint('keras_convnet_model.h5', verbose=2)
-    early_stopper = EarlyStopping(monitor='loss', patience=2, verbose=2)
-    grid_result = grid.fit(train_data, train_labels, callbacks=[early_stopper])
+    grid_result = grid.fit(train_data, train_labels)
 
 
 
