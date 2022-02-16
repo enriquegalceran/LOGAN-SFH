@@ -327,7 +327,6 @@ class Cerebro:
             print("[INFO] Model Summary:")
             model.summary()
 
-
         return model
 
     @staticmethod

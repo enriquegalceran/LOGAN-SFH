@@ -2,10 +2,7 @@
 # Repository of Auxiliary scripts and Various spEcialized functioNs [Mystique]
 
 import math
-import os
-
 import numpy as np
-from astropy.io import fits
 
 
 def convert_bytes(size_bytes, decimals: int = 2, base_mult: int = 1024):
@@ -114,22 +111,6 @@ def print_table(tabl_data, main_title='', col_separation='| ', min_length=0):
             print(string_for_row.format(char_in_column, *row))
 
 
-def standardize_dataset(input_spectra, input_magnitudes,
-                        label_sfh, label_z,
-                        method_standardize_spectra=2,
-                        method_standardize_magnitudes=4,
-                        method_standardize_label=3):
-    # Inputs
-    input_spectra_out, mean_spectra = standardize_single_dataset(input_spectra, method_standardize_spectra)
-    input_magnitudes_out, _ = standardize_single_dataset(input_magnitudes, method_standardize_magnitudes, mean_spectra)
-
-    # Labels
-    label_sfh_out, _ = standardize_single_dataset(label_sfh, method_standardize_label)
-    label_z_out, _ = standardize_single_dataset(label_z, method_standardize_label)
-
-    return input_spectra_out, input_magnitudes_out, label_sfh_out, label_z_out
-
-
 def standardize_single_dataset(data, method, input_mean_value=None):
     """
     Standardize the data depending on the method employed.
@@ -208,12 +189,3 @@ def standardize_single_dataset(data, method, input_mean_value=None):
         raise ValueError("method used out of bounds [0-5].")
 
     return output, mean_value
-
-
-def open_fits_file(filename):
-    if not os.path.isfile(filename):
-        raise FileNotFoundError(f"File {filename} not found.")
-    with fits.open(filename) as hdul:
-        data = hdul[0].data
-        header = hdul[0].header
-    return data, header
