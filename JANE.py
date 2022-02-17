@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
-# Just A Network Executor
+# Just A Network Executor [Phoenix]
 
 
 # help("modules")
 # help("modules tensorflow")
 import pandas as pd
 import numpy as np
+import argparse
 # import matplotlib.pyplot as plt
 import random
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV
 from scikeras.wrappers import KerasRegressor
-from keras.callbacks import EarlyStopping, ModelCheckpoint
+# from keras.callbacks import EarlyStopping, ModelCheckpoint
 
-from ERIK import loadfiles, read_config_file
+from ERIK import loadfiles, parse_argparse_config_file_default
 from RAVEN import convert_bytes, print_train_test_sizes
 from XAVIER import Cerebro
 
@@ -21,25 +22,56 @@ print("[INFO] Finished Importing")
 
 
 def main(do_not_verify=True, **main_kwargs):
-    # ToDo: Generate an argparser.
+
+    # Argument Parser (argparse)
+    parser = argparse.ArgumentParser(description="Generate and train a Neural Network")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-v", "--verbose", action="store_true",
+                       help="Increase Verbosity.")
+    group.add_argument("-q", "--quiet", action="store_true",
+                       help="Decrease Verbosity.")
+    parser.add_argument("--no-confirm", action="store_false",
+                        help="Use to skip confirmation before training.")
+    parser.add_argument("-cf", "--config-file", default=None, type=str,
+                        help="Path to config file")
+    parser.add_argument("-rcf", "--reset-config-file", action="store_true",
+                        help="Resets config file back to the default value.")
+    parser.add_argument("-dp", "--data-path", default=None, type=str,
+                        help="Path to Data.")
+    parser.add_argument("-ds", "--data-sufix", default=None, type=str,
+                        help="Data sufix.")
+    parser.add_argument("-cv", default=None, type=int,
+                        help="Number of folds for cross-validation")
+    parser.add_argument("--train-size", default=None, type=float,
+                        help="Train size. Needs to be in the interval (0,1)")
+    parser.add_argument("-e", "--epochs", default=None, type=int,
+                        help="Set number of epochs.")
+    parser.add_argument("--test-size", default=None, type=float,
+                        help="Test size. Needs to be in the interval (0,1)")
+    args = parser.parse_args()
+    if args.reset_config_file and args.config_file is None:
+        parser.error("--reset_config_file requires --config_file.")
+
+    # ToDo: Remove next line
+    if "config_file_path" in main_kwargs.keys():
+        args.config_file = main_kwargs["config_file_path"]
+    if "no_confirm" in main_kwargs.keys():
+        args.no_confirm = main_kwargs["no_confirm"]
 
     # Parameters
-    parameters, cv_parameters = read_config_file("config.txt", reset_file=True)
-    # ToDo: Reset is set to True for the time being
-    # ToDo: Second function that reads and updates with the parameters for the GENERAL PARAMETERS (NOT THE MODEL ONES)
-    #  and if none is give, set to the default (hard-coded) value. Maybe a default config file instead?
-    train_size = 0.80
-    test_size = 0.20
+    parameters, cv_parameters = parse_argparse_config_file_default(args)
+    train_size = parameters["train_size"]
+    test_size = parameters["test_size"]
     cv = parameters["cv"]
     random.seed(parameters["random_seed"])  # Set seed for testing purposes
     traintestrandomstate = parameters["random_seed"]  # Random state for train test split (default = None)
     traintestshuffle = parameters["traintestshuffle"]  # Shuffle data before splitting into train test (default = True)
-    loss_function_used = "SMAPE"  # Define which lossfunction should be used (i.e. "SMAPE")
+    # loss_function_used = parameters["loss_function_used"]  # Define which lossfunction should be used (i.e. "SMAPE")
     # data_path = "/Volumes/Elements/Outputs/"
-    data_path = parameters["data_path"]
+    # data_path = parameters["data_path"]
     data_path = ""
     data_sufix = parameters["data_sufix"]
-    output_model_path = parameters["output_model_path"]
+    # output_model_path = parameters["output_model_path"]
     # path_output_plots = "/Volumes/Elements/Outputs/plot"
     # output_plots_path = "plot"
 
@@ -58,6 +90,8 @@ def main(do_not_verify=True, **main_kwargs):
         """)
 
     # Split the data into training+validation and testing
+    assert 0 < train_size < 1, "train_size needs to be in the interval (0,1)."
+    assert 0 < test_size < 1, "test_size needs to be in the interval (0,1)."
     assert train_size + test_size == 1, "The sum of train + test sizes has to add up to '1.0'."
     split_train_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z,
                                         test_size=test_size,
@@ -82,7 +116,7 @@ def main(do_not_verify=True, **main_kwargs):
 
     ############################################################################
     # Build model
-    custom_kwargs_model = {"spect_neurons_first_layer": 256}
+    # custom_kwargs_model = {"spect_neurons_first_layer": 256}
     # model = Cerebro.build_model(epochs=epochs, loss_function_used=loss_function_used, init_lr=init_lr,
     #                             **custom_kwargs_model, **main_kwargs)
     # model.summary()
@@ -111,7 +145,7 @@ def main(do_not_verify=True, **main_kwargs):
         number_of_combinations *= len(value)
     print(f"[INFO] Number of possible combinations: {number_of_combinations}")
 
-    estimator = KerasRegressor(model=Cerebro.build_model, verbose=2, **parameters, **param_grid)
+    estimator = KerasRegressor(model=Cerebro.build_model, **parameters, **param_grid)
     print("estimator", estimator.get_params().keys())
 
     grid = RandomizedSearchCV(estimator=estimator, param_distributions=param_grid,
@@ -121,7 +155,7 @@ def main(do_not_verify=True, **main_kwargs):
     # print("grid", grid.get_params().keys())
 
     # Train model
-    if not do_not_verify:
+    if not parameters["no_confirm"]:
         continue_with_training = input("Continue training? [Y]/N ")
         if continue_with_training.lower() in ["n", "no", "stop"]:
             raise KeyboardInterrupt('User stopped the execution.')
@@ -235,5 +269,4 @@ def main(do_not_verify=True, **main_kwargs):
 
 
 if __name__ == "__main__":
-    # read_config_file("config.txt")
-    main()
+    main(config_file_path="config.txt")

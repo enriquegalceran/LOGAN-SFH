@@ -41,7 +41,6 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
 
     # Read the arrays from files
     input_lenght_spectra = input_header["nspectra"]
-    input_length_filters = input_header["nfilters"]
     label_agevec = label_header["nagevec"]
     spectra_lambda = input_data[1:input_lenght_spectra + 1, 0]
     agevec = label_data[1:label_agevec + 1, 0]
@@ -215,7 +214,7 @@ def getparametersfromid(filename, id_searched, verbose=0):
         return final_dictionary
 
 
-def read_config_file(filename, file_folder=None, reset_file=False):
+def read_config_file(filename, file_folder=None, reset_file=False, default_config_file="Data/default_config_file.txt"):
     # ToDo: Docstring
     if type(filename) is not str:
         raise KeyError("filename needs to be a string")
@@ -228,7 +227,8 @@ def read_config_file(filename, file_folder=None, reset_file=False):
     # Check if file is there. If it isn't, generate a blank file with information templat
     if not os.path.isfile(full_filename) or reset_file:
         print(f"[INFO] There is no config file. A template will be created at {os.path.join(file_folder, filename)} .")
-        copyfile("Data/default_config_file.txt", os.path.join(file_folder, filename))
+        copyfile(default_config_file, os.path.join(file_folder, filename))
+        # ToDo: This path should be linked to the env_variable that reads where the data for the library is stored
 
     # Open file and read the configuration parameters.
     with open(full_filename, 'r') as f:
@@ -381,3 +381,50 @@ def open_fits_file(filename):
         data = hdul[0].data
         header = hdul[0].header
     return data, header
+
+
+def parse_argparse_config_file_default(args, default_config_file_path="Data/default_config_file.txt"):
+    """
+    Reads argparse and config_file. Keep based on priority: argparse > config_file > default.
+    :param args:
+    :param default_config_file_path:
+    :return:
+    """
+    # Initialize
+    def_parameters = None
+    extra_data_from_default_config_file = False
+
+    # Set argparse verbosity
+    if args.verbose:
+        args.verbose = 2
+    elif args.quiet:
+        args.verbose = 0
+    else:
+        args.verbose = 1
+    del args.quiet
+
+    # Read config_file if given. If it was not given, read the default parameters
+    if args.config_file is not None:
+        parameters, cv_parameters = read_config_file(args.config_file, reset_file=args.reset_config_file)
+        def_parameters, _ = read_config_file(default_config_file_path, reset_file=False)
+    else:
+        parameters, cv_parameters = read_config_file(default_config_file_path, reset_file=False)
+
+    # If a parameter was given through argparse, place it in the parameters list
+    for keyword in list(vars(args).keys()):
+        if vars(args)[keyword] is not None:
+            parameters[keyword] = vars(args)[keyword]
+
+    # If there is a file that was not given in parameter config, it will be read from the default config file.
+    if args.config_file is not None:
+        for keyword in def_parameters.keys():
+            if keyword not in parameters.keys():
+                parameters[keyword] = def_parameters[keyword]
+                if not extra_data_from_default_config_file:
+                    if parameters["verbose"] > 0:
+                        print("[INFO] Missing parameters set to default. For more information, increase verbosity.")
+                    extra_data_from_default_config_file = True
+                if parameters["verbose"] > 1:
+                    print(f"[INFO Parameters] Missing parameter {keyword} set to default value: {parameters[keyword]}")
+
+    return parameters, cv_parameters
