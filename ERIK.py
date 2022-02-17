@@ -243,10 +243,20 @@ def read_config_file(filename, file_folder=None, reset_file=False, default_confi
         if cleaned_line is not None:
             if cleaned_line[0] == "CVParams" and eval(cleaned_line[1]):
                 cv_params = True
+                continue
             if cv_params:
-                cv_parameters[cleaned_line[0]] = eval(cleaned_line[1])
+                tmp = eval(cleaned_line[1])
+                if type(tmp) == tuple:
+                    cv_parameters[cleaned_line[0]] = tmp[0]
+                else:
+                    cv_parameters[cleaned_line[0]] = tmp
+
             else:
-                parameters[cleaned_line[0]] = eval(cleaned_line[1])
+                tmp = eval(cleaned_line[1])
+                if type(tmp) == tuple:
+                    parameters[cleaned_line[0]] = tmp[0]
+                else:
+                    parameters[cleaned_line[0]] = tmp
 
     return parameters, cv_parameters
 
@@ -418,7 +428,7 @@ def parse_argparse_config_file_default(args, default_config_file_path="Data/defa
     # If there is a file that was not given in parameter config, it will be read from the default config file.
     if args.config_file is not None:
         for keyword in def_parameters.keys():
-            if keyword not in parameters.keys():
+            if (keyword not in parameters.keys()) and (keyword not in cv_parameters.keys()):
                 parameters[keyword] = def_parameters[keyword]
                 if not extra_data_from_default_config_file:
                     if parameters["verbose"] > 0:

@@ -30,7 +30,7 @@ def main(do_not_verify=True, **main_kwargs):
                        help="Increase Verbosity.")
     group.add_argument("-q", "--quiet", action="store_true",
                        help="Decrease Verbosity.")
-    parser.add_argument("--no-confirm", action="store_false",
+    parser.add_argument("--no-confirm", action="store_true",
                         help="Use to skip confirmation before training.")
     parser.add_argument("-cf", "--config-file", default=None, type=str,
                         help="Path to config file")
@@ -138,7 +138,7 @@ def main(do_not_verify=True, **main_kwargs):
     #     spect_filter_size=[[30, 20, 10, 5], [30, 30, 10, 5], [50, 25, 10, 5], [30, 15, 10, 5], 15],
     # )
     param_grid = cv_parameters
-    print("param_grid", param_grid)
+    print("param_grid", param_grid, "\n")
     number_of_combinations = 1
     for key, value in param_grid.items():
         print(f"{key}: {value} - {len(value)}")
@@ -146,6 +146,8 @@ def main(do_not_verify=True, **main_kwargs):
     print(f"[INFO] Number of possible combinations: {number_of_combinations}")
 
     estimator = KerasRegressor(model=Cerebro.build_model, **parameters, **param_grid)
+    # ToDo: Remove these lines
+    print("\n[INFO] THIS IS EVERYTHING THAT IS GOING TO GO INSIDE, THE PREVIOUS LINES ARE THE CORRECT ONES")
     print("estimator", estimator.get_params().keys())
 
     grid = RandomizedSearchCV(estimator=estimator, param_distributions=param_grid,
