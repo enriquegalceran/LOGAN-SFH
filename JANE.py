@@ -12,6 +12,12 @@ import random
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV
 from scikeras.wrappers import KerasRegressor
+import joblib
+import keras
+import json
+import os
+import time
+from pprint import pprint
 # from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 from ERIK import loadfiles, parse_argparse_config_file_default
@@ -21,7 +27,7 @@ from XAVIER import Cerebro
 print("[INFO] Finished Importing")
 
 
-def main(do_not_verify=True, **main_kwargs):
+def main(**main_kwargs):
 
     # Argument Parser (argparse)
     parser = argparse.ArgumentParser(description="Generate and train a Neural Network")
@@ -68,8 +74,10 @@ def main(do_not_verify=True, **main_kwargs):
     traintestshuffle = parameters["traintestshuffle"]  # Shuffle data before splitting into train test (default = True)
     # loss_function_used = parameters["loss_function_used"]  # Define which lossfunction should be used (i.e. "SMAPE")
     # data_path = "/Volumes/Elements/Outputs/"
+    # ToDo: Fix this in the final version (i.e. no more debug)
     # data_path = parameters["data_path"]
     data_path = ""
+    parameters["output_model_path"] = ""
     data_sufix = parameters["data_sufix"]
     # output_model_path = parameters["output_model_path"]
     # path_output_plots = "/Volumes/Elements/Outputs/plot"
@@ -151,7 +159,7 @@ def main(do_not_verify=True, **main_kwargs):
     print("estimator", estimator.get_params().keys())
 
     grid = RandomizedSearchCV(estimator=estimator, param_distributions=param_grid,
-                              n_iter=2,
+                              n_iter=parameters["n_iter"],
                               cv=cv, random_state=traintestrandomstate, verbose=2)
     # grid = GridSearchCV(estimator=estimator, param_grid=param_grid, cv=cv, verbose=5)
     # print("grid", grid.get_params().keys())
@@ -163,21 +171,6 @@ def main(do_not_verify=True, **main_kwargs):
             raise KeyboardInterrupt('User stopped the execution.')
     print("[INFO] Start training...")
     grid_result = grid.fit(train_data, train_labels)
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # grid_result = grid.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
-    #                        y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ})
 
     # print results
     print("\n\n\n")
@@ -194,7 +187,6 @@ def main(do_not_verify=True, **main_kwargs):
     pd.set_option('display.max_columns', None)
     print(f"\n\n\nThe test accuracy score of the best model is "
           f"{accuracy:.2f}")
-    from pprint import pprint
 
     print("The best parameters are:")
     pprint(grid.best_params_)
@@ -210,7 +202,43 @@ def main(do_not_verify=True, **main_kwargs):
     print(cv_results)
 
     cv_results = cv_results.set_index("rank_test_score")
-    print(cv_results["mean_test_score"][1] - cv_results["mean_test_score"][2])
+    try:
+        print(cv_results["mean_test_score"][1] - cv_results["mean_test_score"][2])
+    except Exception as ex:
+        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+        message = template.format(type(ex).__name__, ex.args)
+        print(message)
+        print("[ERROR] If the error is of type KeyError, the issue was that there are too few cases cv cases!")
+
+    # Saving Model
+    print(f"[INFO] Saving fitted object to folder '{parameters['output_model_path']}'")
+    print("[INFO] Saving grid_result to", parameters["output_name_grid_result"], "...")
+    joblib.dump(grid_result, os.path.join(parameters["output_model_path"],
+                                          parameters["output_name_grid_result"]))
+
+    print("[INFO] Saving best estimator to", parameters["output_name_best_estimator"], "...")
+    joblib.dump(grid_result.best_estimator_, os.path.join(parameters["output_model_path"],
+                                                          parameters["output_name_best_estimator"]), compress=1)
+
+    print("[INFO] Saving best model to", parameters["output_name_model"], "...")
+    grid.best_estimator_.model_.save(os.path.join(parameters["output_model_path"],
+                                                  parameters["output_name_model"]))
+
+    print("[INFO] Saving parameters to", parameters["output_name_parameters"], "...")
+    output_params = {"parameters": parameters, "param_grid": param_grid, "best_params": grid_result.best_params_}
+    json.dump(output_params, open(os.path.join(parameters["output_model_path"],
+                                               parameters["output_name_parameters"]), "w+"))
+
+    # Load Model for testing
+    # IMPORTANT: when loading, the custom loss function needs to be given!
+    model_loaded = keras.models.load_model(os.path.join(parameters["output_model_path"],
+                                                        parameters["output_name_model"]),
+                                           custom_objects={"smape_loss": Cerebro.smape_loss})
+    parameters_loaded = json.load(open(os.path.join(parameters["output_model_path"],
+                                                    parameters["output_name_parameters"]), "r"))
+    print("Evaluate on test data")
+    results = model_loaded.evaluate(test_data, test_labels, batch_size=parameters_loaded["best_params"]["batch_size"])
+    print("test loss, test acc:", results)
 
     # train_history = model.fit(x={"spectra_input": trainSpect, "magnitude_input": trainMag},
     #                           y={"sfh_output": trainLabSfh, "metallicity_output": trainLabZ},

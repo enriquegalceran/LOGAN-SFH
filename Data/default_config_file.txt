@@ -13,13 +13,21 @@ initial_learning_rate = 1e-3
 train_size = 0.80
 test_size = 0.20
 cv = 3
-data_path = "/Volumes/Elements/Outputs"
-data_sufix = "20220209T142129_fJnn24"
-output_model_path = "/Volumes/Elements/Outputs/"
 random_seed = 42
 traintestshuffle = True
 loss_function_used = "SMAPE"
 no_confirm = False
+n_iter = 10
+
+// File paths and names
+data_path = "/Volumes/Elements/Outputs"             // Currently deactivated in the code while testing
+data_sufix = "20220209T142129_fJnn24"
+output_model_path = "/Volumes/Elements/Outputs/"    // Currently deactivated in the code while testing
+output_name_grid = "model_file_grid.pkl"
+output_name_grid_result = "model_file_grid_result.pkl"
+output_name_best_estimator = "model_file_best.pkl"
+output_name_model = "model_best_estimator_model.h5"
+output_name_parameters = "model_parameters.json"
 
 // Prefixes for each branch of the neural network
 spectra_prefix ="spect_"
