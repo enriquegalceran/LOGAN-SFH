@@ -1,5 +1,8 @@
 # Setup LOGAN
 
+# Windows:
+setwd("~/GitHub/LOGAN-SFH")
+
 # CONFIG
 remove.small.files = FALSE
 
@@ -33,4 +36,11 @@ if (remove.small.files){
 } else {
   warning("Small files for EMILES were not removed, but will not be used. It is adviced to remove them.")
 }
+
+cat("It is advised to set these files to unchanged, or cloning/commiting will mess this up...\n")
+cat("1) Go to .../LOGAN-SFH\n")
+cat("2) git update-index --assume-unchanged $(git ls-files | tr '\n' ' ')\n")
+cat("3) cd EMILESDATA/\n")
+cat("4) git update-index --assume-unchanged $(git ls-files | tr '\n' ' ')\n")
+cat("5) Delete small files.")
 
