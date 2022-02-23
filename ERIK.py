@@ -261,7 +261,7 @@ def read_config_file(filename, file_folder=None, reset_file=False, default_confi
     return parameters, cv_parameters
 
 
-def combine_datasets(file_list_sufixes, file_folder="", combined_output_sufix="combined", overwrite=True):
+def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_sufix: str = "combined", overwrite=True):
     """
     Combines n datasets into a single combined dataset, where n=len(file_list_sufixes).
     The files are located in file_folder (relative or absolute path). The outputs will be stored in the same folder.
@@ -286,6 +286,7 @@ def combine_datasets(file_list_sufixes, file_folder="", combined_output_sufix="c
 
     lab_header = None
     for idx, file_prefix in enumerate(file_list_sufixes):
+        print("[INFO] Reading prefix", file_prefix, "...")
         input_name = file_folder + "Input_" + file_prefix + ".fits"
         label_name = file_folder + "Label_" + file_prefix + ".fits"
         metadata_name = file_folder + "MetaD_" + file_prefix + ".json"
@@ -349,7 +350,7 @@ def combine_datasets(file_list_sufixes, file_folder="", combined_output_sufix="c
             # Add new headers and keywords
             new_header_keywords = [f"endrow{idx:02}",
                                    f"prefix{idx:02}"]
-            new_header_values = [(last_id, f"Last value for the {idx}-th dataset"),
+            new_header_values = [(int(last_id), f"Last value for the {idx}-th dataset"),
                                  (file_prefix, f"Prefix for the {idx}-th dataset")]
             for keyw, value in zip(new_header_keywords, new_header_values):
                 in_header[keyw] = value
@@ -358,14 +359,19 @@ def combine_datasets(file_list_sufixes, file_folder="", combined_output_sufix="c
         # Add last_id to metadata
         metadata_combined["Last_ID"].append(int(last_id))
 
+    # update nrows
+    in_header["nrows"] = last_id
+    lab_header["nrows"] = last_id
+
     # Save new files
     print(f"[INFO] Saving combined Input file to Input_{combined_output_sufix}.fits ...")
     fits.writeto(file_folder + "Input_" + combined_output_sufix + ".fits", in_data, in_header, overwrite=overwrite)
     print(f"[INFO] Saving combined Label file to Label_{combined_output_sufix}.fits ...")
-    fits.writeto(file_folder + "Label_" + combined_output_sufix + ".fits", in_data, in_header, overwrite=overwrite)
+    fits.writeto(file_folder + "Label_" + combined_output_sufix + ".fits", lab_data, lab_header, overwrite=overwrite)
     print(f"[INFO] Saving combined metadata file saving to MetaD_{combined_output_sufix}.fits ...")
     with open(file_folder + "MetaD_" + combined_output_sufix + ".json", 'w') as outfile:
         outfile.write(json.dumps(metadata_combined, indent=4))
+    print(f"[INFO] Finished combining {len(file_list_sufixes)} files.")
 
 
 def standardize_dataset(input_spectra, input_magnitudes,

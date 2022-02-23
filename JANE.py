@@ -20,7 +20,7 @@ import time
 from pprint import pprint
 # from keras.callbacks import EarlyStopping, ModelCheckpoint
 
-from ERIK import loadfiles, parse_argparse_config_file_default
+from ERIK import *
 from RAVEN import convert_bytes, print_train_test_sizes
 from XAVIER import Cerebro
 
@@ -299,4 +299,7 @@ def main(**main_kwargs):
 
 
 if __name__ == "__main__":
-    main(config_file_path="config.txt")
+    combine_datasets(["20220222T112103_drDhe7", "20220222T134553_qbkxpF", "20220222T213001_nHS1Bf"],
+                     "/Volumes/Elements/Outputs/",
+                     )
+    # main(config_file_path="config.txt")
