@@ -48,3 +48,32 @@ cat("3) cd EMILESDATA/\n")
 cat("4) git update-index --assume-unchanged $(git ls-files | tr '\n' ' ')\n")
 cat("5) Delete small files.")
 
+
+
+
+# Checking Libraries
+
+# Check required libraries
+require("ggplot2")
+require("ProSpect")    # https://github.com/asgr/ProSpect
+require("stringi")
+require("jsonlite")
+require("FITSio")
+require("uuid")
+
+# Install ProSpect
+if (FALSE){
+  install.packages('remotes')
+  remotes::install_github("asgr/ProSpect")
+  library(ProSpect)
+}
+
+# install.packages("ggplot2")
+# install.packages("stringi")
+# install.packages("stringi")
+# install.packages("jsonlite")
+# install.packages("FITSio")
+# install.packages("uuid")
+
+
+
