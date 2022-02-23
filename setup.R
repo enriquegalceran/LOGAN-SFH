@@ -1,3 +1,7 @@
+#!/usr/bin/env Rscript
+args = commandArgs(trailingOnly=TRUE)
+# ToDo
+
 # Setup LOGAN
 
 # Windows:

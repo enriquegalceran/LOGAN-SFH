@@ -10,7 +10,7 @@
     - set the working directory
     - Execute the source of LOGAN
     - Load libraries
-    - COMMENT EVERY LINE OUT
+    - COMMENT EVERY LIBRARY LINE OUT
     - Now it should work fine
   
 "
