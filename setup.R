@@ -60,6 +60,7 @@ require("stringi")
 require("jsonlite")
 require("FITSio")
 require("uuid")
+require("reticulate")
 
 # Install ProSpect
 if (FALSE){
@@ -76,4 +77,9 @@ if (FALSE){
 # install.packages("uuid")
 
 
+# Change .RProfile to use the correct Python!
+# The different python paths can be found using
+# It presents some problems when modifying only the project file, but worked when I changed the main file (located in ~/.Rprofile)
+# py_config()
+# Sys.setenv(RETICULATE_PYTHON = "/path/to/python")
 
