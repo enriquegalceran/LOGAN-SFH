@@ -5,7 +5,8 @@
 # These files are 
 #       1) a .fits (INPUT) file with a table which includes the spectra and the fotometry in the header
 #       2) a .fits (LABEL) file with the SFR generated (Solution)
-# First, the data is recollected, then the additional headers are created, the main header is generated, and finally the file is saved.
+# First, the data is recollected, then the additional headers are created, the main header is generated,
+# and finally the file is saved.
 
 # extraHeader format: list with elements: "keyword", "value", "note"
 # spectrumParam format: idem extraHeader, exclusive for parameters for Spectrum
@@ -15,6 +16,8 @@
 library(FITSio)
 library(ProSpect)
 library(uuid)
+library(rlist)
+library(reticulate)
 
 
 exportObjectToFITS <- function(inputObject,
@@ -428,3 +431,129 @@ convertAgevecToOutputScale <- function(agevector,
   }
   return(output)
 }
+
+
+
+draw_SFH_cases <- function(metadata_file,
+                           output_file_name,
+                           n.simul = 0.4,
+                           age = NULL,           
+                           agestart = 1e6,
+                           ageend = 13.8e9,
+                           agestep = 1e6,
+                           opacity="normal",
+                           color=NULL,
+                           log=NULL,
+                           verbose=0,
+                           y.lim=NULL,
+                           image.size=c(1920, 1080)
+                           ){
+  # Load data
+  metadata <- list.load(metadata_file)
+  combined = "Combined" %in% names(metadata)
+  constante.opacidad = 1
+  
+  # Get Age parameters
+  if (is.null(age)){
+    age = seq(agestart, ageend, agestep)
+  }
+  
+  # get number of total cases
+  if (combined){
+    n.cases = metadata$Last_ID[length(metadata$Last_ID)]
+  } else {
+    n.cases = metadata$totalCases
+  }
+  
+  # Import Python library
+  erik <- import("ERIK")
+  
+  # Define indices that will be calculated
+  # possible values for n.simul:
+  #     n.simul >=  1     ==> n.simul random indices
+  #     n.simul ==  0     ==> every single case (NOT RECOMMENDED)
+  #     0 < n.simul < 1   ==> int(n.cases * n.simul) cases
+  if (n.simul >= 1){
+    random_values = sample(n.cases, n.simul)
+  } else if (n.simul == 0){
+    random_values = sample(n.cases, n.cases)
+  } else if (0 < n.simul && n.simul < 1){
+    random_values = sample(n.cases, as.integer(n.cases * n.simul))
+  } else {
+    stop(paste0("n.simul does not have a valid value: ", n.simul, "\n"))
+  }
+  cat(paste0("n=", length(random_values), "\n"))
+  
+  # Set opacity
+  if (is.null(color)){
+    if (opacity == "normal"){
+      opacity = constante.opacidad/length(random_values)
+      color = rgb(0, 0, 255, max = 255, alpha = max(opacity, 1), names = "bluelight")
+    }
+  }
+  
+  
+  # Initialize plot
+  png(filename=output_file_name, width=image.size[1], height=image.size[2])
+  list_parameters <- erik$getparametersfromid(metadata_file, random_values[1], returnfunction=TRUE)
+  func = paste0("massfunc_", list_parameters$massfunction)
+  args <- formalArgs(func)
+  args <- args[args %in% names(list_parameters)]
+  y <- do.call(func, c(list(age=age), list_parameters[args]))
+  plot(age, y, type="l", log=log, col=color, main=paste(metadata_file, "n=", length(random_values)), ylim=y.lim)
+  
+  # Iterate over the different values and plot
+  for (idx in 2:length(random_values)){
+    if (verbose > 0){
+      if ((idx %% 100) == 1){
+        cat(paste0(idx, "/", length(random_values), "\n"))
+      }
+    }
+    list_parameters <- erik$getparametersfromid(metadata_file, random_values[idx], returnfunction=TRUE)
+    func = paste0("massfunc_", list_parameters$massfunction)
+    args <- formalArgs(func)
+    args <- args[args %in% names(list_parameters)]
+    y <- do.call(func, c(list(age=age), list_parameters[args]))
+    lines(age, y, col=color)
+  }
+  dev.off()
+  return(metadata) 
+}
+
+
+if (FALSE){
+metadata_file = "/Volumes/Elements/Outputs/MetaD_combined.json"
+n.simul = 100
+
+func = massfunc_dtau
+
+metadata <- list.load(metadata_file)
+metadata2 <- list.load(metadata_file2)
+
+
+list_parameters$mfunction
+t = ""
+for (j in list_parameters$mfunction){
+  t = paste0(t, j)
+}
+t = parse(t)
+
+setwd("~/Documents/GitHub/LOGAN-SFH")
+EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
+
+}
+
+
+setwd("~/Documents/GitHub/LOGAN-SFH")
+EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
+metadata = draw_SFH_cases("/Volumes/Elements/Outputs/MetaD_combined.json",
+                          "/Volumes/Elements/Outputs/MetaD_combined_plots.png",
+                          0,
+                          age=EMILESCombined$Age,
+                          log="x",
+                          y.lim=c(0, 10),
+                          verbose=1,
+                          image.size = c(3840, 2160)
+                          )
+
+
