@@ -105,13 +105,14 @@ def clean_line(idx_line, line_str):
     return tuple(split_line)
 
 
-def getparametersfromid(filename, id_searched, verbose=0):
+def getparametersfromid(filename, id_searched, verbose=0, returnfunction=False):
     """
     Returns the parameters that were used to generate a specific piece of information given an ID and the metadata file.
     It will verify if the the metadata has the "Combined" parameter, in which case it will seach for the subset id.
     :param verbose:
     :param filename:
     :param id_searched:
+    :param returnfunction:
     :return:
     """
 
@@ -211,6 +212,9 @@ def getparametersfromid(filename, id_searched, verbose=0):
 
         if verbose >= 1:
             print(final_dictionary)
+        if returnfunction:
+            final_dictionary["mfunction"] = mass_data_mfunc["func"]
+            final_dictionary["zfunction"] = z_data_mfunc["func"]
         return final_dictionary
 
 
