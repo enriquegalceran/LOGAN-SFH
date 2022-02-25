@@ -33,8 +33,8 @@ massParams1 = list(
 
 # Equals to no burst when mburst=0
 massParams2 = list(
-  exp=list(
-    name="exp",
+  exp_burst=list(
+    name="exp_burst",
     func=massfunc_exp_burst,
     mtau=c(8, 9),
     mburstage=seq(0.01, 0.2, 0.01),
@@ -45,8 +45,8 @@ massParams2 = list(
 # Equals to no burst when mburst=0
 # Equals norm when skew=0
 massParams3a = list(
-  snorm=list(
-    name="snorm",
+  snorm_burst=list(
+    name="snorm_burst",
     func=massfunc_snorm_burst,
     mskew=seq(-0.25, 0.25, 0.25),
     mperiod=seq(0.25, 1, 0.25),
@@ -57,8 +57,8 @@ massParams3a = list(
 )
 
 massParams3b = list(
-  snorm=list(
-    name="snorm",
+  snorm_burst=list(
+    name="snorm_burst",
     func=massfunc_snorm_burst,
     mskew=seq(-0.25, 0.25, 0.25),
     mperiod=seq(0.25, 1, 0.25),
@@ -71,8 +71,8 @@ massParams3b = list(
 
 
 massParams4 = list(
-  snorm=list(
-    name="snorm",
+  snorm_burst=list(
+    name="snorm_burst",
     func=massfunc_snorm_burst,
     mskew=seq(-0.25, 0.25, 0.25),
     mperiod=seq(1.25, 2, 0.25),
@@ -84,8 +84,8 @@ massParams4 = list(
 
 
 # massParamsoriginal = list(
-#   snorm=list(
-#     name="snorm",
+#   snorm_burst=list(
+#     name="snorm_burst",
 #     func=massfunc_snorm_burst,
 #     mskew=seq(-0.75, 0.75, 0.25),
 #     mperiod=seq(0.25, 2, 0.25),
