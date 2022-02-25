@@ -1,1 +1,1 @@
-RETICULATE_PYTHON="/Users/enrique/miniforge3/bin/python"
+Sys.setenv(RETICULATE_PYTHON = "/Users/enrique/miniforge3/bin/python")
