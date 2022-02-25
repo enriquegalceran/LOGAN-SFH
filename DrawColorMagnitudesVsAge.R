@@ -1,8 +1,9 @@
 # Draw Color magnitudes vs age (evolution of the magnitudes)
 
-
+# Initialize variables
 .pardefault <- par()
 setwd("~/Documents/GitHub/LOGAN-SFH")
+library(ProSpect)
 EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
 
 filtersHST <- c("F275W", "F336W", "F438W", "F555W", "F814W")
@@ -15,17 +16,39 @@ for (filter in filtersHST) {
     )
 }
 
-
+# Read EMILES Model
 zValues = EMILESCombined$Z
-age = EMILESCombined$Age
+ageValues = EMILESCombined$Age
+wave = EMILESCombined$Wave
 
-for (z_idx in 1:length(zValues)){
+# Dummy matrix with the magnitudes
+data = matrix(NA, nrow=length(zValues), ncol=length(ageValues))
+
+# List with the information
+dataList = list()
+for (filter in filtersHST){
+  dataList[[filter]] = data
+}
+
+
+# Iterate over Z
+for (zIdx in 1:length(zValues)){
+  z = zValues[zIdx]
+
+  # Get corresponding spectra [age, wave]
+  z.spect <- EMILESCombined$Zspec[zIdx][[1]]
   
-  
-  
-  
-  
-  
+  # Iterate over Ages
+  for (ageIdx in 1:length(ageValues)){
+    age = ageValues[ageIdx]
+
+    # Iterate over filters
+    for (filter in filtersHST){
+      
+      # Evaluate bandpass for this filter, metallicity and age
+      dataList[[filter]][zIdx, ageIdx] <- bandpass(wave, z.spect[ageIdx, ], filters[[filter]])
+    }
+  }
 }
 
 
