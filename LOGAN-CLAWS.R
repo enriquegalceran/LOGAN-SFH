@@ -19,6 +19,7 @@ library(uuid)
 library(rlist)
 library(reticulate)
 
+'%!in%' <- function(x,y)!('%in%'(x,y))
 
 exportObjectToFITS <- function(inputObject,
                                filename,
