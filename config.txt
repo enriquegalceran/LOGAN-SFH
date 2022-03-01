@@ -52,7 +52,7 @@ spect_progression = 0.5
 spect_stride = 1
 spect_act = "relu"
 spect_pool_size = 3
-spect_dropout = 0.15
+// spect_dropout = 0.15
 spect_explicit = False
 spect_output = 1
 spect_output_neurons = 128
@@ -110,11 +110,11 @@ metal_kernel_initializer = "glorot_uniform"
 CVParams = True
 
 // Place the parameters that will be iterated in a list as f
-epochs=[50, 75, 100]
-batch_size=[200, 300]
+epochs=[150, 200, 250, 300]
+batch_size=[200, 300, 400]
 magn_neurons_first_layer=[32, 64, 128]
 magn_number_layers=[2, 3]
-spect_neurons_first_layer=[128, 256]
+spect_neurons_first_layer=[128, 256, [256, 256, 128], [128, 256, 256], [128, 256, 512]]
 spect_filter_size=[[30, 20, 10, 5], [30, 30, 10, 5], [50, 25, 10, 5], [30, 15, 10, 5], 15]
-
+spect_dropout = [0.10, 0.15, 0.20]
 
