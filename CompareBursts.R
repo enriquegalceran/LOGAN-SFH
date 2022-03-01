@@ -22,8 +22,9 @@ for (filter in filtersHST) {
 }
 
 
-
-parameters_function = list(massfunc=massfunc_snorm_burst, mperiod=1, mpeak=10, mburst=5, mSFR=10, mburstage=0.5)
+pathoutputs="Plots/ComparisonBetweenCompleteSFHAndOnlyBursts/"
+massfuncprefix="e_"
+parameters_function = list(massfunc=massfunc_snorm_burst, mperiod=1, mpeak=6, mburst=5, mSFR=10, mburstage=0.1)
 age = EMILESCombined$Age
 wavelengthRangeInMUSE <- c(4750, 9350) 
 x.lim = c(6.3e+06, 13.8e+09)
@@ -61,19 +62,23 @@ spectraObjectReduced  <- do.call('SFHfunc', c(parameters_function,
 
 #####################
 ## Plot SFR
+pdf(file=paste0(pathoutputs, massfuncprefix, "SFHComplete", ".pdf"), width=15, height=9)
 plot(spectraObjectComplete$agevec, spectraObjectComplete$SFR,
      type="l", log=log, main="SFH Complete", ylim=y.lim, xlim=x.lim, xlab="Age", ylab="SFR")
+dev.off()
 # y_theo = do.call(parameters_function[["massfunc"]],
 #                  c(list(age=age), parameters_function[names(parameters_function) %in% names(formals(parameters_function[["massfunc"]]))]) )
 # plot(age, y_theo, log=log, type="l", main="SFH Theo", ylim=y.lim, xlim=x.lim, xlab="Age", ylab="SFR")
+pdf(file=paste0(pathoutputs, massfuncprefix, "SFHReduced", ".pdf"), width=15, height=9)
 plot(spectraObjectReduced$agevec, spectraObjectReduced$SFR,
      type="l", log=log, main="SFH Reduced", ylim=y.lim, xlim=x.lim, xlab="Age", ylab="SFR")
-
+dev.off()
 
 
 #####################
 ## Plot SFR
 plotSFRlog=""
+muse.logi <- (spectraObjectComplete$wave_lum > wavelengthRangeInMUSE[1]) & (spectraObjectComplete$wave_lum < wavelengthRangeInMUSE[2])
 maxy = max(c(spectraObjectComplete$lum_atten[muse.logi],
              spectraObjectComplete$lum_unatten[muse.logi],
              spectraObjectReduced$lum_atten[muse.logi],
@@ -85,36 +90,41 @@ miny = min(c(spectraObjectComplete$lum_atten[muse.logi],
              spectraObjectReduced$lum_unatten[muse.logi]),
            na.rm=TRUE)
 y.lim = c(miny, maxy)
-muse.logi <- (spectraObjectComplete$wave_lum > wavelengthRangeInMUSE[1]) & (spectraObjectComplete$wave_lum < wavelengthRangeInMUSE[2])
+pdf(file=paste0(pathoutputs, massfuncprefix, "LuminosityComparison-AttenvsUnatten", ".pdf"), width=15, height=9)
 plot(spectraObjectComplete$wave_lum[muse.logi], spectraObjectComplete$lum_atten[muse.logi],
      type="l", col=col_vector[1], log=plotSFRlog, xlab="Wavelength (A)", ylab="Luminosity(Lsol / Angstrom)", ylim=y.lim,
      main="Luminosity Comparison - Attenuated vs Unattenuated")
 lines(spectraObjectComplete$wave_lum[muse.logi], spectraObjectComplete$lum_unatten[muse.logi], type="l", col=col_vector[2], log=plotSFRlog)
 legend(x="topright", legend=c("Lum Attenuated", "Lum Unattenuated"), col=c(col_vector[1], col_vector[2]), lty=1, lwd=1)
-
+dev.off()
 
 ## Attenuated Comparison
+pdf(file=paste0(pathoutputs, massfuncprefix, "LuminosityComparisonAtten-CompletevsReduced", ".pdf"), width=15, height=9)
 plot(spectraObjectComplete$wave_lum[muse.logi], spectraObjectComplete$lum_atten[muse.logi],
      type="l", col=col_vector[1], log=plotSFRlog, xlab="Wavelength (A)", ylab="Luminosity(Lsol / Angstrom)", ylim=y.lim,
      main="Luminosity Comparison Attenuated - Complete vs Burst")
 lines(spectraObjectComplete$wave_lum[muse.logi], spectraObjectReduced$lum_atten[muse.logi], type="l", col=col_vector[3], log=plotSFRlog)
 legend(x="topright", legend=c("Lum Attenuated Complete", "Lum Attenuated Burst"), col=c(col_vector[1], col_vector[3]), lty=1, lwd=1)
+dev.off()
 
 ## Unattenuated Comparison
+pdf(file=paste0(pathoutputs, massfuncprefix, "LuminosityComparisonUnatten-CompletevsReduced", ".pdf"), width=15, height=9)
 plot(spectraObjectComplete$wave_lum[muse.logi], spectraObjectComplete$lum_unatten[muse.logi],
      type="l", col=col_vector[2], log=plotSFRlog, xlab="Wavelength (A)", ylab="Luminosity(Lsol / Angstrom)", ylim=y.lim,
      main="Luminosity Comparison Unattenuated - Complete vs Burst")
 lines(spectraObjectComplete$wave_lum[muse.logi], spectraObjectReduced$lum_unatten[muse.logi], type="l", col=col_vector[5], log=plotSFRlog)
 legend(x="topright", legend=c("Lum Unattenuated Complete", "Lum Unattenuated Burst"), col=c(col_vector[2], col_vector[5]), lty=1, lwd=1)
-
+dev.off()
 
 ## Colors Comparison
-
-plot(spectraObjectComplete$out$cenwave, spectraObjectComplete$out$out, col=col_vector[6:10], pch=15, main="Color Comparison")
+y.lim = c(min(c(spectraObjectComplete$out$out, spectraObjectReduced$out$out)), 
+          max(c(spectraObjectComplete$out$out, spectraObjectReduced$out$out)))
+pdf(file=paste0(pathoutputs, massfuncprefix, "ColorComparison-CompletevsReduced", ".pdf"), width=15, height=9)
+plot(spectraObjectComplete$out$cenwave, spectraObjectComplete$out$out, col=col_vector[6:10], pch=15, main="Color Comparison", ylim=y.lim)
 points(spectraObjectReduced$out$cenwave, spectraObjectReduced$out$out, col=col_vector[6:10], pch=17)
 legend(x="topright", legend=c(filtersHST, "Complete", "Burst"),
        pch=c(rep(16,5), 15, 17), col=c(col_vector[6:10], "black", "black"))
-
+dev.off()
 
 
 
