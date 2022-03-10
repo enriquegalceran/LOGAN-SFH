@@ -206,9 +206,9 @@ class Cerebro:
         return spectr_arguments, magnit_arguments, sfh_arguments, metal_arguments
 
     @staticmethod
-    def build_model(epochs: int = 50, input_mode: str = "single", loss_function_used: str = "SMAPE",
-                    loss_function_used_metal: str = None, init_lr: float = 1e-3, loss_weights: tuple = (1.0, 0.8),
-                    explicit: bool = False, spectra_data_shape: tuple = (3761, 1),
+    def build_model(epochs: int = 50, input_mode: str = "single", output_mode: str = "double",
+                    loss_function_used: str = "SMAPE", loss_function_used_metal: str = None, init_lr: float = 1e-3,
+                    loss_weights: tuple = (1.0, 0.8), explicit: bool = False, spectra_data_shape: tuple = (3761, 1),
                     magnitudes_data_shape: tuple = (5, 1), single_data_shape: tuple = (3766, 1),
                     agevector_data_shape=17, verbose: int = 1, **kwargs):
 
@@ -270,21 +270,41 @@ class Cerebro:
 
         # Concatenate Output for single i/o and Define Model
         if input_mode == "double":
-            model = Model(
-                inputs=[input_spec, input_magn],
-                outputs=[metal_branch, sfh_branch],
-                name="cerebro_double"
-            )
+            inputs = [input_spec, input_magn],
+            model_name = "cerebro_double"
+            # model = Model(
+            #     inputs=[input_spec, input_magn],
+            #     outputs=[metal_branch, sfh_branch],
+            #     name="cerebro_double"
+            # )
         elif input_mode == "single":
-            # Concatenate output
-            output_layer = Concatenate(axis=-1)([sfh_branch, metal_branch])
-            model = Model(
-                inputs=input_layer,
-                outputs=output_layer,
-                name="cerebro_single"
-            )
+            inputs = input_layer
+            model_name = "cerebro_single"
+            # # Concatenate output
+            # output_layer = Concatenate(axis=-1)([sfh_branch, metal_branch])
+            # model = Model(
+            #     inputs=input_layer,
+            #     outputs=output_layer,
+            #     name="cerebro_single"
+            # )
         else:
-            raise ValueError(f"'in_layer' is {input_mode}, and should be either 'single' or 'double'.")
+            raise ValueError(f"'input_mode' is {input_mode}, and should be either 'single' or 'double'.")
+
+        if output_mode == "double":
+            outputs = [metal_branch, sfh_branch]
+            model_name += "_double"
+        elif output_mode == "single":
+            output_layer = Concatenate(axis=-1)([sfh_branch, metal_branch])
+            outputs = output_layer
+        else:
+            raise ValueError(f"'output_mode' is {output_mode}, and should be either 'single' or 'double'.")
+
+        model = Model(
+            inputs=inputs,
+            outputs=outputs,
+            name=model_name
+        )
+
 
         if loss_function_used == "SMAPE":
             # SMAPE
