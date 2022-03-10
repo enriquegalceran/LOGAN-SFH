@@ -7,7 +7,7 @@
 import pandas as pd
 import numpy as np
 import argparse
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import random
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV
@@ -17,8 +17,11 @@ import keras
 import json
 import os
 import time
+import sys
+import h5py
+from matplotlib import pyplot
 from pprint import pprint
-# from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.callbacks import EarlyStopping, ModelCheckpoint, Callback
 
 from ERIK import *
 from RAVEN import convert_bytes, print_train_test_sizes
@@ -36,11 +39,11 @@ def main(**main_kwargs):
                        help="Increase Verbosity.")
     group.add_argument("-q", "--quiet", action="store_true",
                        help="Decrease Verbosity.")
-    parser.add_argument("--no-confirm", action="store_true",
+    parser.add_argument("--no-confirm", action="store_true", default=None,
                         help="Use to skip confirmation before training.")
     parser.add_argument("-cf", "--config-file", default=None, type=str,
                         help="Path to config file")
-    parser.add_argument("-rcf", "--reset-config-file", action="store_true",
+    parser.add_argument("-rcf", "--reset-config-file", action="store_true", default=None,
                         help="Resets config file back to the default value.")
     parser.add_argument("-dp", "--data-path", default=None, type=str,
                         help="Path to Data.")
@@ -76,9 +79,12 @@ def main(**main_kwargs):
     # data_path = "/Volumes/Elements/Outputs/"
     # ToDo: Fix this in the final version (i.e. no more debug)
     # data_path = parameters["data_path"]
-    data_path = ""
-    parameters["output_model_path"] = ""
-    data_sufix = parameters["data_sufix"]
+    # data_path = ""
+    data_path = "/Volumes/Elements/Outputs/"
+    # parameters["output_model_path"] = ""
+    # parameters["output_model_path"] = "/Volumes/Elements/Outputs/"
+    # data_sufix = parameters["data_sufix"]
+    data_sufix = "combined"
     # output_model_path = parameters["output_model_path"]
     # path_output_plots = "/Volumes/Elements/Outputs/plot"
     # output_plots_path = "plot"
@@ -112,10 +118,18 @@ def main(**main_kwargs):
      trainLabZ, testLabZ) = split_train_test
 
     # Concatenate inputs for single model
-    train_data = np.concatenate([trainSpect, trainMag], axis=1)
-    train_labels = np.concatenate([trainLabSfh, trainLabZ], axis=1)
-    test_data = np.concatenate([testSpect, testMag], axis=1)
-    test_labels = np.concatenate([testLabSfh, testLabZ], axis=1)
+    if parameters["input_mode"] == "single":
+        train_data = np.concatenate([trainSpect, trainMag], axis=1)
+        test_data = np.concatenate([testSpect, testMag], axis=1)
+    else:
+        train_data = (trainSpect, trainMag)
+        test_data = (testSpect, testMag)
+    if parameters["output_mode"] == "single":
+        train_labels = np.concatenate([trainLabSfh, trainLabZ], axis=1)
+        test_labels = np.concatenate([testLabSfh, testLabZ], axis=1)
+    else:
+        train_labels = (trainLabSfh, trainLabZ)
+        test_labels = (testLabSfh, testLabZ)
 
     # Verify the size of the
     print_train_test_sizes(split_train_test, main_title="Sizes of diferent sets (Train, Test)")
@@ -124,12 +138,128 @@ def main(**main_kwargs):
 
     ############################################################################
     # Build model
-    # custom_kwargs_model = {"spect_neurons_first_layer": 256}
-    # model = Cerebro.build_model(epochs=epochs, loss_function_used=loss_function_used, init_lr=init_lr,
-    #                             **custom_kwargs_model, **main_kwargs)
-    # model.summary()
-    # Cerebro.graph(model, "tstimage4.png")
+    model = Cerebro.build_model(**main_kwargs, **parameters)
+    model.summary()
+    Cerebro.graph(model, "tstimage4.png")
 
+    # Callbacks
+    best_model_path = os.path.join(parameters["output_model_path"], parameters["output_name_best_estimator"])
+    es = EarlyStopping(monitor="val_loss", mode="min", verbose=1, patience=parameters["patience"])
+    mc = ModelCheckpoint(best_model_path, monitor="val_loss", mode="min", save_best_only=True, verbose=1)
+    print(f"[INFO] Best Model saved in: {best_model_path}")
+    print(f"[INFO] Number of epochs: {parameters['epochs']}")
+
+    # Train
+    if not parameters["no_confirm"]:
+        continue_with_training = input("Continue training? [Y]/N ")
+        if continue_with_training.lower() in ["n", "no", "stop"]:
+            raise KeyboardInterrupt('User stopped the execution.')
+    print("[INFO] Start training...")
+    history = model.fit(train_data, train_labels, validation_data=(test_data, test_labels),
+                        batch_size=parameters["batch_size"],
+                        epochs=parameters["epochs"],
+                        callbacks=[es, mc])
+
+    # evaluate the model
+    # print("[Evaluate] Evaluating final model")
+    # _, train_acc = model.evaluate(train_data, train_labels, verbose=1)
+    # _, test_acc = model.evaluate(test_data, test_labels, verbose=1)
+    # print('Train: %.3f, Test: %.3f' % (train_acc, test_acc))
+
+    epochs_draw = len(history.epoch)
+    if parameters["output_mode"] == "single":
+        # plot training history
+        plt.style.use("ggplot")
+        (fig, ax) = plt.subplots(2, 1, figsize=(13, 13))
+
+        # Loss
+        loss_names = ["loss", "val_loss"]
+        ax[0].set_title("Loss")
+        ax[0].set_xlabel("Epoch #")
+        ax[0].set_ylabel("Loss")
+        for lo in loss_names:
+            ax[0].plot(np.arange(0, epochs_draw), history.history[lo], label=lo)
+        ax[0].legend()
+
+        # Accuracy
+        acc_names = ["accuracy", "val_accuracy"]
+        ax[1].set_title("Accuracy")
+        ax[1].set_xlabel("Epoch #")
+        ax[1].set_ylabel("Loss")
+        for ac in acc_names:
+            ax[1].plot(np.arange(0, epochs_draw), history.history[ac], label=ac)
+        ax[1].legend()
+
+        # plt.show()
+        # save the losses figure
+        # plt.tight_layout()
+        # plt.savefig("{}_losses.png".format(path_output_plots))
+        # print("[INFO] Loss image stored in {}_losses.png".format(path_output_plots))
+        # plt.close()
+
+    elif parameters["output_mode"] == "double":
+        # # plot the total loss, category loss, and color loss
+        loss_names = ["loss", "sfh_output_loss", "metallicity_output_loss"]
+        plt.style.use("ggplot")
+        (fig, ax) = plt.subplots(3, 1, figsize=(13, 13))
+        # loop over the loss names
+        for (i, l) in enumerate(loss_names):
+            # plot the loss for both the training and validation data
+            title = "Loss for {}".format(l) if l != "loss" else "Total loss"
+            ax[i].set_title(title)
+            ax[i].set_xlabel("Epoch #")
+            ax[i].set_ylabel("Loss")
+            ax[i].plot(np.arange(0, epochs_draw), history.history[l], label=l)
+            ax[i].plot(np.arange(0, epochs_draw), history.history["val_" + l], label="val_" + l)
+            ax[i].legend()
+        # # save the losses figure
+        # plt.tight_layout()
+        # plt.savefig("{}_losses.png".format(path_output_plots))
+        # print("[INFO] Loss image stored in {}_losses.png".format(path_output_plots))
+        # plt.close()
+
+        # create a new figure for the accuracies
+        accuracy_names = ["sfh_output_accuracy", "metallicity_output_accuracy"]
+        plt.style.use("ggplot")
+        (fig, ax) = plt.subplots(2, 1, figsize=(8, 8))
+        # loop over the accuracy names
+        for (i, l) in enumerate(accuracy_names):
+            # plot the loss for both the training and validation data
+            ax[i].set_title("Accuracy for {}".format(l))
+            ax[i].set_xlabel("Epoch #")
+            ax[i].set_ylabel("Accuracy")
+            ax[i].plot(np.arange(0, epochs_draw), history.history[l], label=l)
+            ax[i].plot(np.arange(0, epochs_draw), history.history["val_" + l], label="val_" + l)
+            ax[i].legend()
+        # # save the accuracies figure
+        # plt.tight_layout()
+        # plt.savefig("{}_accs.png".format(path_output_plots))
+        # print("[INFO] Acc image stored in {}_accs.png".format(path_output_plots))
+        # plt.close()
+
+
+
+    # load the saved model
+    saved_model = keras.models.load_model(best_model_path, custom_objects={"smape_loss": Cerebro.smape_loss})
+    # evaluate the model
+    print("[Evaluate] Evaluating best model")
+    print("skipping")
+    # _, train_acc = saved_model.evaluate(train_data, train_labels, verbose=1)
+    # _, test_acc = saved_model.evaluate(test_data, test_labels, verbose=1)
+    # print('Train: %.3f, Test: %.3f' % (train_acc, test_acc))
+
+
+
+
+
+
+
+
+
+
+    plt.show()
+
+    sys.exit(2)
     ############################################################################
     # Cross Validation
     # Define Regressor Model
@@ -299,7 +429,8 @@ def main(**main_kwargs):
 
 
 if __name__ == "__main__":
-    combine_datasets(["20220222T112103_drDhe7", "20220222T134553_qbkxpF", "20220222T213001_nHS1Bf"],
-                     "/Volumes/Elements/Outputs/",
-                     )
-    # main(config_file_path="config.txt")
+    # print(getparametersfromid("/Volumes/Elements/Outputs/MetaD_combined.json", 34509, verbose=0))
+    # combine_datasets(["20220222T112103_drDhe7", "20220222T134553_qbkxpF", "20220222T213001_nHS1Bf"],
+    #                  "/Volumes/Elements/Outputs/",
+    #                  )
+    main(config_file_path="config.txt")
