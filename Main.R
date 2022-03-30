@@ -15,7 +15,7 @@
   
 "
 setwd("~/Documents/GitHub/LOGAN-SFH")
-source("LOGAN.R")
+source("MUTANTS/LOGAN.R")
 library(ProSpect)
 library(ggplot2)
 

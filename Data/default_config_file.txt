@@ -18,6 +18,9 @@ traintestshuffle = True
 loss_function_used = "SMAPE"
 no_confirm = False
 n_iter = 10
+input_mode = "single"
+output_mode = "double"
+patience = 75
 
 // File paths and names
 data_path = "/Volumes/Elements/Outputs"             // Currently deactivated in the code while testing

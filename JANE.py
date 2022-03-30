@@ -5,7 +5,6 @@
 # help("modules")
 # help("modules tensorflow")
 import pandas as pd
-import numpy as np
 import argparse
 import matplotlib.pyplot as plt
 import random
@@ -14,18 +13,13 @@ from sklearn.model_selection import RandomizedSearchCV
 from scikeras.wrappers import KerasRegressor
 import joblib
 import keras
-import json
-import os
-import time
 import sys
-import h5py
-from matplotlib import pyplot
 from pprint import pprint
-from keras.callbacks import EarlyStopping, ModelCheckpoint, Callback
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 
-from ERIK import *
-from RAVEN import convert_bytes, print_train_test_sizes
-from XAVIER import Cerebro
+from MUTANTS.ERIK import *
+from MUTANTS.RAVEN import convert_bytes, print_train_test_sizes
+from MUTANTS.XAVIER import Cerebro
 
 print("[INFO] Finished Importing")
 

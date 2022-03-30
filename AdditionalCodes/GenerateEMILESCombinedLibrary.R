@@ -9,7 +9,7 @@ library(magicaxis)
 library(FITSio)
 
 
-source('Constants.R')
+source('AditionalCodes/Constants.R')
 # source("FuncionesAuxiliaresYLibrerias.R")
 
 ######################################

@@ -6,7 +6,7 @@
 library(ProSpect)
 library(stringi)
 library(jsonlite)
-source("LOGAN-CLAWS.R")
+source("MUTANTS/LOGAN-CLAWS.R")
 
 
 generateSpecFromParams <- function(massParams="default",

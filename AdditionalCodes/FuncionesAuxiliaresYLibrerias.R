@@ -15,7 +15,7 @@ library("readr")
 library("data.table")
 library("feather")
 
-source('Constants.R')
+source('AdditionalCodes/Constants.R')
 .pardefault <- par()
 
 # Obtener t_0 y mu para las funciones log normal
