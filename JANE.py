@@ -90,14 +90,6 @@ def main(**main_kwargs):
         loadfiles(input_path=data_path + "Input_" + data_sufix + ".fits",
                   labels_path=data_path + "Label_" + data_sufix + ".fits")
 
-    print(f"""
-    Variable sizes:
-        Input_spectra: {input_spectra.shape} - {convert_bytes(input_spectra.nbytes)}
-        Input_magnitudes: {input_magnitudes.shape} - {convert_bytes(input_magnitudes.nbytes)}
-        Label_sfh: {label_sfh.shape} - {convert_bytes(label_sfh.nbytes)}
-        Label_z: {label_z.shape} - {convert_bytes(label_z.nbytes)}
-        """)
-
     # Split the data into training+validation and testing
     assert 0 < train_size < 1, "train_size needs to be in the interval (0,1)."
     assert 0 < test_size < 1, "test_size needs to be in the interval (0,1)."

@@ -9,14 +9,15 @@ from datetime import datetime
 import numpy as np
 from astropy.io import fits
 
-from RAVEN import standardize_single_dataset
+from RAVEN import standardize_single_dataset, convert_bytes
 
 
 def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548_HjCktf.fits",
               labels_path: str = "/Volumes/Elements/Outputs/Label_20211213T154548_HjCktf.fits",
               method_standardize_spectra=2,
               method_standardize_magnitudes=4,
-              method__standardize_label=3) -> typing.Tuple[np.array, np.array, np.array, np.array, np.array, np.array]:
+              method__standardize_label=3,
+              verbose=1) -> typing.Tuple[np.array, np.array, np.array, np.array, np.array, np.array]:
     """
     Load the dataset from file.
 
@@ -25,6 +26,7 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
     :param method_standardize_spectra:
     :param method_standardize_magnitudes:
     :param method__standardize_label:
+    :param verbose:
     :return:
     """
     # ToDo: argparse these variables
@@ -59,6 +61,14 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
                             method_standardize_spectra=method_standardize_spectra,
                             method_standardize_magnitudes=method_standardize_magnitudes,
                             method_standardize_label=method__standardize_label)
+    if verbose > 0:
+        print(f"""
+        Variable sizes:
+            Input_spectra: {input_spectra.shape} - {convert_bytes(input_spectra.nbytes)}
+            Input_magnitudes: {input_magnitudes.shape} - {convert_bytes(input_magnitudes.nbytes)}
+            Label_sfh: {label_sfh.shape} - {convert_bytes(label_sfh.nbytes)}
+            Label_z: {label_z.shape} - {convert_bytes(label_z.nbytes)}
+        """)
 
     return input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec
 
