@@ -134,7 +134,7 @@ def main(**main_kwargs):
     # Build model
     model = Cerebro.build_model(**main_kwargs, **parameters)
     model.summary()
-    Cerebro.graph(model, "tstimage4.png")
+    Cerebro.graph(model, "tstimage.png")
 
     # Callbacks
     best_model_path = os.path.join(parameters["output_model_path"], parameters["output_name_best_estimator"])
