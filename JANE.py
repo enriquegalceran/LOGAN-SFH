@@ -2,20 +2,21 @@
 # Just A Network Executor [Phoenix]
 
 
+import argparse
+import random
+import sys
+from pprint import pprint
+
+import joblib
+import keras
+import matplotlib.pyplot as plt
 # help("modules")
 # help("modules tensorflow")
 import pandas as pd
-import argparse
-import matplotlib.pyplot as plt
-import random
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import RandomizedSearchCV
-from scikeras.wrappers import KerasRegressor
-import joblib
-import keras
-import sys
-from pprint import pprint
 from keras.callbacks import EarlyStopping, ModelCheckpoint
+from scikeras.wrappers import KerasRegressor
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import train_test_split
 
 from MUTANTS.ERIK import *
 from MUTANTS.RAVEN import convert_bytes, print_train_test_sizes
