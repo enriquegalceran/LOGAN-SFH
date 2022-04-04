@@ -192,4 +192,11 @@ def standardize_single_dataset(data, method, input_mean_value=None):
 
 
 def flatten_list(l_):
+    """
+    Flattens a list
+    Example:
+    flatten_list([[A, B], [C]] = [A, B, C]
+    :param l_:
+    :return:
+    """
     return [item for sublist in l_ for item in sublist]

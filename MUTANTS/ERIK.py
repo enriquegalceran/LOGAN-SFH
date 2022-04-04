@@ -460,9 +460,15 @@ def parse_argparse_config_file_default(args, default_config_file_path="Data/defa
     return parameters, cv_parameters
 
 
-def prettyfy_json_file(filename, verbose=1):
+def prettyfy_json_file(filename, verbose=1, indent=4):
+    """
+    Given a path to a json file, prints the metadata, and saves the file again with indent=[4].
+    :param filename:
+    :param verbose:
+    :param indent:
+    """
     with open(filename, 'r+') as f:
         data = json.load(f)
         if verbose > 0:
-            print(json.dumps(data, indent=4))
-        f.write(json.dumps(data, indent=4))
+            print(json.dumps(data, indent=indent))
+        f.write(json.dumps(data, indent=indent))
