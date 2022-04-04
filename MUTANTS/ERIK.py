@@ -458,3 +458,11 @@ def parse_argparse_config_file_default(args, default_config_file_path="Data/defa
                     print(f"[INFO Parameters] Missing parameter {keyword} set to default value: {parameters[keyword]}")
 
     return parameters, cv_parameters
+
+
+def prettyfy_json_file(filename, verbose=1):
+    with open(filename, 'r+') as f:
+        data = json.load(f)
+        if verbose > 0:
+            print(json.dumps(data, indent=4))
+        f.write(json.dumps(data, indent=4))

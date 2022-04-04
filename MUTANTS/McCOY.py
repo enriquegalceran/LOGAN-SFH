@@ -3,7 +3,13 @@
 
 import argparse
 import os
-import sys
+import numpy as np
+import matplotlib.pyplot as plt
+import keras
+
+import ERIK
+import XAVIER
+import RAVEN
 
 
 def cleanlogfile(filename, filename_out=None):
@@ -55,6 +61,11 @@ def main(update_values=None):
                              "(if it does not end in '.fits'), it will consider the data to be located in the current "
                              "folder and that the given value is the sufix. REQUIRES THE INPUT DATA. The Labels are "
                              "expected to be located in the same folder.")
+    parser.add_argument("-v", "--verbose", default=1, type=int,
+                        help="Indicates the value of verbosity. Minimum=0, Default=1.")
+    parser.add_argument("-jc", "--json_clean", action="append", nargs="+", default=None, type=str,
+                        help="Path to json file to be cleaned. Multiple files can be given (either using -jc again, or "
+                             "be simply giving multiple paths).If verbose > 0, json file will be printed.")
     args = parser.parse_args()
 
     # Set parameters passed through main
@@ -82,16 +93,25 @@ def main(update_values=None):
             data_path = "Input_" + data_path + ".fits"
         if data_path[0] != "/":
             data_path = os.path.abspath(data_path)
-        label_path = data_path.replace("Input_", "Label_")
         if args.verify_model[0] != "/":
             model_path = os.path.abspath(args.verify_model)
         else:
             model_path = args.verify_model
 
         # Verify Model
-        verify_model(model_path, data_path, label_path)
+        verify_model(model_path, data_path)
+
+    if args.json_clean is not None:
+        json_files = RAVEN.flatten_list(args.json_clean)
+        for file in json_files:
+            ERIK.prettyfy_json_file(file, args.verbose)
 
 
 if __name__ == "__main__":
-    main({"verify_model": "model_file_best_GPUdeeper400.h5",
-          "data_path": "20220119T154253_Hr3TXx"})
+    main({"verify_model": "/Users/enrique/Documents/GitHub/LOGAN-SFH/model_file_best_GPUdeeper400.h5",
+          "data_path": "/Volumes/Elements/Outputs/Input_combined.fits"})
+    #"data_path": "/Users/enrique/Documents/GitHub/LOGAN-SFH/OutputFolder/Input_combined.fits"})
+    # main({"json_clean": [["/Users/enrique/Documents/GitHub/LOGAN-SFH/OutputFolder/Metadata_20220209T142129_fJnn24json",
+    #                       "/Users/enrique/Documents/GitHub/LOGAN-SFH/OutputFolder/Metadata_20220210T122420_N9HRfM.json",
+    #                       ]]
+    #       })

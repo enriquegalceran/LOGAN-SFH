@@ -189,3 +189,7 @@ def standardize_single_dataset(data, method, input_mean_value=None):
         raise ValueError("method used out of bounds [0-5].")
 
     return output, mean_value
+
+
+def flatten_list(l_):
+    return [item for sublist in l_ for item in sublist]
