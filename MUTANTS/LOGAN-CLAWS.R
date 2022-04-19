@@ -522,6 +522,7 @@ draw_SFH_cases <- function(metadata_file,
 }
 
 
+# ToDo: Remove this in the end
 if (FALSE){
 metadata_file = "/Volumes/Elements/Outputs/MetaD_combined.json"
 n.simul = 100
