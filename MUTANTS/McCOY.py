@@ -40,8 +40,67 @@ def cleanlogfile(filename, filename_out=None):
         f.writelines(lines)
 
 
-def verify_model(model_path, data_path, label_path):
-    pass
+def verify_model(model_path, data_path):
+    # Load Data
+    print("[INFO] Loading data...")
+    label_path = data_path.replace("Input_", "Label_")
+    metadata_path = data_path.replace("Input_", "MetaD_").replace(".fits", ".json")
+    input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec = \
+        ERIK.loadfiles(input_path=data_path, labels_path=label_path)
+    saved_model = keras.models.load_model(model_path, custom_objects={"smape_loss": XAVIER.Cerebro.smape_loss})
+    in_data = np.concatenate([input_spectra, input_magnitudes], axis=1)
+
+    # l_burst = []
+    # for i in range(in_data.shape[0]):
+    #     metadata = ERIK.getparametersfromid(metadata_path, i, verbose=0, returnfunction=False)
+    #     if "mburst" in metadata.keys():
+    #         l_burst.append(i)
+    # print(l_burst)
+    primer_valor = 30065
+    output = saved_model.predict(in_data[primer_valor:(primer_valor + 1000)])
+    for i in range(primer_valor, primer_valor + 1000):
+        if label_sfh[i, 0] > 0.5:
+            param = ERIK.getparametersfromid(metadata_path, i, verbose=0, returnfunction=False)
+            if param["Zfinal"] == 0.02:
+                print(param)
+                print("mayor que 0.5")
+                fig3, ax3 = plt.subplots()
+                print("smape", XAVIER.Cerebro.smape_loss(output[0][i - primer_valor], label_sfh[i]))
+                ax3.set_title(f"Test-SFH - {i} - {np.mean(XAVIER.Cerebro.smape_loss(output[0][i - primer_valor], label_sfh[i]))}")
+                ax3.semilogx(agevec, label_sfh[i], "k-")
+                ax3.semilogx(agevec, output[0][i - primer_valor], "g.-")
+                plt.show()
+                print("here")
+
+    difference_sfh = np.subtract(output[0], label_sfh)
+    difference_mag = np.subtract(output[1], label_z)
+
+    fig1, ax1 = plt.subplots()
+    ax1.set_title("Boxplot SFH")
+    ax1.boxplot(difference_sfh)
+    plt.show()
+    fig2, ax2 = plt.subplots()
+    ax2.set_title("Boxplot Z")
+    ax2.boxplot(difference_mag)
+    plt.show()
+
+    for ids in range(10):
+
+        metadata = ERIK.getparametersfromid("/Users/enrique/Documents/GitHub/LOGAN-SFH/MetadataOutput.json",
+                                            ids, verbose=0, returnfunction=False)
+        fig3, ax3 = plt.subplots()
+        ax3.set_title(f"SFH - {ids}")
+        ax3.semilogx(agevec, label_sfh[5000 + ids], "k-")
+        ax3.semilogx(agevec, output[0][ids], "g.-")
+        plt.savefig(f"/Users/enrique/Documents/GitHub/LOGAN-SFH/Test/SFH{ids}.png")
+        fig4, ax4 = plt.subplots()
+        ax4.set_title(f"Z - {ids}")
+        ax4.semilogx(agevec, label_z[5000 + ids], "k-")
+        ax4.semilogx(agevec, output[1][ids], "g.-")
+        plt.savefig(f"/Users/enrique/Documents/GitHub/LOGAN-SFH/Test/Z{ids}.png")
+
+    plt.show()
+    print("test1234")
 
 
 def main(update_values=None):
