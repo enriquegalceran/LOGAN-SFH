@@ -7,7 +7,7 @@ library(ProSpect)
 library(stringi)
 library(jsonlite)
 source("MUTANTS/LOGAN-CLAWS.R")
-
+# ToDo: Clean out all the commented sections
 
 generateSpecFromParams <- function(massParams="default",
                                    folderPath="OutputsGenerated",
@@ -252,42 +252,42 @@ generateSpecFromParams <- function(massParams="default",
     }
   }
   
-  # Verify if the Reference files for Inputs and Labels is available.
-  ls = list.files(folderPath)
-  if (!("ReferenceInput.fits" %in% ls)){
-    # Generate Reference Input
-    wave = data.matrix(seq(4700, 9400, 1.25))
-    writeFITSim(wave,
-                file = file.path(folderPath, "ReferenceInput.fits"),
-                ctypen = c("wave", ""),
-                cunitn = c("A", ""),
-                crvaln = c(4700, 1),
-                cdeltn = c(1.25, 1),
-                c1 = "Reference Inputs. Contains wavelength (see crval&cdelt)")
-    cat("Reference file for Inputs generated.\n")
-  }
-    
-  agevec = speclib$Age
-  if (!("ReferenceLabel.fits" %in% ls)){
-    # Generate Reference Input
-    # agevec = data.matrix(c(6300000,7900000,10000000,12600000,15800000,20000000,25100000,
-    #                        31600000,39800000,50100000,63100000,70800000,79400000,89100000,
-    #                        100000000,112200000,125900000,141300000,158500000,177800000,
-    #                        199500000,223900000,251200000,281800000,316200000,354800000,
-    #                        398100000,446700000,501200000,562300000,631000000,707900000,
-    #                        794300000,891300000,1000000000,1122000000,1258900000,1412500000,
-    #                        1584900000,1778300000,1995300000,2238700000,2511900000,
-    #                        2818400000,3162300000,3548100000,3981100000,4466800000,
-    #                        5011900000,5623400000,6309600000,7079500000,7943300000,
-    #                        8912500000,10000000000,11220200000,12589300000,14125400000,
-    #                        15848900000,17782800000))
-    writeFITSim(agevec,
-                file = file.path(folderPath, "ReferenceLabel.fits"),
-                ctypen = c("Agevec", ""),
-                cunitn = c("yrs", ""),
-                c1 = "Reference Labels. Contains Ages (non-linear)")
-    cat("Reference file for Labels generated.\n")
-  }
+  # # Verify if the Reference files for Inputs and Labels is available.
+  # ls = list.files(folderPath)
+  # if (!("ReferenceInput.fits" %in% ls)){
+  #   # Generate Reference Input
+  #   wave = data.matrix(seq(4700, 9400, 1.25))
+  #   writeFITSim(wave,
+  #               file = file.path(folderPath, "ReferenceInput.fits"),
+  #               ctypen = c("wave", ""),
+  #               cunitn = c("A", ""),
+  #               crvaln = c(4700, 1),
+  #               cdeltn = c(1.25, 1),
+  #               c1 = "Reference Inputs. Contains wavelength (see crval&cdelt)")
+  #   cat("Reference file for Inputs generated.\n")
+  # }
+  #   
+  # agevec = speclib$Age
+  # if (!("ReferenceLabel.fits" %in% ls)){
+  #   # Generate Reference Input
+  #   # agevec = data.matrix(c(6300000,7900000,10000000,12600000,15800000,20000000,25100000,
+  #   #                        31600000,39800000,50100000,63100000,70800000,79400000,89100000,
+  #   #                        100000000,112200000,125900000,141300000,158500000,177800000,
+  #   #                        199500000,223900000,251200000,281800000,316200000,354800000,
+  #   #                        398100000,446700000,501200000,562300000,631000000,707900000,
+  #   #                        794300000,891300000,1000000000,1122000000,1258900000,1412500000,
+  #   #                        1584900000,1778300000,1995300000,2238700000,2511900000,
+  #   #                        2818400000,3162300000,3548100000,3981100000,4466800000,
+  #   #                        5011900000,5623400000,6309600000,7079500000,7943300000,
+  #   #                        8912500000,10000000000,11220200000,12589300000,14125400000,
+  #   #                        15848900000,17782800000))
+  #   writeFITSim(agevec,
+  #               file = file.path(folderPath, "ReferenceLabel.fits"),
+  #               ctypen = c("Agevec", ""),
+  #               cunitn = c("yrs", ""),
+  #               c1 = "Reference Labels. Contains Ages (non-linear)")
+  #   cat("Reference file for Labels generated.\n")
+  # }
   
   # Print which parameters are going to be edited
   if (verbose > 0)
