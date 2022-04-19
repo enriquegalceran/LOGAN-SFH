@@ -467,7 +467,7 @@ draw_SFH_cases <- function(metadata_file,
   }
   
   # Import Python library
-  erik <- import("ERIK")
+  erik <- import_from_path("ERIK", path="MUTANTS/")
   
   # Define indices that will be calculated
   # possible values for n.simul:
