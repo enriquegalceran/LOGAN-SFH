@@ -544,7 +544,7 @@ EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
 
 }
 
-
+if (FALSE){
 setwd("~/Documents/GitHub/LOGAN-SFH")
 EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
 metadata = draw_SFH_cases("/Volumes/Elements/Outputs/MetaD_combined.json",
@@ -557,4 +557,4 @@ metadata = draw_SFH_cases("/Volumes/Elements/Outputs/MetaD_combined.json",
                           image.size = c(3840, 2160)
                           )
 
-
+}
