@@ -64,7 +64,7 @@
     }
     
     NOTE:
-    As a reminder, it is easier to combine datasets than to make an hyperspecific data generation.
+    As a reminder, it is easier to combine datasets than to make only one hyperspecific data generation.
     This is why we no longer consider implementing multiple massfunctions in a single data generation.
                  
 "
