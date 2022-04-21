@@ -48,7 +48,9 @@
       > probburst:float in [0,1].
                  Probability of there being burst in the dataset.
       > totalmass: [NULL], values, or distribution
-                 Total mass towards which the mass function will be resized. 
+                 Total mass towards which the mass function will be resized.
+      > z:       [1e-4]
+                 Redshift. 'Indirectly', it gives us the distance.
       
     Some default configurations:
     Pessa et al. relation:
@@ -61,26 +63,52 @@
       mburst=NULL
     }
     
-                 
+    NOTE:
+    As a reminder, it is easier to combine datasets than to make an hyperspecific data generation.
+    This is why we no longer consider implementing multiple massfunctions in a single data generation.
                  
 "
 
 
+# Parameters <- list(
+#   RndSeed=NULL,
+#   probburst=0.4,
+#   div_massinburst_by_totalmass=FALSE,
+#   totalmass=NULL,
+#   
+#   name="snorm_burst",
+#   massfunc=massfunc_snorm_burst,
+#   mSFR=10,
+#   mpeak=seq(7,14.2,0.3),
+#   mperiod=seq(0.5,1.5, 0.2),
+#   mskew=seq(-0.5, 1, 0.1),
+#   mburstage=0.1,
+#   mburst=5,
+#   massinburst=NULL,
+#   
+#   zfunc=Zfunc_massmap_box,
+#   Zstart=1e-4,
+#   yield=0.03,
+#   Zfinal=seq(0.02, 0.08, 0.02)
+# )
+
 Parameters <- list(
-  RndSeed=NULL,
+  RndSeed=42,
   probburst=0.4,
-  div_massinburst_by_totalmass=FALSE,
-  totalmass=NULL,
+  totalmass=list(func=rnorm, c(mean=8, sd=1), islog10=TRUE),
+  div_massinburst_by_totalmass=TRUE,
+  z=1e-4,
   
   name="snorm_burst",
   massfunc=massfunc_snorm_burst,
   mSFR=10,
-  mpeak=seq(7,14.2,0.3),
-  mperiod=seq(0.5,1.5, 0.2),
-  mskew=seq(-0.5, 1, 0.1),
-  mburstage=0.1,
-  mburst=5,
-  massinburst=NULL,
+  mpeak=list(func=rnorm, c(mu=11, sd=3)),
+  mperiod=list(func=rnorm, c(mu=1, sd=0.4)),
+  mskew=seq(-0.5, 1, 0.05),
+  
+  mburstage=list(func=runif, c(min=1e-3, max=0.1), islog10=FALSE),
+  massinburst=list(func=rnorm, c(mean=-3, sd=1), islog10=TRUE),
+  mburst=NULL,
   
   zfunc=Zfunc_massmap_box,
   Zstart=1e-4,
