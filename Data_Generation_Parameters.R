@@ -11,16 +11,17 @@
       0) The name of the variable NEEDS to be 'Parameters'
       2) The vector should not be named
       3) If the data is supposed to follow a specific distribution, the syntax is:
-          >argument <- c(randomdistribution_function, list(name1=value1,
-                                                           name2=value2,
-                                                           name3=value3,
-                                                           islog10=[FALSE]
-                                                           )
-                         )
+          >argument <- list(func=randomdistribution_function,
+                            c(name1=value1,
+                              name2=value2,
+                              name3=value3,
+                              ...),
+                            islog10=[FALSE]
+                           )
          where randomdistribution_function is the function that generates random elements and the second
          argument is the named list with the variables that need to be passed to said function.
          example:
-          > mpeak <- c(runif, list(min=0, max=1))
+          > mpeak <- list(func=runif, c(min=0, max=1))
          The list or arguments is going to be passed on to the function, so the name of argumentX need
          to coincide with the inputs for the function.
          There is one exception, and that is the 'islog10' argument, which indicates if this follows the log
@@ -37,6 +38,10 @@
                  If float, it requieres that either mburstage=NULL and mburst=value or viceversa.
                  If distribution, it follows the same syntax as 3). This is useful if using Pessa et al. 2021.
                  massinburst represents the fraction (0-1) of mass that was generated during the burst.
+      > div_massinburst_by_totalmass: [FALSE]
+                 Optional parameter. If TRUE, massinburst will be divided by totalmass. This should be TRUE
+                 when the massinburst ratio is given in absolute (e.g. when Pessa, or another distribution is
+                 used, and the final massinburst depends on the totalmass parameter).
       > probburst:float in [0,1].
                  Probability of there being burst in the dataset.
       > totalmass: NULL, values, or distribution
@@ -46,8 +51,11 @@
     Pessa et al. relation:
     {
       probburst=?,
-      mburstage=c(runif, list(min=0.005, max=0.1)),
-      totalmass=c(rlnormp, list(mean=8, sd=1, islog10=TRUE))
+      mburstage=list(func=runif, c(min=0.005, max=0.1), islog10=FALSE),
+      totalmass=list(func=rnorm, c(mean=8, sd=1), islog10=TRUE),
+      massinburst=list(func=rnorm, c(mean=-3, sd=1), islog10=TRUE),
+      div_massinburst_by_totalmass=TRUE
+      mburst=NULL
     }
     
                  
@@ -59,6 +67,7 @@ Parameters <- list(
   RndSeed=NULL,
   massinburst=NULL,
   probburst=0.4,
+  
   name="snorm_burst",
   mfunc=massfunc_snorm_burst,
   mSFR=10,
@@ -67,6 +76,7 @@ Parameters <- list(
   mskew=seq(-0.5, 1, 0.1),
   mburstage=0.1,
   mburst=5,
+  
   zfunc=Zfunc_massmap_box,
   Zstart=1e-4,
   yield=0.03,
