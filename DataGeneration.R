@@ -21,7 +21,12 @@ source(configFilename)
 
 # set.seed(seed)
 
-generateDataFrameArguments <- function(Parameters, n.simul, speclib){
+generateDataFrameArguments <- function(Parameters,
+                                       n.simul,
+                                       speclib,
+                                       save_path=NULL,
+                                       progress_verbose=NULL,
+                                       verbose=1){
   # Generates a DataFrame with all the parameters that are going to be used for the whole data.
 
   
@@ -103,12 +108,12 @@ generateDataFrameArguments <- function(Parameters, n.simul, speclib){
     
     if (!is.null(Par[["totalmass"]]) && !is.null(Par[["mburst"]]) && is.null(Par[["mSFR"]]) && is.null(Par[["burstfraction"]])){
       # Option A: totalmass and mburst known; mSFR=burstfraction=NULL
-      cat("Case A\n") # ToDo: Improve verbosity
+      if (verbose > 1) cat("Case A\n") # ToDo: Improve verbosity
       mass_total_noburst_SFR1 = sum(do.call("massfunc", c(list(agevec), massfunc_args[-which(names(massfunc_args)=="mSFR")], list(mSFR=1))) * ageweigths)
       mass_total_burst = sum(Par[["mburst"]] * ageweights_burst)
       burstfraction = mass_total_burst / Par[["totalmass"]]
       if (burstfraction >= 1){
-        cat("Case Abis: Mtotal_burst (according to given parameters) is greater than totalmass. Exclusively burst is going to be used.\n") # ToDo: Improve verbosity
+        if (verbose > 1) cat("Case Abis: Mtotal_burst (according to given parameters) is greater than totalmass. Exclusively burst is going to be used.\n") # ToDo: Improve verbosity
         Par[["burstfraction"]] = 1
         Par[["mSFR"]] = 0
       } else {
@@ -118,7 +123,7 @@ generateDataFrameArguments <- function(Parameters, n.simul, speclib){
       }
     } else if (!is.null(Par[["totalmass"]]) && is.null(Par[["mburst"]]) && is.null(Par[["mSFR"]]) && !is.null(Par[["burstfraction"]])){
       # Option B: totalmass and burstfraction known; mSFR=mburst=NULL
-      cat("Case B\n") # ToDo: Improve verbosity
+      if (verbose > 1) cat("Case B\n") # ToDo: Improve verbosity
       mass_total_noburst_SFR1 = sum(do.call("massfunc", c(list(agevec), massfunc_args[-which(names(massfunc_args)=="mSFR")], list(mSFR=1))) * ageweigths)
       mass_total_burst = sum(Par[["burstfraction"]] * Par[["totalmass"]])
       mburst = mass_total_burst / sum(ageweights_burst)
@@ -127,11 +132,11 @@ generateDataFrameArguments <- function(Parameters, n.simul, speclib){
       Par[["mSFR"]] = mSFR_scaled
     } else if (!is.null(Par[["totalmass"]]) && !is.null(Par[["mburst"]]) && !is.null(Par[["mSFR"]]) && is.null(Par[["burstfraction"]])){
       # Option C: totalmass, mSFR and mburst known; burstfraction=NULL
-      cat("Case C\n") # ToDo: Improve verbosity
+      if (verbose > 1) cat("Case C\n") # ToDo: Improve verbosity
       # Nothing to touch on
     } else if (is.null(Par[["totalmass"]]) && !is.null(Par[["mburst"]]) && !is.null(Par[["mSFR"]]) && is.null(Par[["burstfraction"]])){
       # Option D: mSFR and mburst known; totalmass=burstfraction=NULL
-      cat("Case D\n") # ToDo: Improve verbosity
+      if (verbose > 1) cat("Case D\n") # ToDo: Improve verbosity
       # Forcemass needs to be FALSE for SFHfunc
       Par[["totalmass"]] = FALSE
     } else {
@@ -179,19 +184,28 @@ generateDataFrameArguments <- function(Parameters, n.simul, speclib){
   
   #### Iterate over n.simul and populate the  ####
   for (i in 1:n.simul){
+    if (!is.null(progress_verbose)){
+      if (i %% progress_verbose == 0){
+        cat(paste0("Current iteration: ", i, "\n"))
+      }
+    }
     a <- uniqueArguments(Parameters, speclib)
     tmp <- data.frame(a[argument_names])
     df[i,] <- tmp
   }
-  
-  
+  cat("FINISHED\n")
+  print(object.size(df), units = "MB")
+  if (!is.null(save_path)){
+    cat(paste0("Saved file in ", save_path, " .\n"))
+    save(df, file=save_path)
+  }
   return(df)
 }
 
 
 
 
-df <- generateDataFrameArguments(Parameters, n.simul=10, speclib=EMILESCombined)
+df <- generateDataFrameArguments(Parameters, n.simul=10000, speclib=EMILESCombined, verbose=0, progress_verbose = 1000)
 
 
 
