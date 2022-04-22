@@ -36,31 +36,40 @@
     Additional Parameters:
       > RndSeed: Seed to be used for the random number generation.
                  If NULL is given, one will be generated.
-      > massinburst: NULL, float in [0,1], or distribution.
+      > burstfraction: NULL, float in [0,1], or distribution.
                  If NULL, it will consider the rest of the burst-related parameters to NOT be NULL.
-                 If float, it requieres that either mburstage=NULL and mburst=value or viceversa.
+                 If float, it requieres that mburst=NULL and mburstage=value.
                  If distribution, it follows the same syntax as 3). This is useful if using Pessa et al. 2021.
                  massinburst represents the fraction (0-1) of mass that was generated during the burst.
-      > div_massinburst_by_totalmass: [FALSE]
-                 Optional parameter. If TRUE, massinburst will be divided by totalmass. This should be TRUE
-                 when the massinburst ratio is given in absolute (e.g. when Pessa, or another distribution is
-                 used, and the final massinburst depends on the totalmass parameter).
-      > probburst:float in [0,1].
+      > probburst: [1], float in [0,1].
                  Probability of there being burst in the dataset.
       > totalmass: [NULL], values, or distribution
                  Total mass towards which the mass function will be resized.
+      > mSFR:    NULL, or value.
+                 If NULL, it will be adjusted so that it fits the rest of the data.
       > z:       [1e-4]
                  Redshift. 'Indirectly', it gives us the distance.
-      
+    
+    Cases for parameters:
+      > 0: probburst < 1, and no burst is triggered
+                Description... ToDo
+      > A: totalmass and mburst known; mSFR=burstfraction=NULL
+                Description... ToDo
+      > B: totalmass and burstfraction known; mSFR=mburst=NULL
+                Description... ToDo
+      > C: totalmass, mSFR and mburst known; burstfraction=NULL
+                Description... ToDo
+      > D: mSFR and mburst known; totalmass=burstfraction=NULL
+                Description... ToDo
+    
     Some default configurations:
     Pessa et al. relation:
     {
       probburst=?,    # fraction of cases with burst
       mburstage=list(func=runif, c(min=0.005, max=0.1), islog10=FALSE),
       totalmass=list(func=rnorm, c(mean=8, sd=1), islog10=TRUE),
-      massinburst=list(func=rnorm, c(mean=-3, sd=1), islog10=TRUE),
-      div_massinburst_by_totalmass=TRUE,
-      mburst=NULL
+      mburst=list(func=rnorm, c(mean=-3, sd=1), islog10=TRUE),
+      burstfraction=NULL
     }
     
     NOTE:
@@ -70,45 +79,22 @@
 "
 
 
-# Parameters <- list(
-#   RndSeed=NULL,
-#   probburst=0.4,
-#   div_massinburst_by_totalmass=FALSE,
-#   totalmass=NULL,
-#   
-#   name="snorm_burst",
-#   massfunc=massfunc_snorm_burst,
-#   mSFR=10,
-#   mpeak=seq(7,14.2,0.3),
-#   mperiod=seq(0.5,1.5, 0.2),
-#   mskew=seq(-0.5, 1, 0.1),
-#   mburstage=0.1,
-#   mburst=5,
-#   massinburst=NULL,
-#   
-#   zfunc=Zfunc_massmap_box,
-#   Zstart=1e-4,
-#   yield=0.03,
-#   Zfinal=seq(0.02, 0.08, 0.02)
-# )
-
 Parameters <- list(
-  RndSeed=42,
-  probburst=0.4,
+  # RndSeed=42,
+  probburst=0.5,
   totalmass=list(func=rnorm, c(mean=8, sd=1), islog10=TRUE),
-  div_massinburst_by_totalmass=TRUE,
   z=1e-4,
   
   name="snorm_burst",
   massfunc=massfunc_snorm_burst,
-  mSFR=10,
+  mSFR=NULL,
   mpeak=list(func=rnorm, c(mu=11, sd=3)),
   mperiod=list(func=rnorm, c(mu=1, sd=0.4)),
   mskew=seq(-0.5, 1, 0.05),
   
   mburstage=list(func=runif, c(min=1e-3, max=0.1), islog10=FALSE),
-  massinburst=list(func=rnorm, c(mean=-3, sd=1), islog10=TRUE),
-  mburst=NULL,
+  mburst=list(func=rnorm, c(mean=-3, sd=1), islog10=TRUE),
+  burstfraction=NULL,
   
   zfunc=Zfunc_massmap_box,
   Zstart=1e-4,
