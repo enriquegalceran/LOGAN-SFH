@@ -153,7 +153,6 @@ generateDataFrameArguments <- function(Parameters, n.simul, speclib){
                         probburst=runif(1, 0, 1),
                         totalmass=NULL,
                         burstfraction=NULL,
-                        div_massinburst_by_totalmass=FALSE,
                         z=1e-4)
   for (name in names(def_parameters)){
     if (name %!in% pnames){
@@ -164,6 +163,15 @@ generateDataFrameArguments <- function(Parameters, n.simul, speclib){
   # set.seed(Parameters$RndSeed)
   
   a <- uniqueArguments(Parameters, speclib)
+  
+  
+  
+  
+  
+  
+  
+  
+  
   return(a)
   
   
