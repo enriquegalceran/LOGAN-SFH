@@ -100,9 +100,7 @@ generateDataFrameArguments <- function(Parameters, n.simul, speclib){
         stop("NO CASE WAS FOUND!")
       }
     }
-    print(RndChanceBurst)
-    print(Par$probburst)
-    print(burst)
+    
     if (!is.null(Par[["totalmass"]]) && !is.null(Par[["mburst"]]) && is.null(Par[["mSFR"]]) && is.null(Par[["burstfraction"]])){
       # Option A: totalmass and mburst known; mSFR=burstfraction=NULL
       cat("Case A\n") # ToDo: Improve verbosity
@@ -159,84 +157,43 @@ generateDataFrameArguments <- function(Parameters, n.simul, speclib){
       Parameters[name] <- def_parameters[[name]]
     }
   }
-  
-  # set.seed(Parameters$RndSeed)
-  
-  a <- uniqueArguments(Parameters, speclib)
+  set.seed(Parameters$RndSeed)
   
   
+  ##### Initialize data.frame with values that are going to differ with each case ####
+  argument_names = c()
+  for (n in names(Parameters)){
+    if (length(Parameters[[n]])> 1){
+      argument_names <- c(argument_names, n)
+    }
+  }
+  for (n in c("RndSeed", "probburst", "massfunc", "zfunc")){
+    if (n %in% argument_names){
+      argument_names <- argument_names[-which(argument_names == n)]
+    }
+  }
+  
+  df <- data.frame(matrix(0, nrow=n.simul, ncol=length(argument_names)))
+  names(df) <- argument_names
   
   
+  #### Iterate over n.simul and populate the  ####
+  for (i in 1:n.simul){
+    a <- uniqueArguments(Parameters, speclib)
+    tmp <- data.frame(a[argument_names])
+    df[i,] <- tmp
+  }
   
   
-  
-  
-  
-  return(a)
-  
-  
+  return(df)
 }
 
-a <- generateDataFrameArguments(Parameters, n.simul=10, speclib=EMILESCombined)
-
-# print(a)
-agevec = EMILESCombined$Age
-mass_val = splat(a$massfunc)(c(list(agevec), a[names(a) %in% names(formals(a$massfunc))]))
-plot(agevec, mass_val, type="l", main=a$burstfraction)
-abline(v=13.8e9, col="red")
-
-print(a$totalmass)
-print(a$mSFR)
-print(a$mburst)
-print(a$mburstage)
-print(a$burstfraction)
-cat("---\n")
-print(a$mskew)
-print(a$mperiod)
 
 
 
+df <- generateDataFrameArguments(Parameters, n.simul=10, speclib=EMILESCombined)
 
-# 
-# 
-# agevec = EMILESCombined$Age
-# ageweights=EMILESCombined$AgeWeights
-# mf1 <- massfunc_snorm_burst(agevec, mSFR=1)*EMILESCombined$AgeWeights
-# mf2 <- massfunc_snorm_burst(agevec, mSFR=1, mburst = 1e-4)*EMILESCombined$AgeWeights
-# 
-# sum(mf1)
-# sum(mf2)
-# sum(mf2) - sum(mf1)
-# (sum(mf2)-sum(mf1))/sum(mf2)
-# 
-# 
-# mburstage=0.1
-# mburstage_scaled = mburstage*1e9
-# mSFR1 = 1
-# 
-# # 1
-# M_total_SFR1 = sum(massfunc_snorm_burst(agevec, mSFR1)*ageweights)
-# print(M_total_SFR1)
-# print(log10(M_total_SFR1))
-# 
-# # 2
-# totalmass = 16521794      # Sacado de la distribución
-# mburst_dist = 0.000445
-# 
-# 
-# # 3
-# M_burst = sum(mburst_dist * ageweights[agevec<mburstage_scaled])
-# 
-# fraction = M_burst/totalmass
-# print(totalmass)
-# print(log10(totalmass))
-# mSFR_adjusted = totalmass*(1-fraction)/M_total_SFR1
-# 
-# 
-# dev.off()
-# mass_val = massfunc_snorm_burst(agevec, mSFR=mSFR_adjusted, mburst=mburst_dist, mburstage=mburstage)
-# plot(agevec, mass_val, type="l", log="x")
-# 
-# plot(mass_val)
+
+
 
 

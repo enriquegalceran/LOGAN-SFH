@@ -80,7 +80,7 @@
 
 
 Parameters <- list(
-  # RndSeed=42,
+  RndSeed=42,
   probburst=0.5,
   totalmass=list(func=rnorm, c(mean=8, sd=1), islog10=TRUE),
   z=1e-4,
