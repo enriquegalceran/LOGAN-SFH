@@ -13,13 +13,19 @@ library(plyr)         # splat(func)(c(var1, list_of_vars))
 EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
+
+
+# File should have the file extension '.rda'
 outputFolder = "/Volumes/Elements/TrainingData/"
+savefilename = "Argument_df.rda"
 configFilename = "Data_Generation_Parameters.R"
+
+
 
 # Load Parameters from the Config File.
 source(configFilename)
 
-# set.seed(seed)
+
 
 generateDataFrameArguments <- function(Parameters,
                                        n.simul,
@@ -109,11 +115,18 @@ generateDataFrameArguments <- function(Parameters,
     if (!is.null(Par[["totalmass"]]) && !is.null(Par[["mburst"]]) && is.null(Par[["mSFR"]]) && is.null(Par[["burstfraction"]])){
       # Option A: totalmass and mburst known; mSFR=burstfraction=NULL
       if (verbose > 1) cat("Case A\n") # ToDo: Improve verbosity
-      mass_total_noburst_SFR1 = sum(do.call("massfunc", c(list(agevec), massfunc_args[-which(names(massfunc_args)=="mSFR")], list(mSFR=1))) * ageweigths)
+      mass_total_noburst_SFR1 = sum(do.call("massfunc",
+                                            c(list(agevec),
+                                              massfunc_args[-which(names(massfunc_args)=="mSFR")],
+                                              list(mSFR=1))
+                                            ) * ageweigths)
       mass_total_burst = sum(Par[["mburst"]] * ageweights_burst)
       burstfraction = mass_total_burst / Par[["totalmass"]]
       if (burstfraction >= 1){
-        if (verbose > 1) cat("Case Abis: Mtotal_burst (according to given parameters) is greater than totalmass. Exclusively burst is going to be used.\n") # ToDo: Improve verbosity
+        if (verbose > 1) {
+          cat(paste0("Case Abis: Mtotal_burst (according to given parameters) ",
+                     "is greater than totalmass. Exclusively burst is going to be used.\n")) # ToDo: Improve verbosity
+          }
         Par[["burstfraction"]] = 1
         Par[["mSFR"]] = 0
       } else {
@@ -124,7 +137,11 @@ generateDataFrameArguments <- function(Parameters,
     } else if (!is.null(Par[["totalmass"]]) && is.null(Par[["mburst"]]) && is.null(Par[["mSFR"]]) && !is.null(Par[["burstfraction"]])){
       # Option B: totalmass and burstfraction known; mSFR=mburst=NULL
       if (verbose > 1) cat("Case B\n") # ToDo: Improve verbosity
-      mass_total_noburst_SFR1 = sum(do.call("massfunc", c(list(agevec), massfunc_args[-which(names(massfunc_args)=="mSFR")], list(mSFR=1))) * ageweigths)
+      mass_total_noburst_SFR1 = sum(do.call("massfunc",
+                                            c(list(agevec),
+                                              massfunc_args[-which(names(massfunc_args)=="mSFR")],
+                                              list(mSFR=1))
+                                            ) * ageweigths)
       mass_total_burst = sum(Par[["burstfraction"]] * Par[["totalmass"]])
       mburst = mass_total_burst / sum(ageweights_burst)
       Par[["mburst"]] = mburst
@@ -205,7 +222,12 @@ generateDataFrameArguments <- function(Parameters,
 
 
 
-df <- generateDataFrameArguments(Parameters, n.simul=10000, speclib=EMILESCombined, verbose=0, progress_verbose = 1000)
+df <- generateDataFrameArguments(Parameters=Parameters,
+                                 n.simul=10000,
+                                 speclib=EMILESCombined,
+                                 save_path=file.path(outputFolder, savefilename),
+                                 verbose=1,
+                                 progress_verbose = 1000)
 
 
 
