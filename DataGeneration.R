@@ -38,14 +38,29 @@ generateDataFrameArguments <- function(Parameters,
   
   evaluateFunction <- function(x){
     # Evaluate a parameter that has a function
-    if ("islog10" %in% names(x)){
-      islog10 = x[["islog10"]]
-      x <- x[-which(names(x)=="islog10")]
-    } else {
-      islog10 = FALSE
+    additional_arguments = list(islog10=FALSE, min_val=NULL, max_val=NULL)
+    for (n in names(additional_arguments)){
+      if (n %in% names(x)){
+        additional_arguments[n] = x[[n]]
+        x <- x[-which(names(x)==n)]
+      }
     }
     
     evaluated = splat(x$func)(c(1, x[-which(names(x)=="func")]))
+    
+    # Verify it is located within min/max
+    if (is.null(additional_arguments$min_val)){
+      if (evaluated < additional_arguments$min_val){
+        evaluated <- additional_arguments$min_val
+      }
+    }
+    if (is.null(additional_arguments$max_val)){
+      if (evaluated > additional_arguments$max_val){
+        evaluated <- additional_arguments$max_val
+      }
+    }
+    
+    # Evaluate exponent
     if (islog10) {
       evaluated <- 10**evaluated
     }
