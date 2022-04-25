@@ -50,11 +50,13 @@ generateDataFrameArguments <- function(Parameters,
     
     # Verify it is located within min/max
     if (is.null(additional_arguments$min_val)){
+    if (!is.null(additional_arguments$min_val)){
       if (evaluated < additional_arguments$min_val){
         evaluated <- additional_arguments$min_val
       }
     }
     if (is.null(additional_arguments$max_val)){
+    if (!is.null(additional_arguments$max_val)){
       if (evaluated > additional_arguments$max_val){
         evaluated <- additional_arguments$max_val
       }
@@ -62,6 +64,7 @@ generateDataFrameArguments <- function(Parameters,
     
     # Evaluate exponent
     if (islog10) {
+    if (additional_arguments$islog10) {
       evaluated <- 10**evaluated
     }
     
