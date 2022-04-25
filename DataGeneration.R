@@ -74,7 +74,7 @@ generateDataFrameArguments <- function(Parameters,
     massfunc_args = Par[names(Par) %in% names(formals(massfunc))]
     agevec = speclib$Age
     ageweigths = speclib$AgeWeights
-    ageweights_burst = ageweights[agevec < Par[["mburstage"]]*1e9]
+    ageweights_burst = ageweigths[agevec < Par[["mburstage"]]*1e9]
     
     # Calculate random probability of having burst
     if (!is.null(Par[["probburst"]])){
