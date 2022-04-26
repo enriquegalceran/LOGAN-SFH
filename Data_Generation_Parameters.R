@@ -44,6 +44,9 @@
     Additional Parameters:
       > RndSeed: Seed to be used for the random number generation.
                  If NULL is given, one will be generated.
+      > SNR:     [0], numeric > 0
+                 If SNR>0, it will add noise to the resulting spectra using
+                 SNR as the Signal-Noise Ratio.
       > burstfraction: NULL, float in [0,1], or distribution.
                  -If NULL, it will consider the rest of the burst-related
                  parameters to NOT be NULL.

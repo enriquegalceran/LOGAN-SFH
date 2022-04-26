@@ -10,6 +10,7 @@ require(plyr)
 library(ProSpect)
 library(ggplot2)
 library(plyr)         # splat(func)(c(var1, list_of_vars))
+library(stringi)
 EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
@@ -185,14 +186,13 @@ generateDataFrameArguments <- function(Parameters,
   # If required parameters are not available, set the default ones.
   pnames = names(Parameters)
   def_parameters = list(RndSeed=sample(1:1e7, 1),
+                        SNR=0,
                         probburst=runif(1, 0, 1),
                         totalmass=FALSE,
                         emission=TRUE,
                         emission_scale="SFR",
                         burstfraction=NULL,
-                        veldisp=50,
                         filters="HST",
-                        
                         z=1e-4)
   for (name in names(def_parameters)){
     if (name %!in% pnames){
@@ -313,13 +313,89 @@ drawSFHFromDataFrame <- function(df,
 }
 
 
-# drawSFHFromDataFrame(df, massfunc_snorm_burst, agevec=EMILESCombined$Age, main="Test1234")
-
-
-
 generateSpecFromDataFrame <- function(Parameters,
-                                      df){
+                                      df,
+                                      verbose=1,
+                                      stellpop="EMILESCombined",
+                                      speclib=NULL,
+                                      ...){
   # Generate the Spectra from the matrix with the specific arguments
+  
+  #### Function definitioin ####
+  insertNoise <- function(spec, SNRatio){
+    # Each point in the spectrum will be modified
+    # according to it's value and the SNRatio.
+    spec$flux$flux = rnorm(length(spec$flux$flux), spec$flux$flux, spec$flux$flux/SNRatio)
+    return(spec)
+  }
+  
+  generateFilename <- function(params, mode=2, rngLength=8){
+    # Generates a filename
+      now = Sys.time()
+      filename = paste(gsub(" ", "T", gsub(":", "", gsub("-", "", now))),
+                       stri_rand_strings(n=1, length=rngLength), sep="_")
+  }
+  
+  #### Start of execution ####
+  dots <- list(...)
+  
+  if (!is.null(speclib)){
+    if (!is.null(stellpop) & stellpop != "EMILESCombined"){
+      warning("stellpop and speclib do not match!")
+    } else {
+      # Return to one of the default accepted values for SFHfunc
+      stellpop="EMILES"
+    }
+  } else {
+    if (stellpop  == "EMILESCombined"){
+      # Return to one of the default accepted values for SFHfunc
+      stellpop = "EMILES"
+      # TODO: This will need to read global variable/env-variable or something similar.
+      speclib = readRDS(file="EMILESCombined.rds")
+    }
+  }
+  
+  
+  if (filters == "HST"){
+    filtersHST <- c("F275W", "F336W", "F438W", "F555W", "F814W")
+    filters <- list()
+    for (filter in filtersHST) {
+      # TODO: see speclib regarding location of data files.
+      filters[[filter]] <-
+        read.table(
+          paste0("FiltersHST/HST_WFC3_UVIS2.", filter, ".dat"),
+          col.names = c("wave", "response")
+        )
+    }
+  }
+  
+  
+  
+  
+  
+  
+  # ToDo: Z
+  
+  
+  If 
+  
+  
+  
+  #### execute SHF ####
+  spectraObject = do.call("SFHfunc", c(list(massfunc=Parameters$massfunc,
+                                            forcemass=Parameters$totalmass,
+                                            Z=Z,
+                                            stellpop = stellpop,
+                                            speclib = speclib,
+                                            filters = Parameters$filters,
+                                            emission = Parameters$emission,
+                                            emission_scale = Parameters$emission_scale
+                                            ),
+                                       massfunc_args,
+                                       zfunc_args
+                                       )
+                          )
+  
   
   
   
