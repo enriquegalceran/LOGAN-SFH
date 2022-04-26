@@ -267,7 +267,7 @@ generateSpecFromParams <- function(massParams="default",
   #   cat("Reference file for Inputs generated.\n")
   # }
   #   
-  # agevec = speclib$Age
+  agevec = speclib$Age
   # if (!("ReferenceLabel.fits" %in% ls)){
   #   # Generate Reference Input
   #   # agevec = data.matrix(c(6300000,7900000,10000000,12600000,15800000,20000000,25100000,
