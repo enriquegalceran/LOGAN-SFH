@@ -320,6 +320,7 @@ generateSpecFromDataFrame <- function(Parameters,
                                       df,
                                       verbose=1,
                                       new_scale="defaultlog1",
+                                      saveDataFrame=FALSE,
                                       waveout=seq(4700, 9400, 1.25),
                                       ...){
   # Generate the Spectra from the matrix with the specific arguments
@@ -504,6 +505,7 @@ generateSpecFromDataFrame <- function(Parameters,
                                     foldername = "/Users/enrique/Documents/GitHub/LOGAN-SFH/KK",
                                     absolutePath = TRUE,
                                     filters = filterData,
+                                    saveDataFrame = saveDataFrame,
                                     verbose=verbose
   )
   
@@ -532,7 +534,7 @@ Parameters = output[["Parameters"]]
 #                                      log="xy",
 #                                      ylim=c(1e-4, 15))
 
-generateSpecFromDataFrame(Parameters, df)
+generateSpecFromDataFrame(Parameters, df, saveDataFrame = FALSE)
 
 
 # abline(v=EMILESCombined$Age)

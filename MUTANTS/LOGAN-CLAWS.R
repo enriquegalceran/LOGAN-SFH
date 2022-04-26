@@ -185,13 +185,16 @@ exportObjectToFITS <- function(inputObject,
 }
 
 
-exportObjectsToSingleFITS <- function(inputMatrix,
+exportObjectsToSingleFITS <- function(Parameters,
+                                      df,
+                                      inputMatrix,
                                       labelMatrix,
                                       filename,
                                       foldername,
                                       filters,
-                                      fileprefix = "",
+                                      fileprefix= "",
                                       absolutePath = FALSE,
+                                      saveDataFrame=FALSE,
                                       verbose=2
                                      ){
   #####
@@ -235,8 +238,8 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   hdrIn <- addKwv("NSpectra", spectra.points,note="Number of SpectraPoints", header=hdrIn)
   hdrIn <- addKwv("NFilters", n.filters, note="Number of Filters", header=hdrIn)
   hdrIn <- addKwv("NRows", dim(inputMatrix)[1] - 1, note="Number of Rows", header=hdrIn)
-  hdrIn <- addComment("First row (ID=0) has the X values of the corresponding column if applicable", hdrIn)
-
+  hdrIn <- addComment("First row (ID=0) has the X values of corresponding column", hdrIn)
+  
   
   
   #####
@@ -249,7 +252,7 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   hdrLb <- addKwv("UuidLab", objectUUID[2], note="UUID for Label", header=hdrLb)
   hdrLb <- addKwv("UuidMet", objectUUID[3], note="UUID for Metadata", header=hdrLb)  
   hdrLb <- addKwv("Nagevec", n.agevec, note="Length of agevec", header=hdrLb)
-  hdrLb <- addComment("First row (ID=0) has the X values of the corresponding column if applicable", hdrLb)
+  hdrLb <- addComment("First row (ID=0) has the X values of corresponding column", hdrLb)
   
   
   #####
@@ -280,6 +283,20 @@ exportObjectsToSingleFITS <- function(inputMatrix,
   writeFITSim(labelMatrix,
               file = paste0(filedirectory, "/Label_", filename),
               header=hdrLb)
+  
+  if (verbose >= 1)
+    cat(paste0("Saving MetaD_", filename, " ...\n"))
+  metadata=list(Parameters=Parameters[-which(names(Parameters)=="speclib")],
+                extra=list(UUIDINP=objectUUID[1],
+                           UUIDLAB=objectUUID[2],
+                           UUIDMET=objectUUID[3],
+                           date=Sys.time()
+                           )
+                )
+  if (saveDataFrame){
+    metadata[["df"]]=df
+  }
+  save(metadata, file=paste0(filedirectory, "/MetaD_", filename))
   
   # Return UUIDs for the metadata file
   return(objectUUID)
