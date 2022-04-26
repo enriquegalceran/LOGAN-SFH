@@ -193,6 +193,9 @@ generateDataFrameArguments <- function(Parameters,
                         emission_scale="SFR",
                         burstfraction=NULL,
                         filters="HST",
+                        stellpop="EMILESCombined",
+                        speclib=NULL,
+                        new_scale="defaultlog1",
                         z=1e-4)
   for (name in names(def_parameters)){
     if (name %!in% pnames){
@@ -316,8 +319,6 @@ drawSFHFromDataFrame <- function(df,
 generateSpecFromDataFrame <- function(Parameters,
                                       df,
                                       verbose=1,
-                                      stellpop="EMILESCombined",
-                                      speclib=NULL,
                                       new_scale="defaultlog1",
                                       waveout=seq(4700, 9400, 1.25),
                                       ...){
@@ -344,22 +345,22 @@ generateSpecFromDataFrame <- function(Parameters,
   name.df <- names(df)
   par.names = names(Parameters)
   
-  if (!is.null(speclib)){
-    if (!is.null(stellpop) & stellpop != "EMILESCombined"){
+  if (!is.null(Parameters$speclib)){
+    if (!is.null(Parameters$stellpop) & Parameters$stellpop != "EMILESCombined"){
       warning("stellpop and speclib do not match!")
     } else {
       # Return to one of the default accepted values for SFHfunc
-      stellpop="EMILES"
+      Parameters$stellpop="EMILES"
     }
   } else {
-    if (stellpop  == "EMILESCombined"){
+    if (Parameters$stellpop  == "EMILESCombined"){
       # Return to one of the default accepted values for SFHfunc
-      stellpop = "EMILESCombined"
+      Parameters$stellpop = "EMILESCombined"
       # TODO: This will need to read global variable/env-variable or something similar.
-      speclib = readRDS(file="EMILESData/EMILESCombined.rds")
+      Parameters$speclib = readRDS(file="EMILESData/EMILESCombined.rds")
     }
   }
-  agevec = speclib$Age
+  agevec = Parameters$speclib$Age
   
   
   if (Parameters$filters == "HST"){
@@ -439,8 +440,8 @@ generateSpecFromDataFrame <- function(Parameters,
     spectraObject = do.call("SFHfunc", c(list(massfunc=Parameters$massfunc,
                                               forcemass=df[i, "totalmass"],
                                               Z=Parameters$zfunc,
-                                              stellpop = stellpop,
-                                              speclib = speclib,
+                                              stellpop = Parameters$stellpop,
+                                              speclib = Parameters$speclib,
                                               filters = Parameters[["filters"]],
                                               emission = Parameters$emission,
                                               emission_scale = Parameters$emission_scale
@@ -448,17 +449,6 @@ generateSpecFromDataFrame <- function(Parameters,
                                          current_arguments
                                          )
                             )
-    a <- c(list(massfunc=Parameters$massfunc,
-                forcemass=df[i, "totalmass"],
-                Z=Parameters$zfunc,
-                stellpop = stellpop,
-                speclib = speclib,
-                filters = Parameters[["filters"]],
-                emission = Parameters$emission,
-                emission_scale = Parameters$emission_scale),
-           current_arguments)
-    
-    
     
     #### Postprocess Spectra ####
     # SFR
@@ -496,15 +486,19 @@ generateSpecFromDataFrame <- function(Parameters,
     completeDataMatrixIn[i + 1, ] = newRowIn
     completeDataMatrixLa[i + 1, ] = newRowLa
     
+    # ToDo: Add progress verbosity
+    # ToDo: Add timer?
     print(i)
     i = i + 1
   }
   
   #### Export File ####
-  # Once calculations are over, export file
+  # Once calculations are over, export files
   outputfilename <- generateFilename()
   filterData = spectraObject$out
-  UUIDs <-exportObjectsToSingleFITS(inputMatrix = completeDataMatrixIn,
+  UUIDs <-exportObjectsToSingleFITS(Parameters=Parameters,
+                                    df=df,
+                                    inputMatrix = completeDataMatrixIn,
                                     labelMatrix = completeDataMatrixLa,
                                     filename = outputfilename,
                                     foldername = "/Users/enrique/Documents/GitHub/LOGAN-SFH/KK",
