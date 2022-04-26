@@ -321,6 +321,7 @@ drawSFHFromDataFrame <- function(df,
 generateSpecFromDataFrame <- function(Parameters,
                                       df,
                                       verbose=1,
+                                      verboseStep=10,
                                       new_scale="defaultlog1",
                                       saveDataFrame=FALSE,
                                       waveout=seq(4700, 9400, 1.25),
@@ -430,16 +431,8 @@ generateSpecFromDataFrame <- function(Parameters,
   i = 1
   while (i <= n.simul){
     
-    # Evaluate elements that change each iteration
-    # drop=FALSE keeps the name, even though there are none or just one column
-    massfunc_args_val = df[i, massfunc_args, drop=FALSE]
-    zfunc_args_val = df[i, zfunc_args, drop=FALSE]
-    SFHfunc_args_val = df[i, SFHfunc_args, drop=FALSE]
-    current_arguments = c(massfunc_args_val, zfunc_args_val,
-                          SFHfunc_args_val, static.params.val)
-    
-    
     #### execute SHF ####
+    # drop=FALSE keeps the name, even though there are none or just one column
     spectraObject = do.call("SFHfunc", c(list(massfunc=Parameters$massfunc,
                                               forcemass=df[i, "totalmass"],
                                               Z=Parameters$zfunc,
@@ -449,7 +442,10 @@ generateSpecFromDataFrame <- function(Parameters,
                                               emission = Parameters$emission,
                                               emission_scale = Parameters$emission_scale
                                               ),
-                                         current_arguments
+                                         df[i, massfunc_args, drop=FALSE],
+                                         df[i, zfunc_args, drop=FALSE],
+                                         df[i, SFHfunc_args, drop=FALSE],
+                                         static.params.val
                                          )
                             )
     
@@ -491,7 +487,9 @@ generateSpecFromDataFrame <- function(Parameters,
     
     # ToDo: Add progress verbosity
     # ToDo: Add timer?
-    print(i)
+    if (i %% verboseStep == 0 || i == 1 || i == n.simul){
+      cat(paste0("Generating for ", i, "/", n.simul, "\n"))
+    }
     i = i + 1
   }
   
@@ -516,7 +514,7 @@ generateSpecFromDataFrame <- function(Parameters,
 
 #### MAIN ####
 output <- generateDataFrameArguments(Parameters=Parameters,
-                                     n.simul=3,
+                                     n.simul=200,
                                      speclib=EMILESCombined,
                                      # save_path=file.path(outputFolder, savefilename),
                                      verbose=1,
@@ -524,15 +522,17 @@ output <- generateDataFrameArguments(Parameters=Parameters,
 df = output[["df"]]
 Parameters = output[["Parameters"]]
 
-# point_matrix <- drawSFHFromDataFrame(df,
-#                                      Parameters$massfunc,
-#                                      agevec=EMILESCombined$Age,
-#                                      log="xy",
-#                                      ylim=c(1e-4, 15))
+point_matrix <- drawSFHFromDataFrame(df,
+                                     Parameters$massfunc,
+                                     agevec=EMILESCombined$Age,
+                                     log="xy",
+                                     ylim=c(1e-4, 15))
+
+# abline(v=EMILESCombined$Age)
 
 generateSpecFromDataFrame(Parameters, df, saveDataFrame = FALSE)
 
 
-# abline(v=EMILESCombined$Age)
+
 
 
