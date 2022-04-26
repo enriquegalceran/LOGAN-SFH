@@ -93,16 +93,17 @@
 
 Parameters <- list(
   RndSeed=42,
-  probburst=0.5,
+  SNR=30,
+  probburst=1,
   totalmass=list(func=rnorm, c(mean=8, sd=1), islog10=TRUE),
   z=1e-4,
   
   name="snorm_burst",
   massfunc=massfunc_snorm_burst,
   mSFR=NULL,
-  mpeak=list(func=rnorm, c(mu=11, sd=3)),
+  mpeak=list(func=rnorm, c(mu=12, sd=3)),
   mperiod=list(func=rnorm, c(mu=1, sd=0.4)),
-  mskew=seq(-0.5, 1, 0.05),
+  mskew=list(func=runif, c(min=-0.5, max=1.5)),
   
   mburstage=list(func=runif, c(min=0.030, max=0.100), islog10=FALSE),
   mburst=list(func=rnorm, c(mean=-3, sd=1), islog10=TRUE),
