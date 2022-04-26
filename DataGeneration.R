@@ -250,6 +250,7 @@ drawSFHFromDataFrame <- function(df,
                                  specificCases=NULL,
                                  progress_verbose=1000,
                                  alpha_color=10,
+                                 returnPointMatrix=FALSE,
                                  ...){
   # Draws the SFHs that are going to be used
   dots = list(...)
@@ -312,7 +313,8 @@ drawSFHFromDataFrame <- function(df,
     }
     i <- i + 1
   }
-  return(points_matrix)
+  if (returnPointMatrix)
+    return(points_matrix)
 }
 
 
@@ -510,15 +512,9 @@ generateSpecFromDataFrame <- function(Parameters,
   )
   
   
-  
-  
-  
 }
 
-
-
-
-#### Execute Code ####
+#### MAIN ####
 output <- generateDataFrameArguments(Parameters=Parameters,
                                      n.simul=3,
                                      speclib=EMILESCombined,
