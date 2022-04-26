@@ -318,6 +318,8 @@ generateSpecFromDataFrame <- function(Parameters,
                                       verbose=1,
                                       stellpop="EMILESCombined",
                                       speclib=NULL,
+                                      new_scale="defaultlog1",
+                                      waveout=seq(4700, 9400, 1.25),
                                       ...){
   # Generate the Spectra from the matrix with the specific arguments
   
@@ -329,7 +331,7 @@ generateSpecFromDataFrame <- function(Parameters,
     return(spec)
   }
   
-  generateFilename <- function(params, mode=2, rngLength=8){
+  generateFilename <- function(rngLength=8){
     # Generates a filename
       now = Sys.time()
       filename = paste(gsub(" ", "T", gsub(":", "", gsub("-", "", now))),
@@ -352,11 +354,12 @@ generateSpecFromDataFrame <- function(Parameters,
   } else {
     if (stellpop  == "EMILESCombined"){
       # Return to one of the default accepted values for SFHfunc
-      stellpop = "EMILES"
+      stellpop = "EMILESCombined"
       # TODO: This will need to read global variable/env-variable or something similar.
       speclib = readRDS(file="EMILESData/EMILESCombined.rds")
     }
   }
+  agevec = speclib$Age
   
   
   if (Parameters$filters == "HST"){
@@ -397,29 +400,39 @@ generateSpecFromDataFrame <- function(Parameters,
   SFHfunc_args = name.df[name.df %in% SFHfunc.names]
   list.names.not.used = c(list.names.not.used, SFHfunc.names[SFHfunc.names %!in% SFHfunc_args])
   
-  # # Clean list
-  # list.names.not.used = list.names.not.used[-which(list.names.not.used=="...")]
-  # list.names.not.used = list.names.not.used[-which(list.names.not.used=="massfunc")]
-  list.values.considered <- c("massfunc", "...", "age", "forcemass",
-                                      "Z", "stellpop", "speclib", "filters",
-                                      "emmision", "emission_scale")
+  # Clean list of cases that are added manually
+  list.values.considered <- c("massfunc", "...", "age", "forcemass", "Z",
+                              "stellpop", "speclib", "filters", "emission",
+                              "emission_scale")
   list.names.not.used = list.names.not.used[list.names.not.used %!in% list.values.considered]
   
   # Get constant values from Parameters that are also going to be inserted
   static.params.names = names(Parameters)[names(Parameters) %in% list.names.not.used]
   static.params.val = Parameters[static.params.names]
   
-  #### iterate over total number of cases ####
+  
+  
+  #### Iterate over total number of cases ####
+  # Initiate Matrix
+  agevec_new = convertAgevecToOutputScale(agevec, agevec, new_scale = new_scale, return_scale = TRUE)
+  numberColumnsIn = length(waveout) + length(Parameters$filters) + 1    # Add 1 for the ID
+  numberColumnsLa = 2 * length(agevec_new$age) + 1           # Add 1 for the ID
+  completeDataMatrixIn <- matrix(0, nrow=n.simul + 1, ncol=numberColumnsIn)
+  completeDataMatrixLa <- matrix(0, nrow=n.simul + 1, ncol=numberColumnsLa)
+  completeDataMatrixIn[1, ] = c(0, waveout, seq(1:length(filters)))
+  completeDataMatrixLa[1, ] = c(0, agevec_new$age, agevec_new$age)
+  
+  
   i = 1
   while (i <= n.simul){
     
-    # Evaluate values that change each iteration
-    massfunc_args_val = df[i, massfunc_args]
-    zfunc_args_val = df[i, zfunc_args]
-    SFHfunc_args_val = df[i, SFHfunc_args]
+    # Evaluate elements that change each iteration
+    # drop=FALSE keeps the name, even though there are none or just one column
+    massfunc_args_val = df[i, massfunc_args, drop=FALSE]
+    zfunc_args_val = df[i, zfunc_args, drop=FALSE]
+    SFHfunc_args_val = df[i, SFHfunc_args, drop=FALSE]
     current_arguments = c(massfunc_args_val, zfunc_args_val,
                           SFHfunc_args_val, static.params.val)
-    
     
     
     #### execute SHF ####
@@ -435,11 +448,74 @@ generateSpecFromDataFrame <- function(Parameters,
                                          current_arguments
                                          )
                             )
+    a <- c(list(massfunc=Parameters$massfunc,
+                forcemass=df[i, "totalmass"],
+                Z=Parameters$zfunc,
+                stellpop = stellpop,
+                speclib = speclib,
+                filters = Parameters[["filters"]],
+                emission = Parameters$emission,
+                emission_scale = Parameters$emission_scale),
+           current_arguments)
     
-    #### Resize Spectra and Store it ####
     
+    
+    #### Postprocess Spectra ####
+    # SFR
+    tmp_output = convertAgevecToOutputScale(spectraObject$agevec, spectraObject$SFR)
+    spectraObject$SFR = tmp_output$data
+    # massvec
+    tmp_output = convertAgevecToOutputScale(spectraObject$agevec, spectraObject$massvec)
+    spectraObject$massvec = tmp_output$data
+    # Zvec
+    tmp_output = convertAgevecToOutputScale(spectraObject$agevec, spectraObject$Zvec)
+    spectraObject$Zvec = tmp_output$data
+    # agevec
+    tmp_output = convertAgevecToOutputScale(spectraObject$agevec, spectraObject$agevec)
+    spectraObject$agevec = suppressWarnings(tmp_output$data)    
+    
+    # Add Noise
+    if (Parameters$SNR > 0){
+      spectraObject = insertNoise(spectraObject, Parameters$SNR)
+    }
+    
+    # Adjust Spectra to Wavelength (waveout)
+    if (!is.null(waveout)){
+      spectraObject$flux = interpolateToWaveout(
+        lapply(spectraObject$flux["wave"], as.numeric)[[1]],
+        lapply(spectraObject$flux["flux"], as.numeric)[[1]],
+        waveout,
+        returnList=TRUE)
+    }
+    
+    # ID, spectra, Magnitudes, timer
+    newRowIn <- c(i, spectraObject$flux$flux, spectraObject$out$out)
+    newRowLa <- c(i, spectraObject$SFR, spectraObject$Zvec)
+    
+    # Add new row to the Matrix
+    completeDataMatrixIn[i + 1, ] = newRowIn
+    completeDataMatrixLa[i + 1, ] = newRowLa
+    
+    print(i)
     i = i + 1
   }
+  
+  #### Export File ####
+  # Once calculations are over, export file
+  outputfilename <- generateFilename()
+  filterData = spectraObject$out
+  UUIDs <-exportObjectsToSingleFITS(inputMatrix = completeDataMatrixIn,
+                                    labelMatrix = completeDataMatrixLa,
+                                    filename = outputfilename,
+                                    foldername = "/Users/enrique/Documents/GitHub/LOGAN-SFH/KK",
+                                    absolutePath = TRUE,
+                                    filters = filterData,
+                                    verbose=verbose
+  )
+  
+  
+  
+  
   
 }
 
@@ -448,7 +524,7 @@ generateSpecFromDataFrame <- function(Parameters,
 
 #### Execute Code ####
 output <- generateDataFrameArguments(Parameters=Parameters,
-                                     n.simul=1000,
+                                     n.simul=3,
                                      speclib=EMILESCombined,
                                      # save_path=file.path(outputFolder, savefilename),
                                      verbose=1,
