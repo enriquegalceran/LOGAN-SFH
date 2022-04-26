@@ -338,6 +338,9 @@ generateSpecFromDataFrame <- function(Parameters,
   
   #### Start of execution ####
   dots <- list(...)
+  n.simul <- dim(df)[1]
+  name.df <- names(df)
+  par.names = names(Parameters)
   
   if (!is.null(speclib)){
     if (!is.null(stellpop) & stellpop != "EMILESCombined"){
@@ -351,12 +354,12 @@ generateSpecFromDataFrame <- function(Parameters,
       # Return to one of the default accepted values for SFHfunc
       stellpop = "EMILES"
       # TODO: This will need to read global variable/env-variable or something similar.
-      speclib = readRDS(file="EMILESCombined.rds")
+      speclib = readRDS(file="EMILESData/EMILESCombined.rds")
     }
   }
   
   
-  if (filters == "HST"){
+  if (Parameters$filters == "HST"){
     filtersHST <- c("F275W", "F336W", "F438W", "F555W", "F814W")
     filters <- list()
     for (filter in filtersHST) {
@@ -367,38 +370,76 @@ generateSpecFromDataFrame <- function(Parameters,
           col.names = c("wave", "response")
         )
     }
+    Parameters$filters <- filters
   }
   
   
+  # Filter the dataframe according to where the info is going to go
+  list.names.not.used = c()
+  # massfunc
+  massfunc.names = names(formals(Parameters$massfunc))
+  massfunc_args = name.df[name.df %in% massfunc.names]
+  list.names.not.used = c(list.names.not.used, massfunc.names[massfunc.names %!in% massfunc_args])
+  # zfunc
+  if (!is.function(Parameters$zfunc)){
+    # This occurs if a value for Z was given.
+    if (Parameters$zfunc > 1 || Parmeters$zfunc < 0){
+      stop(paste0("Value fo Parameters$zfunc is not valid: ",
+                  Parameters$zfunc, "\n"))
+    }
+  } else {
+    zfunc.names = names(formals(Parameters$zfunc))
+    zfunc_args = name.df[name.df %in% zfunc.names]
+    list.names.not.used = c(list.names.not.used, zfunc.names[zfunc.names %!in% zfunc_args])
+  }
+  # SFHfunc
+  SFHfunc.names = names(formals(SFHfunc))
+  SFHfunc_args = name.df[name.df %in% SFHfunc.names]
+  list.names.not.used = c(list.names.not.used, SFHfunc.names[SFHfunc.names %!in% SFHfunc_args])
   
+  # # Clean list
+  # list.names.not.used = list.names.not.used[-which(list.names.not.used=="...")]
+  # list.names.not.used = list.names.not.used[-which(list.names.not.used=="massfunc")]
+  list.values.considered <- c("massfunc", "...", "age", "forcemass",
+                                      "Z", "stellpop", "speclib", "filters",
+                                      "emmision", "emission_scale")
+  list.names.not.used = list.names.not.used[list.names.not.used %!in% list.values.considered]
   
+  # Get constant values from Parameters that are also going to be inserted
+  static.params.names = names(Parameters)[names(Parameters) %in% list.names.not.used]
+  static.params.val = Parameters[static.params.names]
   
-  
-  # ToDo: Z
-  
-  
-  If 
-  
-  
-  
-  #### execute SHF ####
-  spectraObject = do.call("SFHfunc", c(list(massfunc=Parameters$massfunc,
-                                            forcemass=Parameters$totalmass,
-                                            Z=Z,
-                                            stellpop = stellpop,
-                                            speclib = speclib,
-                                            filters = Parameters$filters,
-                                            emission = Parameters$emission,
-                                            emission_scale = Parameters$emission_scale
-                                            ),
-                                       massfunc_args,
-                                       zfunc_args
-                                       )
-                          )
-  
-  
-  
-  
+  #### iterate over total number of cases ####
+  i = 1
+  while (i <= n.simul){
+    
+    # Evaluate values that change each iteration
+    massfunc_args_val = df[i, massfunc_args]
+    zfunc_args_val = df[i, zfunc_args]
+    SFHfunc_args_val = df[i, SFHfunc_args]
+    current_arguments = c(massfunc_args_val, zfunc_args_val,
+                          SFHfunc_args_val, static.params.val)
+    
+    
+    
+    #### execute SHF ####
+    spectraObject = do.call("SFHfunc", c(list(massfunc=Parameters$massfunc,
+                                              forcemass=Parameters$totalmass,
+                                              Z=Parameters$zfunc,
+                                              stellpop = stellpop,
+                                              speclib = speclib,
+                                              filters = Parameters$filters,
+                                              emission = Parameters$emission,
+                                              emission_scale = Parameters$emission_scale
+                                              ),
+                                         current_arguments
+                                         )
+                            )
+    
+    #### Resize Spectra and Store it ####
+    
+    i = i + 1
+  }
   
 }
 
@@ -413,11 +454,14 @@ df <- generateDataFrameArguments(Parameters=Parameters,
                                  verbose=1,
                                  progress_verbose = 1000)
 
-point_matrix <- drawSFHFromDataFrame(df,
-                                     Parameters$massfunc,
-                                     agevec=EMILESCombined$Age,
-                                     log="xy",
-                                     ylim=c(1e-4, 15))
+# point_matrix <- drawSFHFromDataFrame(df,
+#                                      Parameters$massfunc,
+#                                      agevec=EMILESCombined$Age,
+#                                      log="xy",
+#                                      ylim=c(1e-4, 15))
+
+generateSpecFromDataFrame(Parameters, df)
+
 
 # abline(v=EMILESCombined$Age)
 

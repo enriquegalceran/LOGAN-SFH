@@ -113,6 +113,7 @@ Parameters <- list(
   probburst=1,
   totalmass=list(func=rnorm, c(mean=8, sd=1), islog10=TRUE),
   z=1e-4,
+  filters="HST",
   
   name="snorm_burst",
   massfunc=massfunc_snorm_burst,
