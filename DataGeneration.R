@@ -236,7 +236,7 @@ generateDataFrameArguments <- function(Parameters,
     cat(paste0("Saved file in ", save_path, " .\n"))
     save(df, file=save_path)
   }
-  return(df)
+  return(list(df=df, Parameters=Parameters))
 }
 
 
@@ -424,11 +424,11 @@ generateSpecFromDataFrame <- function(Parameters,
     
     #### execute SHF ####
     spectraObject = do.call("SFHfunc", c(list(massfunc=Parameters$massfunc,
-                                              forcemass=Parameters$totalmass,
+                                              forcemass=df[i, "totalmass"],
                                               Z=Parameters$zfunc,
                                               stellpop = stellpop,
                                               speclib = speclib,
-                                              filters = Parameters$filters,
+                                              filters = Parameters[["filters"]],
                                               emission = Parameters$emission,
                                               emission_scale = Parameters$emission_scale
                                               ),
@@ -447,12 +447,14 @@ generateSpecFromDataFrame <- function(Parameters,
 
 
 #### Execute Code ####
-df <- generateDataFrameArguments(Parameters=Parameters,
-                                 n.simul=1000,
-                                 speclib=EMILESCombined,
-                                 # save_path=file.path(outputFolder, savefilename),
-                                 verbose=1,
-                                 progress_verbose = 1000)
+output <- generateDataFrameArguments(Parameters=Parameters,
+                                     n.simul=1000,
+                                     speclib=EMILESCombined,
+                                     # save_path=file.path(outputFolder, savefilename),
+                                     verbose=1,
+                                     progress_verbose = 1000)
+df = output[["df"]]
+Parameters = output[["Parameters"]]
 
 # point_matrix <- drawSFHFromDataFrame(df,
 #                                      Parameters$massfunc,
