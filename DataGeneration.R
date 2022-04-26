@@ -186,8 +186,13 @@ generateDataFrameArguments <- function(Parameters,
   pnames = names(Parameters)
   def_parameters = list(RndSeed=sample(1:1e7, 1),
                         probburst=runif(1, 0, 1),
-                        totalmass=NULL,
+                        totalmass=FALSE,
+                        emission=TRUE,
+                        emission_scale="SFR",
                         burstfraction=NULL,
+                        veldisp=50,
+                        filters="HST",
+                        
                         z=1e-4)
   for (name in names(def_parameters)){
     if (name %!in% pnames){
