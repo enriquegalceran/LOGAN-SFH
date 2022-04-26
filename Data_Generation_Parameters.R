@@ -60,6 +60,19 @@
                  the data.
       > z:       [1e-4]
                  Redshift. 'Indirectly', it gives us the distance.
+                 
+    Additional Parameters specifically for SFHfunc:
+      > emission: [TRUE], logical
+      > emission_scale: ['SFR'] or 'FUV'
+      > forcemass will be evaluated with totalmass. This is slightly more
+        intuitive for the definition of the Parameters. 
+      > filters: ['HST'], 'all', or list with filter data.
+      > if Z should be constant, define zfunc as the value (should be within
+        the [0.0001, 0.0300] interval. Higher metallicity is not considered in
+        EMILESCombined).
+      
+      > Any additional parameter that is going given that appears in SFHfunc's,
+        massfunc's, or zfunc's formals will be passed onto SFHfunc
     
     Cases for parameters:
       > 0: probburst < 1, and no burst is triggered
@@ -112,5 +125,5 @@ Parameters <- list(
   zfunc=Zfunc_massmap_box,
   Zstart=1e-4,
   yield=0.03,
-  Zfinal=list(func=rnorm, c(mean=0.03, sd=0.020), islog10=FALSE, min_val=1e-4)
+  Zfinal=list(func=runif, c(min=log10(1e-4), max=log10(0.0300)), islog10=TRUE)
 )
