@@ -63,6 +63,8 @@
                  the data.
       > z:       [1e-4]
                  Redshift. 'Indirectly', it gives us the distance.
+      > stellpop  # ToDo
+      > speclib   # ToDo
                  
     Additional Parameters specifically for SFHfunc:
       > emission: [TRUE], logical
