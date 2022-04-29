@@ -296,7 +296,7 @@ exportObjectsToSingleFITS <- function(Parameters,
   if (saveDataFrame){
     metadata[["df"]]=df
   }
-  save(metadata, file=paste0(filedirectory, "/MetaD_", filename))
+  save(metadata, file=paste0(filedirectory, "/MetaD_", substr(f, 1, nchar(f) - 5), ".rda"))
   
   # Return UUIDs for the metadata file
   return(objectUUID)
