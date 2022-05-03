@@ -4,6 +4,8 @@
 import json
 import os
 import typing
+import subprocess
+import uuid
 from shutil import copyfile
 from datetime import datetime
 import numpy as np
@@ -110,7 +112,7 @@ def clean_line(idx_line, line_str):
         line_str = line_str.split("//")[0]
 
     split_line = line_str.split("=")
-    split_line = [x.strip() for x in split_line]    # Clean spaces
+    split_line = [x.strip() for x in split_line]  # Clean spaces
 
     return tuple(split_line)
 
@@ -275,7 +277,8 @@ def read_config_file(filename, file_folder=None, reset_file=False, default_confi
     return parameters, cv_parameters
 
 
-def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_sufix: str = "combined", overwrite=True):
+def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_sufix: str = "combined", overwrite=True,
+                      whichrscript: str = "/usr/local/bin/Rscript"):
     """
     Combines n datasets into a single combined dataset, where n=len(file_list_sufixes).
     The files are located in file_folder (relative or absolute path). The outputs will be stored in the same folder.
@@ -284,12 +287,17 @@ def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_su
         -Label_[combined_output_sufix].fits
         -MetaD_[combined_output_sufix].fits
 
-    :param file_list_sufixes:
+    :param file_list_sufixes:           Suffixes should not contain extensions
     :param file_folder:
     :param combined_output_sufix:
     :param overwrite:
+    :param whichrscript:
     """
     now = datetime.now()
+
+    uuidi = str(uuid.uuid4())
+    uuidl = str(uuid.uuid4())
+    uuidm = str(uuid.uuid4())
 
     # Initialize variables
     metadata_combined = {"Combined": True, "Last_ID": []}
@@ -297,22 +305,17 @@ def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_su
     in_data = None
     in_header = None
     lab_data = None
-
     lab_header = None
     for idx, file_prefix in enumerate(file_list_sufixes):
         print("[INFO] Reading prefix", file_prefix, "...")
-        input_name = file_folder + "Input_" + file_prefix + ".fits"
-        label_name = file_folder + "Label_" + file_prefix + ".fits"
-        metadata_name = file_folder + "MetaD_" + file_prefix + ".json"
+        input_name = os.path.join(file_folder, "Input_" + file_prefix + ".fits")
+        label_name = os.path.join(file_folder, "Label_" + file_prefix + ".fits")
+        metadata_name = os.path.join(file_folder, "MetaD_" + file_prefix + ".rda")
 
         for file in [input_name, label_name, metadata_name]:
             # Verify file exists
             if not os.path.isfile(file):
                 raise FileNotFoundError(f"File {file} not found.")
-
-        # Metadata
-        with open(metadata_name) as f:
-            metadata_combined[idx] = json.load(f)
 
         # Read data and concatenate the information
         if idx == 0:
@@ -326,9 +329,9 @@ def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_su
             lab_header["filename"] = "Label_" + combined_output_sufix + ".fits"
 
             # UUIDs are no longer valid.
-            for key in ["UUIDINP", "UUIDLAB", "UUIDMET"]:
-                del in_header[key]
-                del lab_header[key]
+            for key, val in zip(["UUIDINP", "UUIDLAB", "UUIDMET"], [uuidi, uuidl, uuidm]):
+                in_header[key] = val
+                lab_header[key] = val
 
             # Add new keywords to header
             new_header_keywords = ["Datecomb",
@@ -370,21 +373,31 @@ def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_su
                 in_header[keyw] = value
                 lab_header[keyw] = value
 
-        # Add last_id to metadata
-        metadata_combined["Last_ID"].append(int(last_id))
-
     # update nrows
     in_header["nrows"] = last_id
     lab_header["nrows"] = last_id
 
+    # Combine Metadata
+    # ToDo: read path to script from environment
+    subprocess_str = " ".join(
+        [whichrscript, "--vanilla", "/Users/enrique/Documents/GitHub/LOGAN-SFH/CombineMetadata.R",
+         "uuidi=" + uuidi, "uuidl=" + uuidl, "uuidm=" + uuidm,
+         "path=" + file_folder,
+         "out=" + "MetaD_" + combined_output_sufix + ".rda",
+         ] + file_list_sufixes)
+    subprocess.call(subprocess_str, shell=True)
+
     # Save new files
+    print(f"[INFO] Saving directory: {file_folder}")
     print(f"[INFO] Saving combined Input file to Input_{combined_output_sufix}.fits ...")
-    fits.writeto(file_folder + "Input_" + combined_output_sufix + ".fits", in_data, in_header, overwrite=overwrite)
+    fits.writeto(file_folder + "/Input_" + combined_output_sufix + ".fits", in_data, in_header, overwrite=overwrite)
     print(f"[INFO] Saving combined Label file to Label_{combined_output_sufix}.fits ...")
-    fits.writeto(file_folder + "Label_" + combined_output_sufix + ".fits", lab_data, lab_header, overwrite=overwrite)
-    print(f"[INFO] Saving combined metadata file saving to MetaD_{combined_output_sufix}.fits ...")
-    with open(file_folder + "MetaD_" + combined_output_sufix + ".json", 'w') as outfile:
-        outfile.write(json.dumps(metadata_combined, indent=4))
+    fits.writeto(file_folder + "/Label_" + combined_output_sufix + ".fits", lab_data, lab_header, overwrite=overwrite)
+
+    print("[INFO] Converting to 32 bits")
+    verify32bits(file_folder + "/Label_" + combined_output_sufix + ".fits")
+    verify32bits(file_folder + "/Input_" + combined_output_sufix + ".fits")
+
     print(f"[INFO] Finished combining {len(file_list_sufixes)} files.")
 
 
@@ -472,3 +485,11 @@ def prettyfy_json_file(filename, verbose=1, indent=4):
         if verbose > 0:
             print(json.dumps(data, indent=indent))
         f.write(json.dumps(data, indent=indent))
+
+
+if __name__ == "__main__":
+    sufixes = ["20220427T192930_WViuSKxC", "20220428T130515_4QykcNJR", "20220428T154400_VxxFQPr2",
+               "20220428T182828_dfn2FS3c"]
+
+    combine_datasets(sufixes, file_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/KK", combined_output_sufix= "combined", overwrite = True)
+
