@@ -278,7 +278,7 @@ def read_config_file(filename, file_folder=None, reset_file=False, default_confi
 
 
 def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_sufix: str = "combined", overwrite=True,
-                      whichrscript: str = "/usr/local/bin/Rscript"):
+                     whichrscript: str = "/usr/local/bin/Rscript"):
     """
     Combines n datasets into a single combined dataset, where n=len(file_list_sufixes).
     The files are located in file_folder (relative or absolute path). The outputs will be stored in the same folder.
@@ -306,6 +306,7 @@ def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_su
     in_header = None
     lab_data = None
     lab_header = None
+    length_dataset = []
     for idx, file_prefix in enumerate(file_list_sufixes):
         print("[INFO] Reading prefix", file_prefix, "...")
         input_name = os.path.join(file_folder, "Input_" + file_prefix + ".fits")
@@ -346,7 +347,7 @@ def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_su
 
             # Define last ID value
             last_id = in_data[0, -1]
-
+            length_dataset.append(in_header["NROWS"])
         else:
             # Read new information
             tmp_in_data, tmp_in_header = open_fits_file(input_name)
@@ -372,6 +373,7 @@ def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_su
             for keyw, value in zip(new_header_keywords, new_header_values):
                 in_header[keyw] = value
                 lab_header[keyw] = value
+            length_dataset.append(tmp_in_header["NROWS"])
 
     # update nrows
     in_header["nrows"] = last_id
@@ -394,10 +396,11 @@ def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_su
     print(f"[INFO] Saving combined Label file to Label_{combined_output_sufix}.fits ...")
     fits.writeto(file_folder + "/Label_" + combined_output_sufix + ".fits", lab_data, lab_header, overwrite=overwrite)
 
-    print("[INFO] Converting to 32 bits")
-    verify32bits(file_folder + "/Label_" + combined_output_sufix + ".fits")
-    verify32bits(file_folder + "/Input_" + combined_output_sufix + ".fits")
+    print("[INFO] Converting double precision to single precision...")
+    verify32bits(file_folder + "/Label_" + combined_output_sufix + ".fits", verbose=0)
+    verify32bits(file_folder + "/Input_" + combined_output_sufix + ".fits", verbose=0)
 
+    print(f"[INFO] Number of lines: {' '.join([str(_) for _ in length_dataset])} -> Total: {int(in_header['nrows'])}")
     print(f"[INFO] Finished combining {len(file_list_sufixes)} files.")
 
 
@@ -489,7 +492,7 @@ def prettyfy_json_file(filename, verbose=1, indent=4):
 
 if __name__ == "__main__":
     sufixes = ["20220427T192930_WViuSKxC", "20220428T130515_4QykcNJR", "20220428T154400_VxxFQPr2",
-               "20220428T182828_dfn2FS3c"]
+               "20220428T182828_dfn2FS3c", "20220503T140118_wYhTmpOD"]
 
     combine_datasets(sufixes, file_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/KK", combined_output_sufix= "combined", overwrite = True)
 
