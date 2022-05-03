@@ -52,9 +52,34 @@ def main(**main_kwargs):
                         help="Set number of epochs.")
     parser.add_argument("--test-size", default=None, type=float,
                         help="Test size. Needs to be in the interval (0,1)")
+    parser.add_argument("--combine-datasets", default=None, type=str, nargs="+",
+                        help="Combines multiple datasets into a single one. Give multiple sufixes separated by spaces.")
+    parser.add_argument("--combine-outname", default="combined", type=str,
+                        help="Name for the combined datasets. Requires the use of combine-datasets.")
+    parser.add_argument("--combine-path", default=None, type=str,
+                        help="Path to datasets to be combined. Requires the use of combine-datasets.")
     args = parser.parse_args()
     if args.reset_config_file and args.config_file is None:
         parser.error("--reset_config_file requires --config_file.")
+
+    # Verify if datasets should be combined
+    if args.combine_path is not None and args.combine_datasets is None:
+        parser.error("--combine-path requires --combine-datasets.")
+    if args.combine_datasets is not None:
+        if len(args.combine_datasets) < 2:
+            parser.error("--combine-datasets needs to have at least 2 elements.")
+        else:
+            if args.combine_path is None:
+                args.combine_path = os.getcwd()
+            if not os.path.isabs(args.combine_path):
+                args.combine_path = os.path.join(os.getcwd(), args.combine_path)
+            print(args.combine_datasets)
+            print(args.combine_outname)
+            print(args.combine_path)
+            combine_datasets(args.combine_datasets, file_folder=args.combine_path,
+                             combined_output_sufix=args.combine_outname, overwrite=True)
+            print("[INFO] Skipping rest of JANE.")
+            return()
 
     # ToDo: Remove next line
     if "config_file_path" in main_kwargs.keys():
