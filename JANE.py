@@ -73,13 +73,14 @@ def main(**main_kwargs):
                 args.combine_path = os.getcwd()
             if not os.path.isabs(args.combine_path):
                 args.combine_path = os.path.join(os.getcwd(), args.combine_path)
-            print(args.combine_datasets)
-            print(args.combine_outname)
-            print(args.combine_path)
+            print("[INFO] Combining datasets:")
+            print("Path:", args.combine_path)
+            print("Datasets:", args.combine_datasets)
+            print("Outputname:", args.combine_outname)
             combine_datasets(args.combine_datasets, file_folder=args.combine_path,
                              combined_output_sufix=args.combine_outname, overwrite=True)
             print("[INFO] Skipping rest of JANE.")
-            return()
+            return 0
 
     # ToDo: Remove next line
     if "config_file_path" in main_kwargs.keys():
