@@ -41,10 +41,29 @@ if (remove.small.files){
   warning("Small files for EMILES were not removed, but will not be used. It is adviced to remove them.")
 }
 
+
+# Reconstruct HRPypop
+HRSaving_directory_split = "HRPyPopData"
+HRPypopReconstr= list()
+for (i in 1:6){
+  HRPypopReconstr = c(HRPypopReconstr,
+                      readRDS(file=file.path(HRSaving_directory_split,
+                                             paste0("HRPyPop", i, ".rds"))))
+}
+tmp = list()
+for (j in 1:4){
+  tmp = c(tmp, readRDS(file=file.path(HRSaving_directory_split, paste0("HRPyPop7_", j, ".rds"))))
+}
+HRPypopReconstr = c(HRPypopReconstr, list(Zspec=tmp))
+HRPypopReconstr = c(HRPypopReconstr, readRDS(file=file.path(HRSaving_directory_split, "HRPyPop8.rds")))
+saveRDS(HRPypopReconstr, "HRSaving_directory_split/EMILESCombined.rds")
+
+
+# ToDo: Fix this wording........
 cat("It is advised to set these files to unchanged, or cloning/commiting will mess this up...\n")
 cat("1) Go to .../LOGAN-SFH\n")
 cat("2) git update-index --assume-unchanged $(git ls-files | tr '\n' ' ')\n")
-cat("3) cd EMILESDATA/\n")
+cat("3) cd EMILESDATA/ [or HRPyPopData/]\n")
 cat("4) git update-index --assume-unchanged $(git ls-files | tr '\n' ' ')\n")
 cat("5) Delete small files.")
 
@@ -79,7 +98,8 @@ if (FALSE){
 
 # Change .RProfile to use the correct Python!
 # The different python paths can be found using
-# It presents some problems when modifying only the project file, but worked when I changed the main file (located in ~/.Rprofile)
+# It presents some problems when modifying only the project file,
+#  but worked when I changed the main file (located in ~/.Rprofile)
 # py_config()
 # Sys.setenv(RETICULATE_PYTHON = "/path/to/python")
 
