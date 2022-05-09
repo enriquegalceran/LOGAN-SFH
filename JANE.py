@@ -7,6 +7,9 @@ import random
 import sys
 from pprint import pprint
 
+# FIXME: This line needs to be fixed
+sys.path.append("/Users/enrique/Documents/GitHub/LOGAN-SFH/MUTANTS")
+
 import joblib
 import keras
 import matplotlib.pyplot as plt
