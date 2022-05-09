@@ -293,6 +293,19 @@ def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_su
     :param overwrite:
     :param whichrscript:
     """
+
+    # if the length of file_list_sufixes == ["all"], it will use all files.
+    if file_list_sufixes == ["all"]:
+        # Get all files
+        file_list_sufixes = os.listdir(file_folder)
+        # Filter only Inputs and keep only sufixes
+        file_list_sufixes = [_[6:-5] for _ in file_list_sufixes if _[0:6] == "Input_"]
+        # If combined is here, remove it
+        file_list_sufixes = [_ for _ in file_list_sufixes if _ != "combined"]
+        # Sort
+        file_list_sufixes.sort()
+        print(f"[INFO] All files in path are going to be used. Sufixes: {', '.join(file_list_sufixes)}")
+
     now = datetime.now()
 
     uuidi = str(uuid.uuid4())
@@ -494,5 +507,6 @@ if __name__ == "__main__":
     sufixes = ["20220427T192930_WViuSKxC", "20220428T130515_4QykcNJR", "20220428T154400_VxxFQPr2",
                "20220428T182828_dfn2FS3c", "20220503T140118_wYhTmpOD"]
 
-    combine_datasets(sufixes, file_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/KK", combined_output_sufix= "combined", overwrite = True)
+    combine_datasets(["all"], file_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/KK", combined_output_sufix= "combined", overwrite = True)
+    # combine_datasets(sufixes, file_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/KK", combined_output_sufix= "combined", overwrite = True)
 
