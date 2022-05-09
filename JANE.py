@@ -154,7 +154,8 @@ def main(**main_kwargs):
         test_labels = (testLabSfh, testLabZ)
 
     # Verify the size of the
-    print_train_test_sizes(split_train_test, main_title="Sizes of diferent sets (Train, Test)")
+    print_train_test_sizes(split_train_test,
+                           main_title=f"Sizes of diferent sets (Train-{train_size:.3f}, Test-{test_size:.3f})")
     # "split" tuple can be removed now
     del split_train_test
 
