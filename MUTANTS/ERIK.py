@@ -18,7 +18,7 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
               labels_path: str = "/Volumes/Elements/Outputs/Label_20211213T154548_HjCktf.fits",
               method_standardize_spectra=2,
               method_standardize_magnitudes=4,
-              method__standardize_label=3,
+              method_standardize_label=3,
               verbose=1) -> typing.Tuple[np.array, np.array, np.array, np.array, np.array, np.array]:
     """
     Load the dataset from file.
@@ -27,7 +27,7 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
     :param labels_path:
     :param method_standardize_spectra:
     :param method_standardize_magnitudes:
-    :param method__standardize_label:
+    :param method_standardize_label:
     :param verbose:
     :return:
     """
@@ -62,7 +62,7 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
         standardize_dataset(input_spectra, input_magnitudes, label_sfh, label_z,
                             method_standardize_spectra=method_standardize_spectra,
                             method_standardize_magnitudes=method_standardize_magnitudes,
-                            method_standardize_label=method__standardize_label)
+                            method_standardize_label=method_standardize_label)
     if verbose > 0:
         print(f"""
         Variable sizes:

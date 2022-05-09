@@ -115,9 +115,15 @@ def main(**main_kwargs):
 
     # Load Data
     print("[INFO] Loading data...")
+    # Verify if there are indications for standardizing data:
+    arguments_standardize = {}
+    for key in parameters.keys():
+        if "method_standardize_" in key:
+            arguments_standardize[key] = parameters[key]
     input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec = \
         loadfiles(input_path=data_path + "Input_" + data_sufix + ".fits",
-                  labels_path=data_path + "Label_" + data_sufix + ".fits")
+                  labels_path=data_path + "Label_" + data_sufix + ".fits",
+                  **arguments_standardize)
 
     # Split the data into training+validation and testing
     assert 0 < train_size < 1, "train_size needs to be in the interval (0,1)."
