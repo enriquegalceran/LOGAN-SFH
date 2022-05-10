@@ -103,14 +103,14 @@
     
     NOTE:
     As a reminder, it is easier to combine datasets than to make only one
-    hyperspecific data generation. This is why we no longer consider
+    hyperspecific data generation. This is why the code no longer considers
     implementing multiple massfunctions in a single data generation.
                  
 "
 
 
 Parameters <- list(
-  RndSeed=42,
+  RndSeed=NULL,
   SNR=30,
   probburst=1,
   totalmass=list(func=rnorm, c(mean=8, sd=1), islog10=TRUE),
