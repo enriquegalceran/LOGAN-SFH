@@ -17,7 +17,7 @@ EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
 
 
 # File should have the file extension '.rda'
-outputFolder = "/Volumes/Elements/TrainingData/"
+outputFolder = "DataGeneratedOutput"
 savefilename = "Argument_df.rda"
 configFilename = "Data_Generation_Parameters.R"
 
@@ -36,7 +36,6 @@ generateDataFrameArguments <- function(Parameters,
                                        verbose=1){
   # Generates a DataFrame with all the parameters that are going to be used for the whole data.
 
-  
   evaluateFunction <- function(x){
     # Evaluate a parameter that has a function
     additional_arguments = list(islog10=FALSE, min_val=NULL, max_val=NULL)
@@ -324,11 +323,12 @@ generateSpecFromDataFrame <- function(Parameters,
                                       verboseStep=10,
                                       new_scale="defaultlog1",
                                       saveDataFrame=FALSE,
+                                      outputFolderPath=".",
                                       waveout=seq(4700, 9400, 1.25),
                                       ...){
   # Generate the Spectra from the matrix with the specific arguments
   
-  #### Function definitioin ####
+  #### Function definition ####
   insertNoise <- function(spec, SNRatio){
     # Each point in the spectrum will be modified
     # according to it's value and the SNRatio.
@@ -488,7 +488,7 @@ generateSpecFromDataFrame <- function(Parameters,
     # ToDo: Add progress verbosity
     # ToDo: Add timer?
     if (i %% verboseStep == 0 || i == 1 || i == n.simul){
-      cat(paste0("Generating for ", i, "/", n.simul, "\n"))
+      cat(paste0("Generating spectra for ", i, "/", n.simul, "\n"))
     }
     i = i + 1
   }
@@ -497,12 +497,13 @@ generateSpecFromDataFrame <- function(Parameters,
   # Once calculations are over, export files
   outputfilename <- generateFilename()
   filterData = spectraObject$out
+  outputFolderPath = normalizePath(outputFolderPath)
   UUIDs <-exportObjectsToSingleFITS(Parameters=Parameters,
                                     df=df,
                                     inputMatrix = completeDataMatrixIn,
                                     labelMatrix = completeDataMatrixLa,
                                     filename = outputfilename,
-                                    foldername = "/Users/enrique/Documents/GitHub/LOGAN-SFH/KK",
+                                    foldername = outputFolderPath,
                                     absolutePath = TRUE,
                                     filters = filterData,
                                     saveDataFrame = saveDataFrame,
@@ -513,26 +514,126 @@ generateSpecFromDataFrame <- function(Parameters,
 }
 
 #### MAIN ####
-output <- generateDataFrameArguments(Parameters=Parameters,
-                                     n.simul=200,
-                                     speclib=EMILESCombined,
-                                     # save_path=file.path(outputFolder, savefilename),
-                                     verbose=1,
-                                     progress_verbose = 1000)
-df = output[["df"]]
-Parameters = output[["Parameters"]]
 
-point_matrix <- drawSFHFromDataFrame(df,
-                                     Parameters$massfunc,
-                                     agevec=EMILESCombined$Age,
-                                     log="xy",
-                                     ylim=c(1e-4, 15))
+generateTrainingData <- function(Parameters=NULL,
+                                 Parameters_path=NULL,
+                                 n.simul=1000,
+                                 speclib=EMILESCombined,
+                                 drawSFH=TRUE,
+                                 drawSFHPath=NULL,
+                                 drawSFHVerticalLine=FALSE,
+                                 agevec=NULL,
+                                 saveDataFrame_file_path=NULL,         # path
+                                 saveDataFrame_in_metadata=FALSE,      # logical
+                                 outputFolderPath=".",                  # path
+                                 verbose=1,
+                                 progress_verbose_df=100,
+                                 progress_verbose_spectra=20,
+                                 waveout=seq(4700, 9400, 1.25),
+                                 ...){
+  
+  # TODO: Documentation goes here
+  dots = list(...)
+  
+  # Load Parameters
+  if (is.null(Parameters) && is.null(Parameters_path)){
+    stop("Code requires either a Parameters object, or a path to the Parameters file (nor both options).")
+  } else if (!is.null(Parameters) && !is.null(Parameters_path)){
+    stop("Code requires either a Parameters object, or a path to the Parameters file (nor both options).")
+  } else if (is.null(Parameters)){
+    Parameters = source(file.path(getwd(), Parameters_path))
+    Parameters = Parameters$value
+  }
+  
+  if (is.null(agevec)){
+    agevec=speclib$Age
+  }
+  
+  # Generate DataFrame with all the combinations
+  output <- generateDataFrameArguments(Parameters=Parameters,
+                                       n.simul=n.simul,
+                                       speclib=speclib,
+                                       save_path=saveDataFrame_file_path,
+                                       verbose=verbose,
+                                       progress_verbose = progress_verbose_df)
+  # Split into 
+  df = output[["df"]]
+  Parameters = output[["Parameters"]]
+  
+  if (!drawSFH){
+    if ("log" %!in% names(dots)){dots["log"] = "xy"}
+    if ("ylim" %!in% names(dots)){dots["ylim"] = c(1e-4, 15)}
+    
+    if (!is.null(drawSFHPath)){png(file=drawSFHPath)}
+    
+    point_matrix <- do.call("drawSFHFromDataFrame", c(list(df=df,
+                                                         func=Parameters$massfunc,
+                                                         agevec=agevec,
+                                                         progress_verbose=progress_verbose_df,
+                                                         dots)))
+    
+    if (drawSFHVerticalLine){abline(v=agevec)}
+    
+    if (!is.null(drawSFHPath)){dev.off()}
+  }
+  
+  do.call("generateSpecFromDataFrame", c(list(Parameters=Parameters,
+                                              df=df,
+                                              verbose=verbose,
+                                              verboseStep=progress_verbose_spectra,
+                                              saveDataFrame=saveDataFrame_in_metadata,
+                                              outputFolderPath=outputFolderPath,
+                                              waveout=waveout,
+                                              new_scale="defaultlog1",
+                                              dots)))
+  
+  
+}
 
-# abline(v=EMILESCombined$Age)
-
-generateSpecFromDataFrame(Parameters, df, saveDataFrame = FALSE)
 
 
+generateTrainingData(Parameters=NULL,
+                     Parameters_path=configFilename,
+                     n.simul=2,
+                     speclib=EMILESCombined,
+                     drawSFH=TRUE,
+                     drawSFHPath=NULL,
+                     drawSFHVerticalLine=FALSE,
+                     agevec=NULL,
+                     outputFolderPath=outputFolder,                  # path
+                     verbose=1,
+                     progress_verbose_df=1,
+                     progress_verbose_spectra=1)
 
+
+
+
+
+
+
+
+# if (FALSE){
+#   #### MAIN ####
+#   output <- generateDataFrameArguments(Parameters=Parameters,
+#                                        n.simul=20,
+#                                        speclib=HRPyPop,
+#                                        # save_path=file.path(outputFolder, savefilename),
+#                                        verbose=10,
+#                                        progress_verbose = 1000)
+#   df = output[["df"]]
+#   Parameters = output[["Parameters"]]
+#   
+#   point_matrix <- drawSFHFromDataFrame(df,
+#                                        Parameters$massfunc,
+#                                        agevec=HRPyPop$Age,
+#                                        log="xy",
+#                                        ylim=c(1e-4, 15))
+#   
+#   # abline(v=EMILESCombined$Age)
+#   
+#   Parameters["stellpop"] = "HRPypop"
+#   Parameters[["speclib"]] = HRPyPop
+#   generateSpecFromDataFrame(Parameters, df, saveDataFrame = FALSE, verboseStep = 5)
+# }
 
 
