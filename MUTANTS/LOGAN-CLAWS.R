@@ -418,7 +418,7 @@ convertAgevecToOutputScale <- function(agevector,
   } # ToDo: Maybe a 3rd default value that uses 
   
   # Identify which values of the agevector should go in each bin. NA if a value is above the max value (las element in new_scale)
-  separations <- cut(agevector, new_scale * 1000000, labels = FALSE, include.lowest = TRUE)
+  separations <- cut(as.matrix(agevector), new_scale * 1000000, labels = FALSE, include.lowest = TRUE)
   
   # Separate the data according to the x value
   data_groups <- suppressWarnings(split(datavector, separations))
