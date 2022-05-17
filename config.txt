@@ -43,10 +43,12 @@ output_name_parameters = "model_parameters.json"
 // Default values:
 //    method_standardize_spectra = 2
 //    method_standardize_magnitudes = 4
-//    method_standardize_label = 3
+//    method_standardize_label_sfh = 3
+//    method_standardize_label_z = 3
 method_standardize_spectra = 0
 method_standardize_magnitudes = 0
-method_standardize_label = 0
+method_standardize_label_sfh = 0
+method_standardize_label_z = 0
 
 // Prefixes for each branch of the neural network
 spectra_prefix ="spect_"

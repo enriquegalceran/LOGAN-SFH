@@ -32,6 +32,24 @@ output_name_best_estimator = "model_file_best.pkl"
 output_name_model = "model_best_estimator_model.h5"
 output_name_parameters = "model_parameters.json"
 
+// Standardize inputs
+// Possible values keywords: method_standardize_ + [spectra, magnitudes, label]
+// Values: 0: No normalization
+//         1: Center value of the data = 1
+//         2: <data> = 1
+//         3: Stretch between [0-1]
+//         4: Normalization for magnitudes
+//         5: Normal distribution Not implemented yet.
+// Default values:
+//    method_standardize_spectra = 2
+//    method_standardize_magnitudes = 4
+//    method_standardize_label_sfh = 3
+//    method_standardize_label_z = 3
+method_standardize_spectra = 0
+method_standardize_magnitudes = 0
+method_standardize_label_sfh = 0
+method_standardize_label_z = 0
+
 // Prefixes for each branch of the neural network
 spectra_prefix ="spect_"
 magnitude_prefix = "magn_"

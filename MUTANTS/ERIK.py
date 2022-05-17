@@ -18,7 +18,8 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
               labels_path: str = "/Volumes/Elements/Outputs/Label_20211213T154548_HjCktf.fits",
               method_standardize_spectra=2,
               method_standardize_magnitudes=4,
-              method_standardize_label=3,
+              method_standardize_label_sfh=3,
+              method_standardize_label_z=3,
               verbose=1) -> typing.Tuple[np.array, np.array, np.array, np.array, np.array, np.array]:
     """
     Load the dataset from file.
@@ -27,7 +28,8 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
     :param labels_path:
     :param method_standardize_spectra:
     :param method_standardize_magnitudes:
-    :param method_standardize_label:
+    :param method_standardize_label_sfh:
+    :param method_standardize_label_z:
     :param verbose:
     :return:
     """
@@ -62,7 +64,8 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
         standardize_dataset(input_spectra, input_magnitudes, label_sfh, label_z,
                             method_standardize_spectra=method_standardize_spectra,
                             method_standardize_magnitudes=method_standardize_magnitudes,
-                            method_standardize_label=method_standardize_label)
+                            method_standardize_label_sfh=method_standardize_label_sfh,
+                            method_standardize_label_z=method_standardize_label_z)
     if verbose > 0:
         print(f"""
         Variable sizes:
@@ -421,14 +424,15 @@ def standardize_dataset(input_spectra, input_magnitudes,
                         label_sfh, label_z,
                         method_standardize_spectra=2,
                         method_standardize_magnitudes=4,
-                        method_standardize_label=3):
+                        method_standardize_label_sfh=3,
+                        method_standardize_label_z=3):
     # Inputs
     input_spectra_out, mean_spectra = standardize_single_dataset(input_spectra, method_standardize_spectra)
     input_magnitudes_out, _ = standardize_single_dataset(input_magnitudes, method_standardize_magnitudes, mean_spectra)
 
     # Labels
-    label_sfh_out, _ = standardize_single_dataset(label_sfh, method_standardize_label)
-    label_z_out, _ = standardize_single_dataset(label_z, method_standardize_label)
+    label_sfh_out, _ = standardize_single_dataset(label_sfh, method_standardize_label_sfh)
+    label_z_out, _ = standardize_single_dataset(label_z, method_standardize_label_z)
 
     return input_spectra_out, input_magnitudes_out, label_sfh_out, label_z_out
 
