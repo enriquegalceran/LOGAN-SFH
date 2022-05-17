@@ -316,7 +316,7 @@ class Cerebro:
         if loss_function_used_metal is None:
             loss_function_used_metal = loss_function_used
 
-        if input_mode == "double":
+        if output_mode == "double":
             losses = {
                 "sfh_output": loss_function_used,
                 "metallicity_output": loss_function_used_metal
@@ -327,11 +327,11 @@ class Cerebro:
                 "sfh_output": loss_weights[0],
                 "metallicity_output": loss_weights[1]
             }
-        elif input_mode == "single":
+        elif output_mode == "single":
             losses = loss_function_used
             loss_weights = None
         else:
-            raise ValueError(f"'in_layer' is {input_mode}, and should be either 'single' or 'double'.")
+            raise ValueError(f"'output_mode' is {output_mode}, and should be either 'single' or 'double'.")
 
         # Initialize optimizer and compile the model
         if verbose >= 1:
