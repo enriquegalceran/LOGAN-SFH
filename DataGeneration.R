@@ -577,6 +577,8 @@ generateTrainingData <- function(Parameters=NULL,
     if (!is.null(drawSFHPath)){dev.off()}
   }
   
+  # Add n.simul to Parameters so that it is saved in the metadata as well
+  Parameters["n.simul"] = n.simul
   do.call("generateSpecFromDataFrame", c(list(Parameters=Parameters,
                                               df=df,
                                               verbose=verbose,
