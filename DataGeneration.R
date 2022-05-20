@@ -20,6 +20,7 @@ EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
 outputFolder = "DataGeneratedOutput"
 savefilename = "Argument_df.rda"
 configFilename = "Data_Generation_Parameters.R"
+n.simul = 10
 
 
 
@@ -596,7 +597,7 @@ generateTrainingData <- function(Parameters=NULL,
 
 generateTrainingData(Parameters=NULL,
                      Parameters_path=configFilename,
-                     n.simul=2,
+                     n.simul=n.simul,
                      speclib=EMILESCombined,
                      drawSFH=TRUE,
                      drawSFHPath=NULL,

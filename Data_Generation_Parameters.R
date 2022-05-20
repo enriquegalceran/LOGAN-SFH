@@ -131,5 +131,5 @@ Parameters <- list(
   zfunc=Zfunc_massmap_box,
   Zstart=1e-4,
   yield=0.03,
-  Zfinal=list(func=runif, c(min=log10(1e-4), max=log10(0.0300)), islog10=TRUE)
+  Zfinal=list(func=runif, c(min=log10(0.004), max=log10(0.0300)), islog10=TRUE)
 )
