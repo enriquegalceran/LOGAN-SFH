@@ -28,7 +28,7 @@ data_sufix = "20220209T142129_fJnn24"
 output_model_path = "/Volumes/Elements/Outputs/"    // Currently deactivated in the code while testing
 output_name_grid = "model_file_grid.pkl"
 output_name_grid_result = "model_file_grid_result.pkl"
-output_name_best_estimator = "model_file_best.h5"
+output_name_best_estimator = "model_file_best.epoch{epoch:02d}-loss{val_loss:.2f}.h5"
 output_name_model = "model_best_estimator_model.h5"
 output_name_parameters = "model_parameters.json"
 
