@@ -3,9 +3,14 @@
 
 import argparse
 import os
+import sys
+from typing import Callable, Any
+
 import numpy as np
 import matplotlib.pyplot as plt
 import keras
+import tensorflow
+from sklearn.model_selection import train_test_split
 
 import ERIK
 import XAVIER
@@ -24,86 +29,168 @@ def cleanlogfile(filename, filename_out=None):
     lines2 = [i for i in lines if "=] - " in i]
     lines2 = [i.split("] - ")[1] for i in lines2]
     lines2 = [int(i.split("s ", 1)[0]) for i in lines2]
-    
+
     print("times per epoch:")
     print(lines2)
     print("sum:", sum(lines2))
-    print("min:", sum(lines2)/60)
-    print("hours:", sum(lines2)/3600)
+    print("min:", sum(lines2) / 60)
+    print("hours:", sum(lines2) / 3600)
 
     lines.append(f"s_total: {sum(lines2)}")
-    lines.append(f"m_total: {sum(lines2)/60}")
-    lines.append(f"h_total: {sum(lines2)/3600}")
+    lines.append(f"m_total: {sum(lines2) / 60}")
+    lines.append(f"h_total: {sum(lines2) / 3600}")
 
     lines = [line + "\n" for line in lines]
     with open(filename_out, "w+") as f:
         f.writelines(lines)
 
 
-def verify_model(model_path, data_path):
+def verify_model(model_paths, data_path, name_models=None, loss=None,
+                 method_standardize_label_sfh=0,
+                 method_standardize_label_z=0,
+                 method_standardize_spectra=0,
+                 method_standardize_magnitudes=0,
+                 which_data_is_going_to_be_used=2,
+                 first_id_plot=20, n_plot=30,
+                 test_size=0.8, train_size=0.2, traintestrandomstate=42, traintestshuffle=True):
     # Load Data
     print("[INFO] Loading data...")
     label_path = data_path.replace("Input_", "Label_")
-    metadata_path = data_path.replace("Input_", "MetaD_").replace(".fits", ".json")
+    metadata_path = data_path.replace("Input_", "MetaD_").replace(".fits", ".rda")
+
     input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec = \
-        ERIK.loadfiles(input_path=data_path, labels_path=label_path)
-    saved_model = keras.models.load_model(model_path, custom_objects={"smape_loss": XAVIER.Cerebro.smape_loss})
-    in_data = np.concatenate([input_spectra, input_magnitudes], axis=1)
+        ERIK.loadfiles(input_path=data_path, labels_path=label_path,
+                       method_standardize_label_sfh=method_standardize_label_sfh,
+                       method_standardize_label_z=method_standardize_label_z,
+                       method_standardize_spectra=method_standardize_spectra,
+                       method_standardize_magnitudes=method_standardize_magnitudes)
 
-    # l_burst = []
-    # for i in range(in_data.shape[0]):
-    #     metadata = ERIK.getparametersfromid(metadata_path, i, verbose=0, returnfunction=False)
-    #     if "mburst" in metadata.keys():
-    #         l_burst.append(i)
-    # print(l_burst)
-    primer_valor = 30065
-    output = saved_model.predict(in_data[primer_valor:(primer_valor + 1000)])
-    for i in range(primer_valor, primer_valor + 1000):
-        if label_sfh[i, 0] > 0.5:
-            param = ERIK.getparametersfromid(metadata_path, i, verbose=0, returnfunction=False)
-            if param["Zfinal"] == 0.02:
-                print(param)
-                print("mayor que 0.5")
-                fig3, ax3 = plt.subplots()
-                print("smape", XAVIER.Cerebro.smape_loss(output[0][i - primer_valor], label_sfh[i]))
-                ax3.set_title(f"Test-SFH - {i} - {np.mean(XAVIER.Cerebro.smape_loss(output[0][i - primer_valor], label_sfh[i]))}")
-                ax3.semilogx(agevec, label_sfh[i], "k-")
-                ax3.semilogx(agevec, output[0][i - primer_valor], "g.-")
-                plt.show()
-                print("here")
+    # Verified: If indices are added, they will STILL respect the output as if there were no indices
+    split_train_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z,
+                                        range(input_spectra.shape[0]),      # Indices
+                                        test_size=test_size,
+                                        train_size=train_size,
+                                        random_state=traintestrandomstate,
+                                        shuffle=traintestshuffle)
+    (trainSpect, testSpect,
+     trainMag, testMag,
+     trainLabSfh, testLabSfh,
+     trainLabZ, testLabZ,
+     trainIndices, testIndices) = split_train_test
 
-    difference_sfh = np.subtract(output[0], label_sfh)
-    difference_mag = np.subtract(output[1], label_z)
+    if name_models is None:
+        name_models = model_paths
+
+    saved_models = []
+    for model_p in model_paths:
+        saved_models.append(keras.models.load_model(model_p,
+                                                    custom_objects={"smape_loss": XAVIER.Cerebro.smape_loss}))
+        # saved_models[0].summary()
+
+    #################
+    # Decide which data is going to be used
+    if which_data_is_going_to_be_used == 0:
+        # All the data
+        in_data = np.concatenate([input_spectra, input_magnitudes], axis=1)
+    elif which_data_is_going_to_be_used == 1:
+        # Only Training data
+        in_data = np.concatenate([trainSpect, trainMag], axis=1)
+        label_sfh = trainLabSfh
+        label_z = trainLabZ
+    elif which_data_is_going_to_be_used == 2:
+        # Only Test data
+        in_data = np.concatenate([testSpect, testMag], axis=1)
+        label_sfh = testLabSfh
+        label_z = testLabZ
+    else:
+        raise ValueError(f"which_data_is_going_to_be_used should be [0, 1, 2] and is {which_data_is_going_to_be_used}")
+
+    if loss is None:
+        loss = tensorflow.keras.losses.MeanSquaredError()
+
+    outputs = []
+    for model in saved_models:
+        outputs.append(model.predict(in_data[first_id_plot:(first_id_plot + n_plot)]))
+
+    legend_name = ["Label"] + name_models
+    for i in range(first_id_plot, first_id_plot + n_plot):
+        fig, ax = plt.subplots(2, 2, figsize=(25, 15))
+        plt.suptitle(f"ID:{i + 1}")
+        ax[0, 0].set_title("SFH")
+        ax[0, 0].plot(agevec, label_sfh[i, :], 'k')
+        for q, k in enumerate(outputs):
+            ax[0, 0].plot(agevec, k[0][(i - first_id_plot), :])
+
+        ax[0, 0].set_xscale('log')
+        ax[0, 0].legend(legend_name)
+
+        ax[1, 0].set_title("SFH - residuals")
+        ax[1, 0].plot(agevec, np.zeros(agevec.shape), 'k')
+        current_legend = ["Label"]
+        for q, k in enumerate(outputs):
+            ax[1, 0].scatter(agevec, np.subtract(k[0][(i - first_id_plot), :], label_sfh[i, :]))
+            current_legend.append(name_models[q] + "_" +
+                                  f"{loss(label_sfh[i, :], k[0][(i - first_id_plot), :]).numpy():3f}")
+        ax[1, 0].set_xscale('log')
+        ax[1, 0].legend(current_legend)
+
+        ax[0, 1].set_title("Metallicity")
+        ax[0, 1].plot(agevec, label_z[i, :], 'k')
+        for k in outputs:
+            ax[0, 1].plot(agevec, k[1][(i - first_id_plot), :])
+        ax[0, 1].set_xscale('log')
+        ax[0, 1].legend(legend_name)
+
+        ax[1, 1].set_title("Metallicity - residuals")
+        ax[1, 1].plot(agevec, np.zeros(agevec.shape), 'k')
+        current_legend = ["Label"]
+        for q, k in enumerate(outputs):
+            ax[1, 1].scatter(agevec, np.subtract(k[1][(i - first_id_plot), :], label_z[i, :]))
+            current_legend.append(name_models[q] + "_" +
+                                  f"{loss(label_z[i, :], k[1][(i - first_id_plot), :]).numpy():4f}")
+        ax[1, 1].set_xscale('log')
+        ax[1, 1].legend(current_legend)
+        plt.tight_layout()
+        plt.show()
+        print(i)
+
+    return
+    difference_sfh = np.subtract(output[0], label_sfh[first_id_plot:first_id_plot + n_plot, :])
+    difference_mag = np.subtract(output[1], label_z[first_id_plot:first_id_plot + n_plot, :])
 
     fig1, ax1 = plt.subplots()
     ax1.set_title("Boxplot SFH")
     ax1.boxplot(difference_sfh)
-    plt.show()
     fig2, ax2 = plt.subplots()
     ax2.set_title("Boxplot Z")
     ax2.boxplot(difference_mag)
-    plt.show()
+    fig1, ax1 = plt.subplots()
+    ax1.set_title("Boxplot SFH (relativo)")
+    ax1.boxplot(np.divide(difference_sfh, label_sfh[first_id_plot:first_id_plot + n_plot, :]))
+    fig2, ax2 = plt.subplots()
+    ax2.set_title("Boxplot Z (relativo)")
+    ax2.boxplot(np.divide(difference_mag, label_z[first_id_plot:first_id_plot + n_plot, :]))
 
-    for ids in range(10):
-
-        metadata = ERIK.getparametersfromid("/Users/enrique/Documents/GitHub/LOGAN-SFH/MetadataOutput.json",
-                                            ids, verbose=0, returnfunction=False)
-        fig3, ax3 = plt.subplots()
-        ax3.set_title(f"SFH - {ids}")
-        ax3.semilogx(agevec, label_sfh[5000 + ids], "k-")
-        ax3.semilogx(agevec, output[0][ids], "g.-")
-        plt.savefig(f"/Users/enrique/Documents/GitHub/LOGAN-SFH/Test/SFH{ids}.png")
-        fig4, ax4 = plt.subplots()
-        ax4.set_title(f"Z - {ids}")
-        ax4.semilogx(agevec, label_z[5000 + ids], "k-")
-        ax4.semilogx(agevec, output[1][ids], "g.-")
-        plt.savefig(f"/Users/enrique/Documents/GitHub/LOGAN-SFH/Test/Z{ids}.png")
+    # for ids in range(10):
+    #
+    #     metadata = ERIK.getparametersfromid("/Users/enrique/Documents/GitHub/LOGAN-SFH/MetadataOutput.json",
+    #                                         ids, verbose=0, returnfunction=False)
+    #     fig3, ax3 = plt.subplots()
+    #     ax3.set_title(f"SFH - {ids}")
+    #     ax3.semilogx(agevec, label_sfh[5000 + ids], "k-")
+    #     ax3.semilogx(agevec, output[0][ids], "g.-")
+    #     plt.savefig(f"/Users/enrique/Documents/GitHub/LOGAN-SFH/Test/SFH{ids}.png")
+    #     fig4, ax4 = plt.subplots()
+    #     ax4.set_title(f"Z - {ids}")
+    #     ax4.semilogx(agevec, label_z[5000 + ids], "k-")
+    #     ax4.semilogx(agevec, output[1][ids], "g.-")
+    #     plt.savefig(f"/Users/enrique/Documents/GitHub/LOGAN-SFH/Test/Z{ids}.png")
 
     plt.show()
     print("test1234")
 
 
-def main(update_values=None):
+def main(update_values=None, **mainkwargs):
     # Argument Parser (argparse)
     parser = argparse.ArgumentParser(description="Cleaning programm")
 
@@ -112,7 +199,7 @@ def main(update_values=None):
     parser.add_argument("-clo", "--cleanlogoutput", default=None, type=str,
                         help="If a filename is given, will write the cleaned log in this location. "
                              "Requires a value in --logname to work.")
-    parser.add_argument("-vm", "--verify_model", default=None, type=str,
+    parser.add_argument("-vm", "--verify_model", default=None, type=list, nargs="*",
                         help="Test the prediction of the Neural Network. the absolute/relative path to the model is"
                              " required. Requieres a dataset to verify (--data_path).")
     parser.add_argument("-dp", "--data_path", default=None, type=str,
@@ -146,19 +233,29 @@ def main(update_values=None):
         print("[LOG] FINISHED")
 
     if args.verify_model is not None:
-        print(f"[INFO] Verifying Model {args.verify_model} with Data:{args.data_path}")
+        # If only one element, convert to list
+        if type(args.verify_model) is str:
+            args.verify_model = [args.verify_model]
+        print(f"[INFO] Verifying Model(s) {args.verify_model} with Data: {args.data_path}")
         data_path = args.data_path
         if data_path[-5:] != ".fits":
             data_path = "Input_" + data_path + ".fits"
         if data_path[0] != "/":
             data_path = os.path.abspath(data_path)
-        if args.verify_model[0] != "/":
-            model_path = os.path.abspath(args.verify_model)
-        else:
-            model_path = args.verify_model
+
+        for i, model in enumerate(args.verify_model):
+            if model[0] != "/":
+                args.verify_model[i] = os.path.abspath(model)
 
         # Verify Model
-        verify_model(model_path, data_path)
+        model_names = None
+        if "model_names" in mainkwargs:
+            model_names = mainkwargs["model_names"]
+        arguments_standardize = {}
+        for key in mainkwargs.keys():
+            if "method_standardize_" in key:
+                arguments_standardize[key] = mainkwargs[key]
+        verify_model(args.verify_model, data_path, model_names, **arguments_standardize)
 
     if args.json_clean is not None:
         json_files = RAVEN.flatten_list(args.json_clean)
@@ -167,10 +264,31 @@ def main(update_values=None):
 
 
 if __name__ == "__main__":
-    main({"verify_model": "/Users/enrique/Documents/GitHub/LOGAN-SFH/model_file_best_GPUdeeper400.h5",
-          "data_path": "/Volumes/Elements/Outputs/Input_combined.fits"})
-    #"data_path": "/Users/enrique/Documents/GitHub/LOGAN-SFH/OutputFolder/Input_combined.fits"})
-    # main({"json_clean": [["/Users/enrique/Documents/GitHub/LOGAN-SFH/OutputFolder/Metadata_20220209T142129_fJnn24json",
-    #                       "/Users/enrique/Documents/GitHub/LOGAN-SFH/OutputFolder/Metadata_20220210T122420_N9HRfM.json",
-    #                       ]]
-    #       })
+    path = "/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainedModels/MSEModel_deeper"
+    files = os.listdir(path)
+    files = [_ for _ in files if "config" not in _ and "epoch001" not in _ and "imagen" not in _]
+    files.sort()
+    filenames = [f"e{_[15:18]}-l{_[23:-3]}" for _ in files]
+    models = [os.path.join(path, f) for f in files]
+
+    main({"verify_model": models,
+          "data_path": os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/",
+                                    "Input_combined.fits")},
+         model_names=filenames,
+         method_standardize_label_sfh=3,
+         )
+
+    # old_models = ["/Users/enrique/model_mean_squared_13_05.h5",
+    #               "/Users/enrique/model_mean_squared_log_13_05.h5",
+    #               "/Users/enrique/Documents/GitHub/LOGAN-SFH/model_no_normalizing_12_05.h5"]
+
+    # main({"verify_model": os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/",
+    #                                    "model_no_normalizing_12_05.h5"),
+    #       "data_path": os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/",
+    #                                 "Input_combined.fits")})
+
+
+# ToDo: comparar dos SFH (ancha y estrecha), sacar gráfica de SFH y metalicidades
+# Mandar el código de la red
+# meter la salida de la red en prospect y mirar el espectro+magnitudes que obtenemos.
+# Probar SIN ruido?
