@@ -130,27 +130,21 @@ class Cerebro:
         if branch_type.lower() == "cnn":
             for i_layer in range(number_layers):
                 if i_layer == 0:
-                    x = Cerebro.conv_activation_pool(layer_input=inputs, n_filters=layers[i_layer],
-                                                     filter_size=filter_size[i_layer], stride=stride[i_layer],
-                                                     act=act[i_layer], pool_size=pool_size[i_layer],
-                                                     dropout=dropout[i_layer], padding="same", explicit=explicit,
-                                                     kernel_initializer=kernel_initializer[i_layer])
-                else:
-                    x = Cerebro.conv_activation_pool(layer_input=x, n_filters=layers[i_layer],
-                                                     filter_size=filter_size[i_layer], stride=stride[i_layer],
-                                                     act=act[i_layer], pool_size=pool_size[i_layer],
-                                                     dropout=dropout[i_layer], padding="same", explicit=explicit,
-                                                     kernel_initializer=kernel_initializer[i_layer])
+                    # If first layer, load input layer
+                    x = inputs
+                x = Cerebro.conv_activation_pool(layer_input=x, n_filters=layers[i_layer],
+                                                 filter_size=filter_size[i_layer], stride=stride[i_layer],
+                                                 act=act[i_layer], pool_size=pool_size[i_layer],
+                                                 dropout=dropout[i_layer], padding="same", explicit=explicit,
+                                                 kernel_initializer=kernel_initializer[i_layer])
         elif branch_type.lower() == "dense":
             for i_layer in range(number_layers):
                 if i_layer == 0:
-                    x = Cerebro.dense_act_batchnorm_dropout(inputs=inputs, neurons=layers[i_layer], act=act[i_layer],
-                                                            dropout=dropout[i_layer], explicit=explicit,
-                                                            kernel_initializer=kernel_initializer[i_layer])
-                else:
-                    x = Cerebro.dense_act_batchnorm_dropout(inputs=x, neurons=layers[i_layer], act=act[i_layer],
-                                                            dropout=dropout[i_layer], explicit=explicit,
-                                                            kernel_initializer=kernel_initializer[i_layer])
+                    # If first layer, load input layer
+                    x = inputs
+                x = Cerebro.dense_act_batchnorm_dropout(inputs=x, neurons=layers[i_layer], act=act[i_layer],
+                                                        dropout=dropout[i_layer], explicit=explicit,
+                                                        kernel_initializer=kernel_initializer[i_layer])
         else:
             raise ValueError("branch_type needs to be 'cnn' or 'dense'.")
 
