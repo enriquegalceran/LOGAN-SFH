@@ -150,19 +150,21 @@ HRPyPop <- list(
   Zevo = Zevo
 )
 
-cat("Saving HRPyPop in", file.path(HRSaving_directory, "HRPyPop.rds\n"))
-saveRDS(HRPyPop, file.path(HRSaving_directory, "HRPyPop.rds"))
+outputname <- paste0("HRPyPop_", IMF_used, ".rds")
+cat("Saving HRPyPop in", file.path(HRSaving_directory, outputname),"\n")
+saveRDS(HRPyPop, file.path(HRSaving_directory, outputname))
 
 
 # Split File into multiple parts
-cat("Saving HRPyPop split into multiple files in", file.path(HRSaving_directory_split, "HRPyPop.rds\n"))
+cat("Saving HRPyPop split into multiple files in", file.path(HRSaving_directory, outputname),"\n")
 for (i in 1:8){
   if (i == 7){
     for (j in 1:4){
-      saveRDS(EMILESCombined[i][[1]][j], file.path(HRSaving_directory_split, paste0("HRPyPop", i, "_", j, ".rds")))
+      saveRDS(EMILESCombined[i][[1]][j], file.path(HRSaving_directory_split,
+                                                   paste0("HRPyPop_", IMF_used, "_", i, "_", j, ".rds")))
     }
   } else {
-    saveRDS(EMILESCombined[i], file.path(HRSaving_directory_split, paste0("HRPyPop", i, ".rds")))
+    saveRDS(EMILESCombined[i], file.path(HRSaving_directory_split, paste0("HRPyPop_", IMF_used, "_", i, ".rds")))
   }
 }
 
@@ -170,14 +172,14 @@ for (i in 1:8){
 
 HRPypopReconstr= list()
 for (i in 1:6){
-  HRPypopReconstr = c(HRPypopReconstr, readRDS(file=file.path(HRSaving_directory_split, paste0("HRPyPop", i, ".rds"))))
+  HRPypopReconstr = c(HRPypopReconstr, readRDS(file=file.path(HRSaving_directory_split, paste0("HRPyPop_", IMF_used, "_", i, ".rds"))))
 }
 tmp = list()
 for (j in 1:4){
-  tmp = c(tmp, readRDS(file=file.path(HRSaving_directory_split, paste0("HRPyPop7_", j, ".rds"))))
+  tmp = c(tmp, readRDS(file=file.path(HRSaving_directory_split, paste0("HRPyPop_", IMF_used, "_7_", j, ".rds"))))
 }
 HRPypopReconstr = c(HRPypopReconstr, list(Zspec=tmp))
-HRPypopReconstr = c(HRPypopReconstr, readRDS(file=file.path(HRSaving_directory_split, "HRPyPop8.rds")))
+HRPypopReconstr = c(HRPypopReconstr, readRDS(file=file.path(HRSaving_directory_split, paste0("HRPyPop_", IMF_used, "_8.rds"))))
 
 
 
