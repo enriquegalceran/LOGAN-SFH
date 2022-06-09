@@ -33,3 +33,5 @@ HrPyPopData/HRPyPop.rds
 TrainingData/Input_combined.fits
 TrainingData/Label_combined.fits
 TrainingData/MetaD_combined.rda
+TrainedModels/*
+DataGeneratedOutput/*
