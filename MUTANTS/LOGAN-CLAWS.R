@@ -21,6 +21,20 @@ library(reticulate)
 
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
+simple.two.axes.plot <- function(lx, ly, rx, ry, xlab=NULL, lylab=NULL, rylab=NULL, main="",
+                                 ltype="l", rtype="p", lpch=1, rpch=17, lcol="black", rcol="red", xlim=NULL){
+  if (is.null(xlim)){
+    xlim = c(min(c(lx, rx)), max(c(lx, rx)))
+  }
+  par(mar = c(5, 4, 4, 4) + 0.3)  # Leave space for z axis
+  plot(lx, ly, type=ltype, xlim=xlim,
+       main=main, xlab=xlab, ylab=lylab, pch=lpch, col=lcol) # first plot
+  par(new = TRUE)
+  plot(rx, ry, pch=rpch, axes = FALSE, bty = "n", xlab = "", ylab = "", col=rcol, xlim=xlim)
+  axis(side=4, at = pretty(range(ry)), col=rcol, col.axis=rcol)
+  mtext("magnitudes", side=4, line=3, col=rcol)
+}
+
 exportObjectToFITS <- function(inputObject,
                                filename,
                                foldername,
