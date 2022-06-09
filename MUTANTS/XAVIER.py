@@ -4,7 +4,7 @@
 
 from keras.models import Model
 from keras.layers import BatchNormalization, Conv1D, MaxPooling1D, Activation, \
-    Dropout, Concatenate, Flatten, Dense, Input, Lambda
+    Dropout, Concatenate, Flatten, Dense, Input, Lambda, Reshape
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.optimizers import Adam
 import keras.backend as kerasbackend
@@ -64,7 +64,7 @@ class Cerebro:
                                stride=1, act="relu", pool_size=3, dropout=0.25,
                                neurons_last_layer: int = None, explicit: bool = False,
                                output: int = 1, output_neurons: int = 20, final_act: str = "relu",
-                               final_layer_name: str = None,
+                               residual: bool = False, final_layer_name: str = None,
                                kernel_initializer: Union[str, Type[initializers.GlorotUniform]] = "glorot_uniform",
                                ):
         """
@@ -91,14 +91,15 @@ class Cerebro:
         :param output:              output == 0 -> no output
                                     output == 1 -> output with Flatten (input branches)
                                     output == 2 -> output without Flatten (output branches)
+        :param residual:
         :param output_neurons:
         :param final_act:
         :param final_layer_name:
         :param kernel_initializer:
         :return:
         """
-        # Initialize x
-        x = None
+        # Initialize layer_output
+        layer_output = None
 
         # Define number of layers
         if layers is not None:
@@ -126,41 +127,61 @@ class Cerebro:
         dropout = verify_list(dropout, "dropout", number_layers)
         kernel_initializer = verify_list(kernel_initializer, "kernel_initializer", number_layers)
 
+        # Initiate Residual
+        residual_inputs = [inputs]
+
         # Generate branch layers
-        if branch_type.lower() == "cnn":
-            for i_layer in range(number_layers):
-                if i_layer == 0:
-                    # If first layer, load input layer
-                    x = inputs
-                x = Cerebro.conv_activation_pool(layer_input=x, n_filters=layers[i_layer],
-                                                 filter_size=filter_size[i_layer], stride=stride[i_layer],
-                                                 act=act[i_layer], pool_size=pool_size[i_layer],
-                                                 dropout=dropout[i_layer], padding="same", explicit=explicit,
-                                                 kernel_initializer=kernel_initializer[i_layer])
-        elif branch_type.lower() == "dense":
-            for i_layer in range(number_layers):
-                if i_layer == 0:
-                    # If first layer, load input layer
-                    x = inputs
-                x = Cerebro.dense_act_batchnorm_dropout(inputs=x, neurons=layers[i_layer], act=act[i_layer],
-                                                        dropout=dropout[i_layer], explicit=explicit,
-                                                        kernel_initializer=kernel_initializer[i_layer])
-        else:
-            raise ValueError("branch_type needs to be 'cnn' or 'dense'.")
+        for i_layer in range(number_layers):
+
+            # If first layer, load input layer
+            if i_layer == 0:
+                layer_input = inputs
+
+            # If the input is NOT the first layer, check if residual
+            else:
+                if not residual:
+                    # if not residual, feed the output of the previous layer to the next layer
+                    layer_input = layer_output
+                elif residual:
+                    # if residual, concatenate all the residual_inputs
+                    residual_inputs.append(layer_output)
+                    # flattened_inputs = [Flatten()(x) for x in residual_inputs]
+                    # reshaped_inputs = [Reshape(target_shape=(x.shape[1], 1))(x) for x in flattened_inputs]
+                    # layer_input = Concatenate(axis=1)(reshaped_inputs)
+                    layer_input = layer_output
+                else:
+                    raise ValueError("There is an error regarding the residual variable. Needs to be remade")
+
+            # Separate by type of branch
+            if branch_type.lower() == "cnn":
+                layer_output = Cerebro.conv_activation_pool(layer_input=layer_input, n_filters=layers[i_layer],
+                                                            filter_size=filter_size[i_layer],
+                                                            stride=stride[i_layer],
+                                                            act=act[i_layer], pool_size=pool_size[i_layer],
+                                                            dropout=dropout[i_layer], padding="same",
+                                                            explicit=explicit,
+                                                            kernel_initializer=kernel_initializer[i_layer])
+            elif branch_type.lower() == "dense":
+                layer_output = Cerebro.dense_act_batchnorm_dropout(inputs=layer_input, neurons=layers[i_layer],
+                                                                   act=act[i_layer],
+                                                                   dropout=dropout[i_layer], explicit=explicit,
+                                                                   kernel_initializer=kernel_initializer[i_layer])
+            else:
+                raise ValueError("branch_type needs to be 'cnn' or 'dense'.")
 
         # Output
         if output == 0:
-            return x
+            return layer_output
         elif output == 1:
-            x = Flatten()(x)
+            layer_output = Flatten()(layer_output)
 
         if explicit:
-            x = Dense(output_neurons)(x)
-            x = Activation(activation=final_act, name=final_layer_name)(x)
+            layer_output = Dense(output_neurons)(layer_output)
+            layer_output = Activation(activation=final_act, name=final_layer_name)(layer_output)
         else:
-            x = Dense(output_neurons, activation=final_act, name=final_layer_name)(x)
+            layer_output = Dense(output_neurons, activation=final_act, name=final_layer_name)(layer_output)
 
-        return x
+        return layer_output
 
     @staticmethod
     def splitkwargs(spectra_prefix="spect_", magnitude_prefix="magn_", sfh_prefix="sfh_", metal_prefix="metal_",
@@ -298,7 +319,6 @@ class Cerebro:
             outputs=outputs,
             name=model_name
         )
-
 
         if loss_function_used == "SMAPE":
             # SMAPE
