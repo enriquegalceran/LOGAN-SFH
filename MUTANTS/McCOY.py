@@ -4,9 +4,11 @@
 import argparse
 import os
 import sys
+import csv
 from typing import Callable, Any
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import keras
 import tensorflow
@@ -51,8 +53,8 @@ def verify_model(model_paths, data_path, name_models=None, loss=None,
                  method_standardize_spectra=0,
                  method_standardize_magnitudes=0,
                  which_data_is_going_to_be_used=2,
-                 first_id_plot=20, n_plot=30,
-                 test_size=0.8, train_size=0.2, traintestrandomstate=42, traintestshuffle=True):
+                 first_id_plot=0, n_plot=3,
+                 train_size=0.8, test_size=0.2, traintestrandomstate=42, traintestshuffle=True):
     # Load Data
     print("[INFO] Loading data...")
     label_path = data_path.replace("Input_", "Label_")
@@ -65,8 +67,15 @@ def verify_model(model_paths, data_path, name_models=None, loss=None,
                        method_standardize_spectra=method_standardize_spectra,
                        method_standardize_magnitudes=method_standardize_magnitudes)
 
+    _, _, label_sfh_real, label_z_real, _, _ = \
+        ERIK.loadfiles(input_path=data_path, labels_path=label_path,
+                       method_standardize_label_sfh=0,
+                       method_standardize_label_z=0,
+                       method_standardize_spectra=0,
+                       method_standardize_magnitudes=0)
+
     # Verified: If indices are added, they will STILL respect the output as if there were no indices
-    split_train_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z,
+    split_train_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_real, label_z_real,
                                         range(input_spectra.shape[0]),      # Indices
                                         test_size=test_size,
                                         train_size=train_size,
@@ -76,6 +85,8 @@ def verify_model(model_paths, data_path, name_models=None, loss=None,
      trainMag, testMag,
      trainLabSfh, testLabSfh,
      trainLabZ, testLabZ,
+     trainLabSfh_real, testLabSfh_real,
+     trainLabZ_real, testLabZ_real,
      trainIndices, testIndices) = split_train_test
 
     if name_models is None:
@@ -92,16 +103,23 @@ def verify_model(model_paths, data_path, name_models=None, loss=None,
     if which_data_is_going_to_be_used == 0:
         # All the data
         in_data = np.concatenate([input_spectra, input_magnitudes], axis=1)
+        idx = list(range(input_spectra.shape[0]))
     elif which_data_is_going_to_be_used == 1:
         # Only Training data
         in_data = np.concatenate([trainSpect, trainMag], axis=1)
         label_sfh = trainLabSfh
         label_z = trainLabZ
+        label_sfh_real = trainLabSfh_real
+        label_z_real = trainLabZ_real
+        idx = trainIndices
     elif which_data_is_going_to_be_used == 2:
         # Only Test data
         in_data = np.concatenate([testSpect, testMag], axis=1)
         label_sfh = testLabSfh
         label_z = testLabZ
+        label_sfh_real = testLabSfh_real
+        label_z_real = testLabZ_real
+        idx = testIndices
     else:
         raise ValueError(f"which_data_is_going_to_be_used should be [0, 1, 2] and is {which_data_is_going_to_be_used}")
 
@@ -115,7 +133,7 @@ def verify_model(model_paths, data_path, name_models=None, loss=None,
     legend_name = ["Label"] + name_models
     for i in range(first_id_plot, first_id_plot + n_plot):
         fig, ax = plt.subplots(2, 2, figsize=(25, 15))
-        plt.suptitle(f"ID:{i + 1}")
+        plt.suptitle(f"i:{i + 1} - ID:{idx[i]}")
         ax[0, 0].set_title("SFH")
         ax[0, 0].plot(agevec, label_sfh[i, :], 'k')
         for q, k in enumerate(outputs):
@@ -152,6 +170,37 @@ def verify_model(model_paths, data_path, name_models=None, loss=None,
         ax[1, 1].legend(current_legend)
         plt.tight_layout()
         plt.show()
+
+        tmp_dic = {"agevec": agevec,
+                   "sfh_true": label_sfh[i, :],
+                   "z_true": label_z[i, :],
+                   "sfh_no_stand": label_sfh_real[i, :],
+                   "z_no_stand": label_z_real[i, :]}
+        for q, k in enumerate(outputs):
+            tmp_dic[f"sfh{q}"] = k[0][(i - first_id_plot), :]
+            tmp_dic[f"z{q}"] = k[1][(i - first_id_plot), :]
+        tmp_sp = {"spectr_in": input_spectra[i, :]}
+        tmp_mag = {"magnitudes_in": input_magnitudes[i, :],
+                   "ID": [idx[i]]*5}
+        tmp_id_names = {"ID": [idx[i]]}
+        for q, k in enumerate(legend_name):
+            if q == 0:
+                continue
+            else:
+                tmp_id_names[f"name{q-1}"] = [k]
+        tmp_df = pd.DataFrame(tmp_dic)
+        tmp_df.to_csv("/Users/enrique/Documents/GitHub/LOGAN-SFH/tmp_file.pd", index=False)
+        tmp_df2 = pd.DataFrame(tmp_sp)
+        tmp_df3 = pd.DataFrame(tmp_mag)
+        tmp_df4 = pd.DataFrame(tmp_id_names)
+        tmp_df2.to_csv("/Users/enrique/Documents/GitHub/LOGAN-SFH/tmp_file2.pd", index=False)
+        tmp_df3.to_csv("/Users/enrique/Documents/GitHub/LOGAN-SFH/tmp_file3.pd", index=False)
+        tmp_df4.to_csv("/Users/enrique/Documents/GitHub/LOGAN-SFH/tmp_file4.pd", index=False)
+
+
+
+
+
         print(i)
 
     return
