@@ -82,3 +82,37 @@ legend('topright',
 )
 # Probar cambiar el espectro de EMILES directamente para meterlo con un espectro reduciro (i.e. 3k-11k)
 
+
+#####################################
+##### Pruebas de diferentes SFH y metalicidades
+setwd("~/Documents/GitHub/LOGAN-SFH")
+EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
+
+filtersHST <- c("F275W", "F336W", "F438W", "F555W", "F814W")
+filters <- list()
+for (filter in filtersHST) {
+  filters[[filter]] <-
+    read.table(
+      paste0("FiltersHST/HST_WFC3_UVIS2.", filter, ".dat"),
+      col.names = c("wave", "response")
+    )
+}
+
+testSED=ProSpectSED(speclib=EMILESCombined,
+                    SFH = SFHfunc,
+                    z = 0.1,
+                    # emission=TRUE,
+                    # emission_scale = "SFR",
+                    # filtout = filters,
+                    massfunc = massfunc_snorm_burst,
+                    mpeak = 10,
+                    mperiod = 1,
+                    mskew = 0.25,
+                    mburstage = 1,
+                    mburst=5,
+                    Z=Zfunc_massmap_box,
+                    Zstart=1e-4,
+                    Zfinal=0.03
+                    )
+plot(testSED)
+
