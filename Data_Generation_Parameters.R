@@ -129,7 +129,7 @@ Parameters <- list(
   burstfraction=NULL,
   
   zfunc=Zfunc_massmap_box,
-  Zstart=1e-4,
+  Zstart=list(func=runif, c(min=log10(0.004), max=log10(0.01)), islog10=TRUE),
   yield=0.03,
-  Zfinal=list(func=runif, c(min=log10(0.004), max=log10(0.0300)), islog10=TRUE)
+  Zfinal=list(func=runif, c(min=0.01, max=0.03), islog10=FALSE)
 )
