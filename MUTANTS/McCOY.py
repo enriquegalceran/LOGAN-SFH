@@ -179,7 +179,8 @@ def verify_model(model_paths, data_path, name_models=None, loss=None,
         for q, k in enumerate(outputs):
             tmp_dic[f"sfh{q}"] = k[0][(i - first_id_plot), :]
             tmp_dic[f"z{q}"] = k[1][(i - first_id_plot), :]
-        tmp_sp = {"spectr_in": input_spectra[i, :]}
+        tmp_sp = {"spectr_in": input_spectra[i, :],
+                  "waveout": spectra_lambda}
         tmp_mag = {"magnitudes_in": input_magnitudes[i, :],
                    "ID": [idx[i]]*5}
         tmp_id_names = {"ID": [idx[i]]}
