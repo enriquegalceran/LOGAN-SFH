@@ -60,14 +60,14 @@ def verify_model(model_paths, data_path, name_models=None, loss=None,
     label_path = data_path.replace("Input_", "Label_")
     metadata_path = data_path.replace("Input_", "MetaD_").replace(".fits", ".rda")
 
-    input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec = \
+    input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec, _ = \
         ERIK.loadfiles(input_path=data_path, labels_path=label_path,
                        method_standardize_label_sfh=method_standardize_label_sfh,
                        method_standardize_label_z=method_standardize_label_z,
                        method_standardize_spectra=method_standardize_spectra,
                        method_standardize_magnitudes=method_standardize_magnitudes)
 
-    _, _, label_sfh_real, label_z_real, _, _ = \
+    _, _, label_sfh_real, label_z_real, _, _, _ = \
         ERIK.loadfiles(input_path=data_path, labels_path=label_path,
                        method_standardize_label_sfh=0,
                        method_standardize_label_z=0,

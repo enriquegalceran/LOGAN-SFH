@@ -120,7 +120,7 @@ def main(**main_kwargs):
     for key in parameters.keys():
         if "method_standardize_" in key:
             arguments_standardize[key] = parameters[key]
-    input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec = \
+    input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec, ageweights = \
         loadfiles(input_path=data_path + "Input_" + data_sufix + ".fits",
                   labels_path=data_path + "Label_" + data_sufix + ".fits",
                   **arguments_standardize)

@@ -111,11 +111,11 @@ def print_table(tabl_data, main_title='', col_separation='| ', min_length=0):
             print(string_for_row.format(char_in_column, *row))
 
 
-def standardize_single_dataset(data, method, input_mean_value=None):
+def standardize_single_dataset(data, method, input_mean_value=None, ageweights=None, normalize_value=1e10):
     """
     Standardize the data depending on the method employed.
-            :param data:        array-like of shape (n_samples, n_features)
-            :param method:      int. Type of normalization that will be executed
+    :param data:                array-like of shape (n_samples, n_features)
+    :param method:              int. Type of normalization that will be executed
                                 0:  No normalization. output=input
                                 1:  Normalize based on the center value of the data. Interesting for spectra.
                                     The center value taken is int(n_features / 2 - 0.5).
@@ -135,11 +135,15 @@ def standardize_single_dataset(data, method, input_mean_value=None):
                                     where input_mean_value is the mean value of the mean value of the spectra (saved
                                     from before).
                                     If input_mean_value is not given, it will be set to 1-> log(1)=0-> no normalization
-                                5:  [Not Implemented yet] Normalizes the data so that the mean value equals X and
+                                5:  Normalization of total mass. Normalizes the massvector so that the total amount is
+                                    equal to normalize_value (default=1e10). This is used for the SFH label.
+                                6:  [Not Implemented yet] Normalizes the data so that the mean value equals X and
                                     standarddistribution equals Y.
                                     (Inspired in the gaussian normalization to mu=0, sigma=1)
                                     (Preemptive values for X and Y: 1, 1)
     :param input_mean_value:    Used for method==4. Mean value of the spectra, calculated previously.
+    :param ageweights:          Used for method==5. Weight (in years) of each bin.
+    :param normalize_value:     Value that will be used to normalize the integral. Used for method==5.
     :return:
     """
     mean_value = data.mean(axis=1)
@@ -180,6 +184,22 @@ def standardize_single_dataset(data, method, input_mean_value=None):
         output = data + 2.5 * np.log10(input_mean_value)[:, None] + 20
 
     elif method == 5:
+        # Normalize so that the integral equals to normalize_value. This is used for the SFH.
+        assert data.shape[1] == len(ageweights), f"length of data ({data.shape[1]}) " \
+                                                 f"and ageweigths ({len(ageweights)}) are not equal."
+        # Multiply by ageweights and calculate total mass
+        mult_agew = data * ageweights
+        mass_by_data = np.sum(mult_agew, axis=1)
+        # Divide mass_by_data by the desired value (normalize_value)
+        mass_by_data = np.divide(mass_by_data, normalize_value)
+        # Divide data by the new mass_by_data, so that it will have the desired normalized mass
+        output = np.divide(data, mass_by_data[:, None])
+
+        # To verify that the masses are corrrect, uncomment the following lines
+        # new_masses = np.sum(output * ageweights, axis=1)
+        # print(new_masses)
+
+    elif method == 6:
         # ToDo: Not implemented.
         # Stretch out and normalize to mean=1, std=1. (Maybe mean=0.5 or mean=0)
         Warning("Not yet implemented for method == 5. Used method == 1")

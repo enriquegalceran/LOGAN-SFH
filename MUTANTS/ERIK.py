@@ -20,7 +20,7 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
               method_standardize_magnitudes=4,
               method_standardize_label_sfh=3,
               method_standardize_label_z=3,
-              verbose=1) -> typing.Tuple[np.array, np.array, np.array, np.array, np.array, np.array]:
+              verbose=1) -> typing.Tuple[np.array, np.array, np.array, np.array, np.array, np.array, np.array]:
     """
     Load the dataset from file.
 
@@ -60,12 +60,23 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
     label_sfh = label_sfh.transpose()
     label_z = label_z.transpose()
 
+    # Calculate ageweights
+    age_separations = [0]
+    for i in range(len(agevec) - 1):
+        age_separations.append((agevec[i + 1] + agevec[i])/2)
+    # Add last value in the separation (magemax=13.8)
+    age_separations.append(13.8e9)
+    ageweights = []
+    for i in range(len(age_separations) - 1):
+        ageweights.append(age_separations[i + 1] - age_separations[i])
+
     input_spectra, input_magnitudes, label_sfh, label_z = \
         standardize_dataset(input_spectra, input_magnitudes, label_sfh, label_z,
                             method_standardize_spectra=method_standardize_spectra,
                             method_standardize_magnitudes=method_standardize_magnitudes,
                             method_standardize_label_sfh=method_standardize_label_sfh,
-                            method_standardize_label_z=method_standardize_label_z)
+                            method_standardize_label_z=method_standardize_label_z,
+                            ageweights=ageweights)
     if verbose > 0:
         print(f"""
         Variable sizes:
@@ -75,7 +86,7 @@ def loadfiles(input_path: str = "/Volumes/Elements/Outputs/Input_20211213T154548
             Label_z: {label_z.shape} - {convert_bytes(label_z.nbytes)}
         """)
 
-    return input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec
+    return input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec, ageweights
 
 
 def verify32bits(filepath, verbose=1):
@@ -425,13 +436,14 @@ def standardize_dataset(input_spectra, input_magnitudes,
                         method_standardize_spectra=2,
                         method_standardize_magnitudes=4,
                         method_standardize_label_sfh=3,
-                        method_standardize_label_z=3):
+                        method_standardize_label_z=3,
+                        ageweights=None):
     # Inputs
     input_spectra_out, mean_spectra = standardize_single_dataset(input_spectra, method_standardize_spectra)
     input_magnitudes_out, _ = standardize_single_dataset(input_magnitudes, method_standardize_magnitudes, mean_spectra)
 
     # Labels
-    label_sfh_out, _ = standardize_single_dataset(label_sfh, method_standardize_label_sfh)
+    label_sfh_out, _ = standardize_single_dataset(label_sfh, method_standardize_label_sfh, ageweights=ageweights)
     label_z_out, _ = standardize_single_dataset(label_z, method_standardize_label_z)
 
     return input_spectra_out, input_magnitudes_out, label_sfh_out, label_z_out
