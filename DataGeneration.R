@@ -20,7 +20,7 @@ EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
 outputFolder = "DataGeneratedOutput"
 savefilename = "Argument_df.rda"
 configFilename = "Data_Generation_Parameters.R"
-n.simul = 10
+n.simul = 5000
 
 
 
@@ -251,7 +251,7 @@ drawSFHFromDataFrame <- function(df,
                                  progress_verbose=1000,
                                  alpha_color=10,
                                  returnPointMatrix=FALSE,
-                                 ylimit=NULL,
+                                 max_y_plot=NULL,
                                  ...){
   # Draws the SFHs that are going to be used
   dots = list(...)
@@ -283,31 +283,26 @@ drawSFHFromDataFrame <- function(df,
     i <- i + 1
   }
   
-  if (is.null(ylimit)){
-    ylimit = max(points_matrix)
+  if (is.null(max_y_plot)){
+    max_y_plot = max(points_matrix)
+  } else {
+    max_y_plot = min(c(max_y_plot, max(points_matrix)))
+    print(max_y_plot)
+    print(c(0, max_y_plot))
   }
   
-  # Populate dots with default variables in case they are not defined
-  # This avoids multiple instances of the same argument, and the possibility to change them
-  plot_def_arguments = list(type="l",
-                            xlab="Age", ylab="SFR",
-                            col=mycol <- rgb(0, 0, 255, max=255, alpha=alpha_color),
-                            xlim=c(agevec[1],14e9),
-                            ylim=c(0, ylimit),
-                            log="x")
-  for (def_arg in names(plot_def_arguments)){
-    if (def_arg %!in% names(dots)){
-      dots[def_arg] <- plot_def_arguments[def_arg]
-    }
-  }
+  mycol <- rgb(0, 0, 255, max=255, alpha=alpha_color)
   
-  
-  # Initialize plot
-  do.call("plot", c(list(x=agevec, y=points_matrix[1,]), dots))
+  plot(x=agevec, y=points_matrix[1,], type="l",
+       xlab="Age", ylab="SFR",
+       col=mycol,
+       xlim=c(agevec[1],14e9),
+       ylim=c(0, max_y_plot),
+       log="x")
   
   # Iterate over each line and draw the data
   i <- 2
-  col.lines <- dots[["col"]]
+  col.lines <- mycol
   while (i <= dim(points_matrix)[1]){
     do.call("lines", c(list(x=agevec, y=points_matrix[i, ], col=col.lines)))
     if (!is.null(progress_verbose)){
@@ -617,8 +612,9 @@ generateTrainingData(Parameters=NULL,
                      agevec=NULL,
                      outputFolderPath=outputFolder,                  # path
                      verbose=1,
-                     progress_verbose_df=1,
-                     progress_verbose_spectra=1)
+                     progress_verbose_df=10,
+                     progress_verbose_spectra=10,
+                     max_y_plot=4)
 
 
 
