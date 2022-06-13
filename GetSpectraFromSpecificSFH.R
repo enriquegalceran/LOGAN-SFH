@@ -134,56 +134,56 @@ compare_two_objects <- function(object1, object2, main="Compare 2 objects"){
 
 
 #### Calculate spectra ####
-spectra_no_stand = SFHfunc(
-    massfunc = massfunc_custom,
-    speclib = EMILESCombined,
-    filters=filters,
-    Z = Z_custom,
-    magevec=csvData[["agevec"]],
-    msfh=csvData[["sfh_no_stand"]],
-    Zagevec = csvData[["agevec"]],
-    Zsfh=csvData[["z_no_stand"]],
-)
-spectra_no_stand <- post_process_spectra(spectra_no_stand, waveout)
-
-spectra_true = SFHfunc(
-    massfunc = massfunc_custom,
-    speclib = EMILESCombined,
-    filters=filters,
-    Z = Z_custom,
-    magevec=csvData[["agevec"]],
-    msfh=csvData[["sfh_true"]],
-    Zagevec = csvData[["agevec"]],
-    Zsfh=csvData[["z_true"]],
-)
-spectra_true <- post_process_spectra(spectra_true, waveout)
-
-compare_two_objects(spectra_true, spectra_no_stand,
-                    main=paste0("true vs  - ID=", csvData3$ID[1],
-                                " - ", csvData4[[paste0("name", idx)]]))
-
-
-idx = 0
-spectraObject = SFHfunc(
-    massfunc = massfunc_custom,
-    speclib = EMILESCombined,
-    filters=filters,
-    Z = Z_custom,
-    magevec=csvData[["agevec"]],
-    msfh=csvData[[paste0("sfh", idx)]],
-    Zagevec = csvData[["agevec"]],
-    Zsfh=csvData[[paste0("z", idx)]],
-)
-spectraObject <- post_process_spectra(spectraObject, waveout)
-
-
-compare_two_objects(spectra_true,
-                    spectraObject,
-                    main=paste0("true vs idx=", idx,
-                                " - ID=", csvData3$ID[1],
-                                " - ", csvData4[[paste0("name", idx)]]))
-
-
+{
+    spectra_no_stand = SFHfunc(
+        massfunc = massfunc_custom,
+        speclib = EMILESCombined,
+        filters=filters,
+        Z = Z_custom,
+        magevec=csvData[["agevec"]],
+        msfh=csvData[["sfh_no_stand"]],
+        Zagevec = csvData[["agevec"]],
+        Zsfh=csvData[["z_no_stand"]],
+    )
+    spectra_no_stand <- post_process_spectra(spectra_no_stand, waveout)
+    
+    spectra_true = SFHfunc(
+        massfunc = massfunc_custom,
+        speclib = EMILESCombined,
+        filters=filters,
+        Z = Z_custom,
+        magevec=csvData[["agevec"]],
+        msfh=csvData[["sfh_true"]],
+        Zagevec = csvData[["agevec"]],
+        Zsfh=csvData[["z_true"]],
+    )
+    spectra_true <- post_process_spectra(spectra_true, waveout)
+    
+    compare_two_objects(spectra_true, spectra_no_stand,
+                        main=paste0("true vs no_stand - ID=", csvData3$ID[1],
+                                    " - ", csvData4[[paste0("name", idx)]]))
+    
+    for (idx in 0:3){
+        spectraObject = SFHfunc(
+            massfunc = massfunc_custom,
+            speclib = EMILESCombined,
+            filters=filters,
+            Z = Z_custom,
+            magevec=csvData[["agevec"]],
+            msfh=csvData[[paste0("sfh", idx)]],
+            Zagevec = csvData[["agevec"]],
+            Zsfh=csvData[[paste0("z", idx)]],
+        )
+        spectraObject <- post_process_spectra(spectraObject, waveout)
+        
+        
+        compare_two_objects(spectra_true,
+                            spectraObject,
+                            main=paste0("true vs idx=", idx,
+                                        " - ID=", csvData3$ID[1],
+                                        " - ", csvData4[[paste0("name", idx)]]))
+    }
+}
 
 
 
