@@ -113,6 +113,7 @@ Parameters <- list(
   RndSeed=NULL,
   SNR=30,
   probburst=1,
+  waveout=seq(4700, 7500, 1.25),
   totalmass=list(func=rnorm, c(mean=8, sd=1), islog10=TRUE),
   z=1e-4,
   filters="HST",
