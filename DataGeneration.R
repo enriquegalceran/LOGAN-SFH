@@ -251,6 +251,7 @@ drawSFHFromDataFrame <- function(df,
                                  progress_verbose=1000,
                                  alpha_color=10,
                                  returnPointMatrix=FALSE,
+                                 ylimit=NULL,
                                  ...){
   # Draws the SFHs that are going to be used
   dots = list(...)
@@ -282,6 +283,9 @@ drawSFHFromDataFrame <- function(df,
     i <- i + 1
   }
   
+  if (is.null(ylimit)){
+    ylimit = max(points_matrix)
+  }
   
   # Populate dots with default variables in case they are not defined
   # This avoids multiple instances of the same argument, and the possibility to change them
@@ -289,7 +293,7 @@ drawSFHFromDataFrame <- function(df,
                             xlab="Age", ylab="SFR",
                             col=mycol <- rgb(0, 0, 255, max=255, alpha=alpha_color),
                             xlim=c(agevec[1],14e9),
-                            ylim=c(0, max(points_matrix)),
+                            ylim=c(0, ylimit),
                             log="x")
   for (def_arg in names(plot_def_arguments)){
     if (def_arg %!in% names(dots)){
@@ -550,6 +554,13 @@ generateTrainingData <- function(Parameters=NULL,
     agevec=speclib$Age
   }
   
+  # If waveout is in Parameters, use that waveout.
+  if ("waveout" %in% names(Parameters)){
+    waveout = Parameters$waveout
+    print(waveout[1])
+    print(waveout[length(waveout)])
+  }
+  
   # Generate DataFrame with all the combinations
   output <- generateDataFrameArguments(Parameters=Parameters,
                                        n.simul=n.simul,
@@ -561,17 +572,18 @@ generateTrainingData <- function(Parameters=NULL,
   df = output[["df"]]
   Parameters = output[["Parameters"]]
   
-  if (!drawSFH){
+  if (drawSFH){
     if ("log" %!in% names(dots)){dots["log"] = "xy"}
     if ("ylim" %!in% names(dots)){dots["ylim"] = c(1e-4, 15)}
     
     if (!is.null(drawSFHPath)){png(file=drawSFHPath)}
     
-    point_matrix <- do.call("drawSFHFromDataFrame", c(list(df=df,
-                                                         func=Parameters$massfunc,
-                                                         agevec=agevec,
-                                                         progress_verbose=progress_verbose_df,
-                                                         dots)))
+    point_matrix <- do.call("drawSFHFromDataFrame",
+                            c(list(df=df,
+                                   func=Parameters$massfunc,
+                                   agevec=agevec,
+                                   progress_verbose=progress_verbose_df,
+                                   dots)))
     
     if (drawSFHVerticalLine){abline(v=agevec)}
     
