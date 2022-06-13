@@ -209,7 +209,8 @@ exportObjectsToSingleFITS <- function(Parameters,
                                       fileprefix= "",
                                       absolutePath = FALSE,
                                       saveDataFrame=FALSE,
-                                      verbose=2
+                                      verbose=2,
+                                      time_taken=NULL
                                      ){
   #####
   # Function(s)
@@ -255,7 +256,6 @@ exportObjectsToSingleFITS <- function(Parameters,
   hdrIn <- addComment("First row (ID=0) has the X values of corresponding column", hdrIn)
   
   
-  
   #####
   # Generate Header for Labels
   # R saves scientific notation with lower case 'e'. Will be fixed in python.
@@ -267,7 +267,7 @@ exportObjectsToSingleFITS <- function(Parameters,
   hdrLb <- addKwv("UuidMet", objectUUID[3], note="UUID for Metadata", header=hdrLb)  
   hdrLb <- addKwv("Nagevec", n.agevec, note="Length of agevec", header=hdrLb)
   hdrLb <- addComment("First row (ID=0) has the X values of corresponding column", hdrLb)
-  
+
   
   #####
   # Generate File Names and verify directory
@@ -298,6 +298,20 @@ exportObjectsToSingleFITS <- function(Parameters,
               file = paste0(filedirectory, "/Label_", filename),
               header=hdrLb)
   
+  
+  #####
+  # Calculate time elapsed
+  write_checkpoint = Sys.time()
+  time_taken = c(time_taken, list(write_checkpoint=write_checkpoint))
+  timeElapsed = list(
+    Init=(time_taken$init_checkpoint - time_taken$start_time)[[1]],
+    dataframe=(time_taken$df_checkpoint - time_taken$init_checkpoint)[[1]],
+    draw=(time_taken$draw_checkpoint - time_taken$df_checkpoint)[[1]],
+    spectra=(time_taken$spectra_checkpoint - time_taken$draw_checkpoint)[[1]],
+    write=(time_taken$write_checkpoint - time_taken$spectra_checkpoint)[[1]],
+    total=(time_taken$write_checkpoint - time_taken$start_time)[[1]]
+  )
+  
   if (verbose >= 1)
     cat(paste0("Saving MetaD_", filename, " ...\n"))
   metadata=list(Parameters=Parameters[-which(names(Parameters)=="speclib")],
@@ -305,11 +319,13 @@ exportObjectsToSingleFITS <- function(Parameters,
                            UUIDLAB=objectUUID[2],
                            UUIDMET=objectUUID[3],
                            date=Sys.time()
-                           )
+                           ),
+                ElapsedTime=timeElapsed
                 )
   if (saveDataFrame){
     metadata[["df"]]=df
   }
+  
   save(metadata, file=paste0(filedirectory, "/MetaD_", substr(filename, 1, nchar(filename) - 5), ".rda"))
   
   # Return UUIDs for the metadata file

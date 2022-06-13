@@ -325,6 +325,7 @@ generateSpecFromDataFrame <- function(Parameters,
                                       saveDataFrame=FALSE,
                                       outputFolderPath=".",
                                       waveout=seq(4700, 9400, 1.25),
+                                      time_taken=NULL,
                                       ...){
   # Generate the Spectra from the matrix with the specific arguments
   
@@ -493,6 +494,9 @@ generateSpecFromDataFrame <- function(Parameters,
     i = i + 1
   }
   
+  spectra_checkpoint=Sys.time()
+  time_taken = c(time_taken, list(spectra_checkpoint=spectra_checkpoint))
+  
   #### Export File ####
   # Once calculations are over, export files
   outputfilename <- generateFilename()
@@ -507,7 +511,8 @@ generateSpecFromDataFrame <- function(Parameters,
                                     absolutePath = TRUE,
                                     filters = filterData,
                                     saveDataFrame = saveDataFrame,
-                                    verbose=verbose
+                                    verbose = verbose,
+                                    time_taken = time_taken
   )
   
   
@@ -533,6 +538,7 @@ generateTrainingData <- function(Parameters=NULL,
                                  ...){
   
   # TODO: Documentation goes here
+  start_time = Sys.time()
   dots = list(...)
   
   # Load Parameters
@@ -557,6 +563,7 @@ generateTrainingData <- function(Parameters=NULL,
   }
   
   # Generate DataFrame with all the combinations
+  init_checkpoint = Sys.time()
   output <- generateDataFrameArguments(Parameters=Parameters,
                                        n.simul=n.simul,
                                        speclib=speclib,
@@ -566,6 +573,7 @@ generateTrainingData <- function(Parameters=NULL,
   # Split into 
   df = output[["df"]]
   Parameters = output[["Parameters"]]
+  df_checkpoint = Sys.time()
   
   if (drawSFH){
     if ("log" %!in% names(dots)){dots["log"] = "xy"}
@@ -577,14 +585,19 @@ generateTrainingData <- function(Parameters=NULL,
                             c(list(df=df,
                                    func=Parameters$massfunc,
                                    agevec=agevec,
-                                   progress_verbose=progress_verbose_df,
-                                   dots)))
+                                   progress_verbose=progress_verbose_df),
+                              dots)
+                            )
     
     if (drawSFHVerticalLine){abline(v=agevec)}
     
     if (!is.null(drawSFHPath)){dev.off()}
   }
-  
+  draw_checkpoint = Sys.time()
+  time_taken = list(start_time=start_time,
+                    init_checkpoint=init_checkpoint,
+                    df_checkpoint=df_checkpoint,
+                    draw_checkpoint=draw_checkpoint)
   # Add n.simul to Parameters so that it is saved in the metadata as well
   Parameters["n.simul"] = n.simul
   do.call("generateSpecFromDataFrame", c(list(Parameters=Parameters,
@@ -595,8 +608,8 @@ generateTrainingData <- function(Parameters=NULL,
                                               outputFolderPath=outputFolderPath,
                                               waveout=waveout,
                                               new_scale="defaultlog1",
+                                              time_taken=time_taken,
                                               dots)))
-  
   
 }
 
