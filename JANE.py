@@ -128,6 +128,7 @@ def main(**main_kwargs):
     # Split the data into training+validation and testing
     assert 0 < train_size < 1, "train_size needs to be in the interval (0,1)."
     assert 0 < test_size < 1, "test_size needs to be in the interval (0,1)."
+    assert test_size < train_size, "train_size should be bigger than test_size."
     assert train_size + test_size == 1, "The sum of train + test sizes has to add up to '1.0'."
     split_train_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z,
                                         test_size=test_size,
