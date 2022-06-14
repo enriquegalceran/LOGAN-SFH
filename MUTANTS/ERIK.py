@@ -522,7 +522,8 @@ def prettyfy_json_file(filename, verbose=1, indent=4):
 if __name__ == "__main__":
     sufixes = ["20220427T192930_WViuSKxC", "20220428T130515_4QykcNJR", "20220428T154400_VxxFQPr2",
                "20220428T182828_dfn2FS3c", "20220503T140118_wYhTmpOD"]
+    dataset_folder = "/Users/enrique/Documents/GitHub/LOGAN-SFH/DataGeneratedOutput"
 
-    combine_datasets(["all"], file_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/KK", combined_output_sufix= "combined", overwrite = True)
+    combine_datasets(["all"], file_folder=dataset_folder, combined_output_sufix= "combined", overwrite = True)
     # combine_datasets(sufixes, file_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/KK", combined_output_sufix= "combined", overwrite = True)
 
