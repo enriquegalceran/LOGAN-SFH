@@ -20,7 +20,7 @@ EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
 outputFolder = "DataGeneratedOutput"
 savefilename = "Argument_df.rda"
 configFilename = "Data_Generation_Parameters.R"
-n.simul = 5000
+n.simul = 2000
 
 
 
@@ -287,8 +287,6 @@ drawSFHFromDataFrame <- function(df,
     max_y_plot = max(points_matrix)
   } else {
     max_y_plot = min(c(max_y_plot, max(points_matrix)))
-    print(max_y_plot)
-    print(c(0, max_y_plot))
   }
   
   mycol <- rgb(0, 0, 255, max=255, alpha=alpha_color)
@@ -298,13 +296,65 @@ drawSFHFromDataFrame <- function(df,
        col=mycol,
        xlim=c(agevec[1],14e9),
        ylim=c(0, max_y_plot),
-       log="x")
+       log="x",
+       main="Plot SFH being generated")
+
+  # Iterate over each line and draw the data
+  i <- 2
+  while (i <= dim(points_matrix)[1]){
+    lines(x=agevec, y=points_matrix[i, ], col=mycol)
+    if (!is.null(progress_verbose)){
+      if (i %% progress_verbose == 0){
+        cat(paste0("Drawing: ", i, "\n"))
+      }
+    }
+    i <- i + 1
+  }
+  
+  norm_value = 1e10
+  dummy_matrix = matrix(NA, nrow=dim(points_matrix)[1], ncol=dim(points_matrix)[2])
+  for (i in 1:n.simul){
+    dummy_matrix[i, ] = points_matrix[i, ]*norm_value/(sum(points_matrix[i, ]*EMILESCombined$AgeWeights))
+  }
+  
+  min_value = 1e-4
+  idx_0_dummy = dummy_matrix < min_value
+  print(sum(idx_0_dummy))
+  dummy_matrix[idx_0_dummy] = min_value
+  
+  plot(x=agevec, y=dummy_matrix[1,], type="l",
+       xlab="Age", ylab="SFR",
+       col=mycol,
+       xlim=c(agevec[1],14e9),
+       # ylim=c(0, max(dummy_matrix)),
+       ylim=c(min_value, max(dummy_matrix)),
+       log="xy",
+       main=paste0("Plot SFH being generated (norm[1e", log10(norm_value), "] - log)"))
   
   # Iterate over each line and draw the data
   i <- 2
-  col.lines <- mycol
-  while (i <= dim(points_matrix)[1]){
-    do.call("lines", c(list(x=agevec, y=points_matrix[i, ], col=col.lines)))
+  while (i <= dim(dummy_matrix)[1]){
+    lines(x=agevec, y=dummy_matrix[i, ], col=mycol)
+    if (!is.null(progress_verbose)){
+      if (i %% progress_verbose == 0){
+        cat(paste0("Drawing: ", i, "\n"))
+      }
+    }
+    i <- i + 1
+  }
+  plot(x=agevec, y=dummy_matrix[1,], type="l",
+       xlab="Age", ylab="SFR",
+       col=mycol,
+       xlim=c(agevec[1],14e9),
+       # ylim=c(0, max(dummy_matrix)),
+       ylim=c(min_value, max_y_plot),
+       log="x",
+       main=paste0("Plot SFH being generated (norm[1e", log10(norm_value), "] - lin)"))
+  
+  # Iterate over each line and draw the data
+  i <- 2
+  while (i <= dim(dummy_matrix)[1]){
+    lines(x=agevec, y=dummy_matrix[i, ], col=mycol)
     if (!is.null(progress_verbose)){
       if (i %% progress_verbose == 0){
         cat(paste0("Drawing: ", i, "\n"))
@@ -502,7 +552,7 @@ generateSpecFromDataFrame <- function(Parameters,
   outputfilename <- generateFilename()
   filterData = spectraObject$out
   outputFolderPath = normalizePath(outputFolderPath)
-  UUIDs <-exportObjectsToSingleFITS(Parameters=Parameters,
+  metad <-exportObjectsToSingleFITS(Parameters=Parameters,
                                     df=df,
                                     inputMatrix = completeDataMatrixIn,
                                     labelMatrix = completeDataMatrixLa,
@@ -515,7 +565,7 @@ generateSpecFromDataFrame <- function(Parameters,
                                     time_taken = time_taken
   )
   
-  
+  return(metad)
 }
 
 #### MAIN ####
@@ -600,34 +650,37 @@ generateTrainingData <- function(Parameters=NULL,
                     draw_checkpoint=draw_checkpoint)
   # Add n.simul to Parameters so that it is saved in the metadata as well
   Parameters["n.simul"] = n.simul
-  do.call("generateSpecFromDataFrame", c(list(Parameters=Parameters,
-                                              df=df,
-                                              verbose=verbose,
-                                              verboseStep=progress_verbose_spectra,
-                                              saveDataFrame=saveDataFrame_in_metadata,
-                                              outputFolderPath=outputFolderPath,
-                                              waveout=waveout,
-                                              new_scale="defaultlog1",
-                                              time_taken=time_taken,
-                                              dots)))
-  
+  metadata <- do.call("generateSpecFromDataFrame",
+                      c(list(Parameters=Parameters,
+                             df=df,
+                             verbose=verbose,
+                             verboseStep=progress_verbose_spectra,
+                             saveDataFrame=saveDataFrame_in_metadata,
+                             outputFolderPath=outputFolderPath,
+                             waveout=waveout,
+                             new_scale="defaultlog1",
+                             time_taken=time_taken,
+                             dots)))
+  end_time = Sys.time()
+  print(end_time - start_time)
+  return(metadata)
 }
 
 
 
-generateTrainingData(Parameters=NULL,
-                     Parameters_path=configFilename,
-                     n.simul=n.simul,
-                     speclib=EMILESCombined,
-                     drawSFH=TRUE,
-                     drawSFHPath=NULL,
-                     drawSFHVerticalLine=FALSE,
-                     agevec=NULL,
-                     outputFolderPath=outputFolder,                  # path
-                     verbose=1,
-                     progress_verbose_df=10,
-                     progress_verbose_spectra=10,
-                     max_y_plot=4)
+metadata <- generateTrainingData(Parameters=NULL,
+                                 Parameters_path=configFilename,
+                                 n.simul=n.simul,
+                                 speclib=EMILESCombined,
+                                 drawSFH=FALSE,
+                                 drawSFHPath=NULL,
+                                 drawSFHVerticalLine=FALSE,
+                                 agevec=NULL,
+                                 outputFolderPath=outputFolder,                  # path
+                                 verbose=1,
+                                 progress_verbose_df=100,
+                                 progress_verbose_spectra=20,
+                                 max_y_plot=10)
 
 
 

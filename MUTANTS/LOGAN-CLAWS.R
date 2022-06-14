@@ -328,8 +328,8 @@ exportObjectsToSingleFITS <- function(Parameters,
   
   save(metadata, file=paste0(filedirectory, "/MetaD_", substr(filename, 1, nchar(filename) - 5), ".rda"))
   
-  # Return UUIDs for the metadata file
-  return(objectUUID)
+  # Return metadata object
+  return(metadata)
 }
 
 
