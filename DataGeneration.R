@@ -6,7 +6,7 @@
 
 setwd("~/Documents/GitHub/LOGAN-SFH")
 source("MUTANTS/LOGAN.R")
-require(plyr)
+library(plyr)
 library(ProSpect)
 library(ggplot2)
 library(plyr)         # splat(func)(c(var1, list_of_vars))
@@ -22,11 +22,12 @@ savefilename = "Argument_df.rda"
 configFilename = "Data_Generation_Parameters.R"
 n.simul = 2000
 
+rnd_id = stri_rand_strings(n=1, length=10)
+print(rnd_id)
 
 
 # Load Parameters from the Config File.
 source(configFilename)
-
 
 
 generateDataFrameArguments <- function(Parameters,
@@ -34,6 +35,7 @@ generateDataFrameArguments <- function(Parameters,
                                        speclib,
                                        save_path=NULL,
                                        progress_verbose=NULL,
+                                       rnd_id="",
                                        verbose=1){
   # Generates a DataFrame with all the parameters that are going to be used for the whole data.
 
@@ -226,7 +228,7 @@ generateDataFrameArguments <- function(Parameters,
   for (i in 1:n.simul){
     if (!is.null(progress_verbose)){
       if (i %% progress_verbose == 0){
-        cat(paste0("Current iteration: ", i, "\n"))
+        cat(paste0(rnd_id, " Current iteration: ", i, "\n"))
       }
     }
     a <- uniqueArguments(Parameters, speclib)
@@ -376,6 +378,7 @@ generateSpecFromDataFrame <- function(Parameters,
                                       outputFolderPath=".",
                                       waveout=seq(4700, 9400, 1.25),
                                       time_taken=NULL,
+                                      rnd_id="",
                                       ...){
   # Generate the Spectra from the matrix with the specific arguments
   
@@ -539,7 +542,7 @@ generateSpecFromDataFrame <- function(Parameters,
     # ToDo: Add progress verbosity
     # ToDo: Add timer?
     if (i %% verboseStep == 0 || i == 1 || i == n.simul){
-      cat(paste0("Generating spectra for ", i, "/", n.simul, "\n"))
+      cat(paste0(rnd_id, " Generating spectra for ", i, "/", n.simul, "\n"))
     }
     i = i + 1
   }
@@ -584,6 +587,7 @@ generateTrainingData <- function(Parameters=NULL,
                                  verbose=1,
                                  progress_verbose_df=100,
                                  progress_verbose_spectra=20,
+                                 rnd_id="",
                                  waveout=seq(4700, 9400, 1.25),
                                  ...){
   
@@ -617,7 +621,8 @@ generateTrainingData <- function(Parameters=NULL,
                                        speclib=speclib,
                                        save_path=saveDataFrame_file_path,
                                        verbose=verbose,
-                                       progress_verbose = progress_verbose_df)
+                                       progress_verbose = progress_verbose_df,
+                                       rnd_id=rnd_id)
   # Split into 
   df = output[["df"]]
   Parameters = output[["Parameters"]]
@@ -658,6 +663,7 @@ generateTrainingData <- function(Parameters=NULL,
                              waveout=waveout,
                              new_scale="defaultlog1",
                              time_taken=time_taken,
+                             rnd_id=rnd_id,
                              dots)))
   end_time = Sys.time()
   print(end_time - start_time)
@@ -678,6 +684,7 @@ metadata <- generateTrainingData(Parameters=NULL,
                                  verbose=1,
                                  progress_verbose_df=100,
                                  progress_verbose_spectra=20,
+                                 rnd_id=rnd_id,
                                  max_y_plot=10)
 
 
