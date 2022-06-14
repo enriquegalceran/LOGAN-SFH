@@ -60,7 +60,7 @@ exportObjectsToSingleFITS <- function(Parameters,
                        note=paste("Filter Name", i),
                        header=header)
       header <- addKwv(paste0("filterC", i),
-                       filters$cenwave[i],
+                       toString(filters$cenwave[i]),
                        note=paste("Filter CenterWave", i),
                        header=header)
     }
@@ -105,7 +105,6 @@ exportObjectsToSingleFITS <- function(Parameters,
   hdrLb <- addKwv("Nagevec", n.agevec, note="Length of agevec", header=hdrLb)
   hdrLb <- addComment("First row (ID=0) has the X values of corresponding column", hdrLb)
 
-  
   #####
   # Generate File Names and verify directory
   if (absolutePath){
@@ -284,7 +283,7 @@ convertAgevecToOutputScale <- function(agevector,
     }
   } # ToDo: Maybe a 3rd default value that uses 
   
-  # Identify which values of the agevector should go in each bin. NA if a value is above the max value (las element in new_scale)
+  # Identify which values of the agevector should go in each bin. NA if a value is above the max value (last element in new_scale)
   separations <- cut(as.matrix(agevector), new_scale * 1000000, labels = FALSE, include.lowest = TRUE)
   
   # Separate the data according to the x value
