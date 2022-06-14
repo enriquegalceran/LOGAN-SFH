@@ -608,8 +608,6 @@ generateTrainingData <- function(Parameters=NULL,
   # If waveout is in Parameters, use that waveout.
   if ("waveout" %in% names(Parameters)){
     waveout = Parameters$waveout
-    print(waveout[1])
-    print(waveout[length(waveout)])
   }
   
   # Generate DataFrame with all the combinations
