@@ -1,7 +1,7 @@
 library(future.apply)
 plan(multisession)
 
-
+setwd("~/Documents/GitHub/LOGAN-SFH")
 
 n <- 3L
 
