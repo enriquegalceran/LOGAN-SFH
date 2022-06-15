@@ -1,0 +1,7 @@
+# Condor submit
+
+executable          = condor_executable.sh
+log                 = cndr_output/condor.log
+output              = cndr_output/output.log
+error               = cndr_output/error.log
+queue
