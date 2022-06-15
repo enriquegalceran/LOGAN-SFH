@@ -35,3 +35,12 @@ TrainingData/Label_combined.fits
 TrainingData/MetaD_combined.rda
 TrainedModels/*
 DataGeneratedOutput/*
+TrainingData/Input_combined_reduced_wavelength_reducido.fits
+TrainingData/Input_combined_wave.fits
+TrainingData/Label_combined_reduced_wavelength_reducido.fits
+TrainingData/Label_combined_wave.fits
+TrainingData/MetaD_combined_reduced_wavelength_reducido.rda
+TrainingData/MetaD_combined_wave.rda
+TrainingData/Old/Input_combined.fits
+TrainingData/Old/Label_combined.fits
+TrainingData/Old/MetaD_combined.rda
