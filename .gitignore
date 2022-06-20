@@ -44,3 +44,9 @@ TrainingData/MetaD_combined_wave.rda
 TrainingData/Old/Input_combined.fits
 TrainingData/Old/Label_combined.fits
 TrainingData/Old/MetaD_combined.rda
+pylick-master/*
+tmp_file.pd
+tmp_file4.pd
+tmp_file2.pd
+tmp_file3.pd
+tstimage_new.png
