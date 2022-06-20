@@ -47,6 +47,187 @@ def cleanlogfile(filename, filename_out=None):
         f.writelines(lines)
 
 
+def model_colormap(model_paths, data_path, name_models=None, loss=None,
+                   method_standardize_label_sfh=0,
+                   method_standardize_label_z=0,
+                   method_standardize_spectra=0,
+                   method_standardize_magnitudes=0,
+                   which_data_is_going_to_be_used=2,
+                   first_id_plot=0, n_plot=None,
+                   mageburst=1e8,
+                   train_size=0.8, test_size=0.2, traintestrandomstate=42, traintestshuffle=True):
+
+    # Load Data
+    print("[INFO] Loading data...")
+    label_path = data_path.replace("Input_", "Label_")
+    metadata_path = data_path.replace("Input_", "MetaD_").replace(".fits", ".rda")
+
+    input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec, ageweight = \
+        ERIK.loadfiles(input_path=data_path, labels_path=label_path,
+                       method_standardize_label_sfh=method_standardize_label_sfh,
+                       method_standardize_label_z=method_standardize_label_z,
+                       method_standardize_spectra=method_standardize_spectra,
+                       method_standardize_magnitudes=method_standardize_magnitudes)
+
+    _, _, label_sfh_real, label_z_real, _, _, _ = \
+        ERIK.loadfiles(input_path=data_path, labels_path=label_path,
+                       method_standardize_label_sfh=0,
+                       method_standardize_label_z=0,
+                       method_standardize_spectra=0,
+                       method_standardize_magnitudes=0)
+
+    # Verified: If indices are added, they will STILL respect the output as if there were no indices
+    split_train_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_real,
+                                        label_z_real,
+                                        range(input_spectra.shape[0]),  # Indices
+                                        test_size=test_size,
+                                        train_size=train_size,
+                                        random_state=traintestrandomstate,
+                                        shuffle=traintestshuffle)
+    (trainSpect, testSpect,
+     trainMag, testMag,
+     trainLabSfh, testLabSfh,
+     trainLabZ, testLabZ,
+     trainLabSfh_real, testLabSfh_real,
+     trainLabZ_real, testLabZ_real,
+     trainIndices, testIndices) = split_train_test
+
+    if name_models is None:
+        name_models = model_paths
+
+    saved_models = []
+    for pqwe, model_p in enumerate(model_paths):
+        if pqwe == 1:
+            break
+        saved_models.append(keras.models.load_model(model_p,
+                                                    custom_objects={"smape_loss": XAVIER.Cerebro.smape_loss}))
+        # saved_models[0].summary()
+
+    #################
+    # Decide which data is going to be used
+    if which_data_is_going_to_be_used == 0:
+        # All the data
+        in_data = np.concatenate([input_spectra, input_magnitudes], axis=1)
+        idx = list(range(input_spectra.shape[0]))
+    elif which_data_is_going_to_be_used == 1:
+        # Only Training data
+        in_data = np.concatenate([trainSpect, trainMag], axis=1)
+        label_sfh = trainLabSfh
+        label_z = trainLabZ
+        label_sfh_real = trainLabSfh_real
+        label_z_real = trainLabZ_real
+        idx = trainIndices
+    elif which_data_is_going_to_be_used == 2:
+        # Only Test data
+        in_data = np.concatenate([testSpect, testMag], axis=1)
+        label_sfh = testLabSfh
+        label_z = testLabZ
+        label_sfh_real = testLabSfh_real
+        label_z_real = testLabZ_real
+        idx = testIndices
+    else:
+        raise ValueError(f"which_data_is_going_to_be_used should be [0, 1, 2] and is {which_data_is_going_to_be_used}")
+
+    if loss is None:
+        loss = tensorflow.keras.losses.MeanSquaredError()
+
+    if n_plot is None:
+        n_plot = in_data.shape[0] - first_id_plot
+
+    outputs = []
+    losses = []
+    for model in saved_models:
+        outputs.append(model.predict(in_data[first_id_plot:(first_id_plot + n_plot)]))
+        losses.append(
+            [model.evaluate(np.array([in_data[idx, :]]), [np.array([label_sfh[idx, :]]), np.array([label_z[idx, :]])],
+                            batch_size=1, verbose=1)
+             for idx in range(first_id_plot, first_id_plot + n_plot)]
+        )
+
+    combined_losses = [[k[0] for k in losses[i_model]] for i_model in range(len(saved_models))]
+    log_combined_losses = [np.log10(_) for _ in combined_losses]
+
+    metallicity_loss = [[k[1] for k in losses[i_model]] for i_model in range(len(saved_models))]
+    log_metallicity_losses = [np.log10(_) for _ in metallicity_loss]
+
+    sfh_losses = [[k[2] for k in losses[i_model]] for i_model in range(len(saved_models))]
+    log_sfh_losses = [np.log10(_) for _ in sfh_losses]
+
+    # mass_weighted = label_sfh * ageweight
+    # total_mass = np.sum(mass_weighted, axis=1)
+    mass_weigted = label_sfh_real * ageweight
+    total_mass_no_norm = np.sum(mass_weigted, axis=1)
+    mass_only_burst_idx = agevec < mageburst
+    mass_burst = np.sum(mass_weigted[:, mass_only_burst_idx], axis=1)
+
+    def plot_colorbars(x, y, c, s=3, cmap='plasma_r', log="xy", xlim=None, ylim=None,
+                       xlabel=None, ylabel=None, collabel=None, title=None,
+                       savefig_name=None, figsize=(12, 9)):
+        fig, ax = plt.subplots(figsize=figsize)
+        plt.title(title)
+        sc = ax.scatter(x, y, c=c, s=s, cmap=cmap)
+        if 'x' in log:
+            ax.set_yscale('log')
+        if "y" in log:
+            ax.set_xscale('log')
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        cbar = plt.colorbar(sc, ax=ax)
+        cbar.set_label(collabel)
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        plt.tight_layout()
+        if savefig_name is not None:
+            plt.savefig(savefig_name)
+        plt.show()
+
+    plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
+                   y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
+                   c=log_combined_losses[0],
+                   xlabel=r"$M_{total} (M_{\odot})$",
+                   ylabel=r"$M_{burst} (M_{\odot}) (\leq0.1Gyr)$",
+                   collabel=r'$Log_{10}(\ell)$',
+                   title=r"Combined Loss Function ($\ell$) based on $M_{total}$ and $M_{burst}$",
+                   savefig_name='/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_fig_combined.png',
+                   )
+    plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
+                   y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
+                   c=log_sfh_losses[0],
+                   xlabel=r"$M_{total} (M_{\odot})$",
+                   ylabel=r"$M_{burst} (M_{\odot}) (\leq0.1Gyr)$",
+                   collabel=r'$Log_{10}(\ell)$',
+                   title=r"SFH Loss Function ($\ell$) based on $M_{total}$ and $M_{burst}$",
+                   savefig_name='/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_fig_sfh.png',
+                   )
+    plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
+                   y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
+                   c=log_metallicity_losses[0],
+                   xlabel=r"$M_{total} (M_{\odot})$",
+                   ylabel=r"$M_{burst} (M_{\odot}) (\leq0.1Gyr)$",
+                   collabel=r'$Log_{10}(\ell)$',
+                   title=r"Metallicity Loss Function ($\ell$) based on $M_{total}$ and $M_{burst}$",
+                   savefig_name='/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_fig_metal.png',
+                   )
+
+   # xlim=(50327.76943032607, 368356365924.79095),
+   # ylim=(60.62030449954481, 819673467.9265951))
+
+    print("------")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def verify_model(model_paths, data_path, name_models=None, loss=None,
                  method_standardize_label_sfh=0,
                  method_standardize_label_z=0,
@@ -305,7 +486,8 @@ def main(update_values=None, **mainkwargs):
         for key in mainkwargs.keys():
             if "method_standardize_" in key:
                 arguments_standardize[key] = mainkwargs[key]
-        verify_model(args.verify_model, data_path, model_names, **arguments_standardize)
+        model_colormap(args.verify_model, data_path, model_names, **arguments_standardize)
+        # verify_model(args.verify_model, data_path, model_names, **arguments_standardize)
 
     if args.json_clean is not None:
         json_files = RAVEN.flatten_list(args.json_clean)
@@ -314,18 +496,26 @@ def main(update_values=None, **mainkwargs):
 
 
 if __name__ == "__main__":
-    path = "/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainedModels/MSEModel_deeper"
-    files = os.listdir(path)
-    files = [_ for _ in files if "config" not in _ and "epoch001" not in _ and "imagen" not in _]
-    files.sort()
-    filenames = [f"e{_[15:18]}-l{_[23:-3]}" for _ in files]
-    models = [os.path.join(path, f) for f in files]
+    # models_path = "/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainedModels/MSE_reduced_wave_small_dataset/"
+    models_path = "/Users/enrique/scpdata/2"
+    data_path = os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/",
+                             "Input_combined_wave.fits")
 
-    main({"verify_model": models,
-          "data_path": os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/",
-                                    "Input_combined.fits")},
+    files = os.listdir(models_path)
+    keywords_to_remove = ["epoch001", "imagen", "config"]
+    for keyword in keywords_to_remove:
+        files = [_ for _ in files if keyword not in _]
+    files.sort()
+    length_prefix_epoch = files[0].find("epoch")
+    length_prefix_loss = files[0].find("loss")
+    filenames = [f"e{_[(length_prefix_epoch + 5):(length_prefix_epoch + 8)]}-"
+                 f"l{_[(length_prefix_loss + 4):-3]}" for _ in files]
+    models = [os.path.join(models_path, f) for f in files]
+
+    main({"verify_model": models, "data_path": data_path},
          model_names=filenames,
-         method_standardize_label_sfh=3,
+         method_standardize_label_sfh=5,
+         method_standardize_label_z=0
          )
 
     # old_models = ["/Users/enrique/model_mean_squared_13_05.h5",
