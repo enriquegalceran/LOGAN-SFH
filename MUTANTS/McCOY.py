@@ -51,8 +51,8 @@ def evaluate_model(model_paths, data_path, return_loss=True,
                    method_standardize=None,
                    which_data="val",
                    first_id_plot=0, n_plot=None,
-                   train_size=0.8, test_size=0.2, traintestrandomstate=42, traintestshuffle=True):
-
+                   train_size=0.8, test_size=0.2, traintestrandomstate=42, traintestshuffle=True,
+                   return_dictionary=False):
     if method_standardize is None:
         method_standardize = {"sfh": 0, "z": 0, "spectra": 0, "magnitudes": 0}
     else:
@@ -149,8 +149,17 @@ def evaluate_model(model_paths, data_path, return_loss=True,
     else:
         losses = None
 
-    return input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_no_normalization, label_z_no_normalization, \
-           spectra_lambda, agevec, ageweight, saved_models, idx, outputs, losses
+    if return_dictionary:
+        out = {"input_spectra": input_spectra, "input_magnitudes": input_magnitudes,
+               "label_sfh": label_sfh, "label_z": label_z,
+               "label_sfh_no_normalization": label_sfh_no_normalization,
+               "label_z_no_normalization": label_z_no_normalization,
+               "spectra_lambda": spectra_lambda, "agevec": agevec, "ageweight": ageweight,
+               "saved_models": saved_models, "idx": idx, "outputs": outputs, "losses": losses}
+        return out
+    else:
+        return input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_no_normalization, \
+               label_z_no_normalization, spectra_lambda, agevec, ageweight, saved_models, idx, outputs, losses
 
 
 def model_colormap(model_paths, data_path, name_models=None, return_loss=True,
@@ -244,7 +253,6 @@ def verify_model(model_paths, data_path, name_models=None, return_loss=False, lo
                  which_data_is_going_to_be_used="val",
                  first_id_plot=0, n_plot=3,
                  **kwargs):
-
     # Load Data
     loaded_data = evaluate_model(model_paths, data_path, return_loss=return_loss,
                                  method_standardize=method_standardize,
