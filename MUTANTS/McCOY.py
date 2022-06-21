@@ -47,6 +47,108 @@ def cleanlogfile(filename, filename_out=None):
         f.writelines(lines)
 
 
+def evaluate_model(model_paths, data_path, return_loss=True,
+                   method_standardize_label_sfh=0,
+                   method_standardize_label_z=0,
+                   method_standardize_spectra=0,
+                   method_standardize_magnitudes=0,
+                   which_data="val",
+                   first_id_plot=0, n_plot=None,
+                   train_size=0.8, test_size=0.2, traintestrandomstate=42, traintestshuffle=True):
+
+    # Load Data
+    print("[INFO] Loading data...")
+    label_path = data_path.replace("Input_", "Label_")
+    metadata_path = data_path.replace("Input_", "MetaD_").replace(".fits", ".rda")
+
+    if which_data not in ["all", "train", "val"]:
+        raise ValueError(f"which_data needs to be 'all', 'train', or 'val'. given value: {which_data}")
+
+    input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec, ageweight = \
+        ERIK.loadfiles(input_path=data_path, labels_path=label_path,
+                       method_standardize_label_sfh=method_standardize_label_sfh,
+                       method_standardize_label_z=method_standardize_label_z,
+                       method_standardize_spectra=method_standardize_spectra,
+                       method_standardize_magnitudes=method_standardize_magnitudes)
+
+    _, _, label_sfh_no_normalization, label_z_no_normalization, _, _, _ = \
+        ERIK.loadfiles(input_path=data_path, labels_path=label_path,
+                       method_standardize_label_sfh=0,
+                       method_standardize_label_z=0,
+                       method_standardize_spectra=0,
+                       method_standardize_magnitudes=0)
+
+    # Verified: If indices are added, they will STILL respect the output as if there were no indices
+    split_train_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_no_normalization,
+                                        label_z_no_normalization,
+                                        range(input_spectra.shape[0]),  # Indices
+                                        test_size=test_size,
+                                        train_size=train_size,
+                                        random_state=traintestrandomstate,
+                                        shuffle=traintestshuffle)
+    (trainSpect, testSpect,
+     trainMag, testMag,
+     trainLabSfh, testLabSfh,
+     trainLabZ, testLabZ,
+     trainLabSfh_real, testLabSfh_real,
+     trainLabZ_real, testLabZ_real,
+     trainIndices, testIndices) = split_train_test
+
+    saved_models = []
+    for pqwe, model_p in enumerate(model_paths):
+        if pqwe == 1:
+            break
+        saved_models.append(keras.models.load_model(model_p,
+                                                    custom_objects={"smape_loss": XAVIER.Cerebro.smape_loss}))
+
+    #################
+    # Decide which data is going to be used
+    if which_data == "all":
+        # All the data
+        in_data = np.concatenate([input_spectra, input_magnitudes], axis=1)
+        idx = list(range(input_spectra.shape[0]))
+    elif which_data == "train":
+        # Only Training data
+        in_data = np.concatenate([trainSpect, trainMag], axis=1)
+        label_sfh = trainLabSfh
+        label_z = trainLabZ
+        label_sfh_no_normalization = trainLabSfh_real
+        label_z_no_normalization = trainLabZ_real
+        idx = trainIndices
+    elif which_data == "val":
+        # Only Test data
+        in_data = np.concatenate([testSpect, testMag], axis=1)
+        label_sfh = testLabSfh
+        label_z = testLabZ
+        label_sfh_no_normalization = testLabSfh_real
+        label_z_no_normalization = testLabZ_real
+        idx = testIndices
+    else:
+        raise ValueError
+
+    if n_plot is None:
+        n_plot = in_data.shape[0] - first_id_plot
+
+    outputs = []
+    for model in saved_models:
+        outputs.append(model.predict(in_data[first_id_plot:(first_id_plot + n_plot)]))
+
+    if return_loss:
+        losses = []
+        for model in saved_models:
+            losses.append(
+                [model.evaluate(np.array([in_data[idx, :]]),
+                                [np.array([label_sfh[idx, :]]), np.array([label_z[idx, :]])],
+                                batch_size=1, verbose=1)
+                 for idx in range(first_id_plot, first_id_plot + n_plot)]
+            )
+    else:
+        losses = None
+
+    return input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_no_normalization, label_z_no_normalization,\
+           saved_models, idx, outputs, losses
+
+
 def model_colormap(model_paths, data_path, name_models=None, loss=None,
                    method_standardize_label_sfh=0,
                    method_standardize_label_z=0,
