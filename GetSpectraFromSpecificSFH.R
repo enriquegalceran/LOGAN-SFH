@@ -4,8 +4,8 @@
 original_parameters <- par()
 library(ProSpect)
 library(plotrix)
-source("MUTANTS/LOGAN-CLAWS.R")
 setwd("~/Documents/GitHub/LOGAN-SFH")
+source("MUTANTS/LOGAN-CLAWS.R")
 EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
 
 # csvData <- read.csv(file = args[[0]])
@@ -13,8 +13,10 @@ csvData <- read.csv(file = "/Users/enrique/Documents/GitHub/LOGAN-SFH/tmp_file.p
 csvData2 <- read.csv(file = "/Users/enrique/Documents/GitHub/LOGAN-SFH/tmp_file2.pd")
 csvData3 <- read.csv(file = "/Users/enrique/Documents/GitHub/LOGAN-SFH/tmp_file3.pd")
 csvData4 <- read.csv(file = "/Users/enrique/Documents/GitHub/LOGAN-SFH/tmp_file4.pd")
-waveout=seq(4700, 9400, 1.25)
+# waveout=seq(4700, 9400, 1.25)
+waveout=seq(4700, 7500, 1.25)
 filt_cenwave = c(2708.680, 3358.580, 4329.475, 5331.898, 8072.917)
+nidxs <- (length(csvData) - 5)/2
 # col_magnitudes = col2rgb(w_length2rgb(filt_cenwave/10))
 
 configFilename = "Data_Generation_Parameters.R"
@@ -22,9 +24,9 @@ source(configFilename)
 
 
 #### Plot input data ####
-plot(csvData$sfh_true)
-plot(csvData$z_true)
-plot(csvData$agevec, csvData$z0, log="x", type="l")
+# plot(csvData$sfh_true)
+# plot(csvData$z_true)
+# plot(csvData$agevec, csvData$z0, log="x", type="l")
 
 
 simple.two.axes.plot <- function(lx, ly, rx=lx, ry, xlab=NULL, lylab=NULL, rylab=NULL, main="",
@@ -39,7 +41,7 @@ simple.two.axes.plot <- function(lx, ly, rx=lx, ry, xlab=NULL, lylab=NULL, rylab
     par(new = TRUE)
     plot(rx, ry, type=rtype, pch=rpch, axes = FALSE, bty = "n", xlab = "", ylab = "", col=rcol, xlim=xlim, log=log)
     axis(side=4, at = pretty(range(ry)), col=rcol, col.axis=rcol)
-    mtext("magnitudes", side=4, line=3, col=rcol)
+    mtext(rylab, side=4, line=3, col=rcol)
 }
 
 
@@ -144,6 +146,8 @@ compare_two_objects <- function(object1, object2, main="Compare 2 objects"){
         msfh=csvData[["sfh_no_stand"]],
         Zagevec = csvData[["agevec"]],
         Zsfh=csvData[["z_no_stand"]],
+        emission=TRUE,
+        emission_scale = "SFR"
     )
     spectra_no_stand <- post_process_spectra(spectra_no_stand, waveout)
     
@@ -156,14 +160,15 @@ compare_two_objects <- function(object1, object2, main="Compare 2 objects"){
         msfh=csvData[["sfh_true"]],
         Zagevec = csvData[["agevec"]],
         Zsfh=csvData[["z_true"]],
+        emission=TRUE,
+        emission_scale = "SFR"
     )
     spectra_true <- post_process_spectra(spectra_true, waveout)
     
     compare_two_objects(spectra_true, spectra_no_stand,
-                        main=paste0("true vs no_stand - ID=", csvData3$ID[1],
-                                    " - ", csvData4[[paste0("name", idx)]]))
+                        main=paste0("true vs no_stand - ID=", csvData3$ID[1]))
     
-    for (idx in 0:3){
+    for (idx in 0:5){
         spectraObject = SFHfunc(
             massfunc = massfunc_custom,
             speclib = EMILESCombined,
@@ -173,6 +178,8 @@ compare_two_objects <- function(object1, object2, main="Compare 2 objects"){
             msfh=csvData[[paste0("sfh", idx)]],
             Zagevec = csvData[["agevec"]],
             Zsfh=csvData[[paste0("z", idx)]],
+            emission=TRUE,
+            emission_scale = "SFR"
         )
         spectraObject <- post_process_spectra(spectraObject, waveout)
         
@@ -185,25 +192,42 @@ compare_two_objects <- function(object1, object2, main="Compare 2 objects"){
     }
 }
 
+# Indices de Lick
 
-
-simple.two.axes.plot(spectraObject$agevec, spectraObject$Zvec,
-                     csvData[["agevec"]], csvData[[paste0("z", idx)]],
-                     main="Z spectraObject vs SFH data",
-                     ltype="l", rtype="l", log="x")
-
-simple.two.axes.plot(spectraObject$flux$wave, spectraObject$flux$flux,
-                     spectraObject$out$cenwave, spectraObject$out$out,
-                     main="spectraObject")
-simple.two.axes.plot(waveout, csvData2$spectr_in,
-                     filt_cenwave, csvData3$magnitudes_in,
-                     main="Input to CNN")
-
-simple.two.axes.plot(spectraObject$flux$wave, spectraObject$flux$flux)
-
-
-
-
-
-
-
+# 
+# simple.two.axes.plot(spectraObject$agevec, spectraObject$Zvec,
+#                      csvData[["agevec"]], csvData[[paste0("z", idx)]],
+#                      main="Z spectraObject vs SFH data",
+#                      ltype="l", rtype="l", log="x")
+# 
+# simple.two.axes.plot(spectraObject$flux$wave, spectraObject$flux$flux,
+#                      spectraObject$out$cenwave, spectraObject$out$out,
+#                      main="spectraObject")
+# simple.two.axes.plot(waveout, csvData2$spectr_in,
+#                      filt_cenwave, csvData3$magnitudes_in,
+#                      main="Input to CNN")
+# 
+# simple.two.axes.plot(spectraObject$flux$wave, spectraObject$flux$flux)
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+# Age = EMILESCombined$Age
+# AgeW = EMILESCombined$AgeWeights
+# AgeB = EMILESCombined$AgeBins
+# 
+# 
+# Age
+# AgeW
+# x = 1
+# (Age[x] + Age[x+1])/2
+# AgeW[1]
+# 
+# kk = c()
+# for (x in 1:length(AgeW)){
+#     kk = c(kk, (Age[x] + Age[x+1])/2 - AgeB[x + 1])
+# }
+# kk
