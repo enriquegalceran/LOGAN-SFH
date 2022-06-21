@@ -48,14 +48,18 @@ def cleanlogfile(filename, filename_out=None):
 
 
 def evaluate_model(model_paths, data_path, return_loss=True,
-                   method_standardize_label_sfh=0,
-                   method_standardize_label_z=0,
-                   method_standardize_spectra=0,
-                   method_standardize_magnitudes=0,
+                   method_standardize=None,
                    which_data="val",
                    first_id_plot=0, n_plot=None,
                    train_size=0.8, test_size=0.2, traintestrandomstate=42, traintestshuffle=True):
 
+    if method_standardize is None:
+        method_standardize = {"sfh": 0, "z": 0, "spectra": 0, "magnitudes": 0}
+    else:
+        for n in method_standardize.keys():
+            if n not in ["sfh", "z", "spectra", "magnitudes"]:
+                raise ValueError("method_standardize dictionary should only have the keys: "
+                                 f"'sfh', 'z', 'spectra', 'magnitudes'. One of the keywords given is {n}")
     # Load Data
     print("[INFO] Loading data...")
     label_path = data_path.replace("Input_", "Label_")
@@ -66,10 +70,10 @@ def evaluate_model(model_paths, data_path, return_loss=True,
 
     input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec, ageweight = \
         ERIK.loadfiles(input_path=data_path, labels_path=label_path,
-                       method_standardize_label_sfh=method_standardize_label_sfh,
-                       method_standardize_label_z=method_standardize_label_z,
-                       method_standardize_spectra=method_standardize_spectra,
-                       method_standardize_magnitudes=method_standardize_magnitudes)
+                       method_standardize_label_sfh=method_standardize["sfh"],
+                       method_standardize_label_z=method_standardize["z"],
+                       method_standardize_spectra=method_standardize["spectra"],
+                       method_standardize_magnitudes=method_standardize["spectra"])
 
     _, _, label_sfh_no_normalization, label_z_no_normalization, _, _, _ = \
         ERIK.loadfiles(input_path=data_path, labels_path=label_path,
@@ -145,107 +149,28 @@ def evaluate_model(model_paths, data_path, return_loss=True,
     else:
         losses = None
 
-    return input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_no_normalization, label_z_no_normalization,\
-           saved_models, idx, outputs, losses
+    return input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_no_normalization, label_z_no_normalization, \
+           spectra_lambda, agevec, ageweight, saved_models, idx, outputs, losses
 
 
-def model_colormap(model_paths, data_path, name_models=None, loss=None,
-                   method_standardize_label_sfh=0,
-                   method_standardize_label_z=0,
-                   method_standardize_spectra=0,
-                   method_standardize_magnitudes=0,
-                   which_data_is_going_to_be_used=2,
+def model_colormap(model_paths, data_path, name_models=None, return_loss=True,
+                   method_standardize=None,
+                   which_data_is_going_to_be_used="val",
                    first_id_plot=0, n_plot=None,
                    mageburst=1e8,
-                   train_size=0.8, test_size=0.2, traintestrandomstate=42, traintestshuffle=True):
-
+                   **kwargs):
     # Load Data
-    print("[INFO] Loading data...")
-    label_path = data_path.replace("Input_", "Label_")
-    metadata_path = data_path.replace("Input_", "MetaD_").replace(".fits", ".rda")
+    loaded_data = evaluate_model(model_paths, data_path, return_loss=return_loss,
+                                 method_standardize=method_standardize,
+                                 which_data=which_data_is_going_to_be_used, first_id_plot=first_id_plot, n_plot=n_plot,
+                                 *kwargs)
 
-    input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec, ageweight = \
-        ERIK.loadfiles(input_path=data_path, labels_path=label_path,
-                       method_standardize_label_sfh=method_standardize_label_sfh,
-                       method_standardize_label_z=method_standardize_label_z,
-                       method_standardize_spectra=method_standardize_spectra,
-                       method_standardize_magnitudes=method_standardize_magnitudes)
+    (input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_no_normalization, label_z_no_normalization,
+     spectra_lambda, agevec, ageweight, saved_models, idx, outputs, losses) = loaded_data
+    # remove tuple data
+    del loaded_data
 
-    _, _, label_sfh_real, label_z_real, _, _, _ = \
-        ERIK.loadfiles(input_path=data_path, labels_path=label_path,
-                       method_standardize_label_sfh=0,
-                       method_standardize_label_z=0,
-                       method_standardize_spectra=0,
-                       method_standardize_magnitudes=0)
-
-    # Verified: If indices are added, they will STILL respect the output as if there were no indices
-    split_train_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_real,
-                                        label_z_real,
-                                        range(input_spectra.shape[0]),  # Indices
-                                        test_size=test_size,
-                                        train_size=train_size,
-                                        random_state=traintestrandomstate,
-                                        shuffle=traintestshuffle)
-    (trainSpect, testSpect,
-     trainMag, testMag,
-     trainLabSfh, testLabSfh,
-     trainLabZ, testLabZ,
-     trainLabSfh_real, testLabSfh_real,
-     trainLabZ_real, testLabZ_real,
-     trainIndices, testIndices) = split_train_test
-
-    if name_models is None:
-        name_models = model_paths
-
-    saved_models = []
-    for pqwe, model_p in enumerate(model_paths):
-        if pqwe == 1:
-            break
-        saved_models.append(keras.models.load_model(model_p,
-                                                    custom_objects={"smape_loss": XAVIER.Cerebro.smape_loss}))
-        # saved_models[0].summary()
-
-    #################
-    # Decide which data is going to be used
-    if which_data_is_going_to_be_used == 0:
-        # All the data
-        in_data = np.concatenate([input_spectra, input_magnitudes], axis=1)
-        idx = list(range(input_spectra.shape[0]))
-    elif which_data_is_going_to_be_used == 1:
-        # Only Training data
-        in_data = np.concatenate([trainSpect, trainMag], axis=1)
-        label_sfh = trainLabSfh
-        label_z = trainLabZ
-        label_sfh_real = trainLabSfh_real
-        label_z_real = trainLabZ_real
-        idx = trainIndices
-    elif which_data_is_going_to_be_used == 2:
-        # Only Test data
-        in_data = np.concatenate([testSpect, testMag], axis=1)
-        label_sfh = testLabSfh
-        label_z = testLabZ
-        label_sfh_real = testLabSfh_real
-        label_z_real = testLabZ_real
-        idx = testIndices
-    else:
-        raise ValueError(f"which_data_is_going_to_be_used should be [0, 1, 2] and is {which_data_is_going_to_be_used}")
-
-    if loss is None:
-        loss = tensorflow.keras.losses.MeanSquaredError()
-
-    if n_plot is None:
-        n_plot = in_data.shape[0] - first_id_plot
-
-    outputs = []
-    losses = []
-    for model in saved_models:
-        outputs.append(model.predict(in_data[first_id_plot:(first_id_plot + n_plot)]))
-        losses.append(
-            [model.evaluate(np.array([in_data[idx, :]]), [np.array([label_sfh[idx, :]]), np.array([label_z[idx, :]])],
-                            batch_size=1, verbose=1)
-             for idx in range(first_id_plot, first_id_plot + n_plot)]
-        )
-
+    # Filter losses to keep only the relevant information
     combined_losses = [[k[0] for k in losses[i_model]] for i_model in range(len(saved_models))]
     log_combined_losses = [np.log10(_) for _ in combined_losses]
 
@@ -257,7 +182,7 @@ def model_colormap(model_paths, data_path, name_models=None, loss=None,
 
     # mass_weighted = label_sfh * ageweight
     # total_mass = np.sum(mass_weighted, axis=1)
-    mass_weigted = label_sfh_real * ageweight
+    mass_weigted = label_sfh_no_normalization * ageweight
     total_mass_no_norm = np.sum(mass_weigted, axis=1)
     mass_only_burst_idx = agevec < mageburst
     mass_burst = np.sum(mass_weigted[:, mass_only_burst_idx], axis=1)
@@ -311,107 +236,25 @@ def model_colormap(model_paths, data_path, name_models=None, loss=None,
                    savefig_name='/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_fig_metal.png',
                    )
 
-   # xlim=(50327.76943032607, 368356365924.79095),
-   # ylim=(60.62030449954481, 819673467.9265951))
-
     print("------")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-def verify_model(model_paths, data_path, name_models=None, loss=None,
-                 method_standardize_label_sfh=0,
-                 method_standardize_label_z=0,
-                 method_standardize_spectra=0,
-                 method_standardize_magnitudes=0,
-                 which_data_is_going_to_be_used=2,
+def verify_model(model_paths, data_path, name_models=None, return_loss=False, loss_function=None,
+                 method_standardize=None,
+                 which_data_is_going_to_be_used="val",
                  first_id_plot=0, n_plot=3,
-                 train_size=0.8, test_size=0.2, traintestrandomstate=42, traintestshuffle=True):
+                 **kwargs):
+
     # Load Data
-    print("[INFO] Loading data...")
-    label_path = data_path.replace("Input_", "Label_")
-    metadata_path = data_path.replace("Input_", "MetaD_").replace(".fits", ".rda")
+    loaded_data = evaluate_model(model_paths, data_path, return_loss=return_loss,
+                                 method_standardize=method_standardize,
+                                 which_data=which_data_is_going_to_be_used, first_id_plot=first_id_plot, n_plot=n_plot,
+                                 *kwargs)
 
-    input_spectra, input_magnitudes, label_sfh, label_z, spectra_lambda, agevec, _ = \
-        ERIK.loadfiles(input_path=data_path, labels_path=label_path,
-                       method_standardize_label_sfh=method_standardize_label_sfh,
-                       method_standardize_label_z=method_standardize_label_z,
-                       method_standardize_spectra=method_standardize_spectra,
-                       method_standardize_magnitudes=method_standardize_magnitudes)
-
-    _, _, label_sfh_real, label_z_real, _, _, _ = \
-        ERIK.loadfiles(input_path=data_path, labels_path=label_path,
-                       method_standardize_label_sfh=0,
-                       method_standardize_label_z=0,
-                       method_standardize_spectra=0,
-                       method_standardize_magnitudes=0)
-
-    # Verified: If indices are added, they will STILL respect the output as if there were no indices
-    split_train_test = train_test_split(input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_real, label_z_real,
-                                        range(input_spectra.shape[0]),      # Indices
-                                        test_size=test_size,
-                                        train_size=train_size,
-                                        random_state=traintestrandomstate,
-                                        shuffle=traintestshuffle)
-    (trainSpect, testSpect,
-     trainMag, testMag,
-     trainLabSfh, testLabSfh,
-     trainLabZ, testLabZ,
-     trainLabSfh_real, testLabSfh_real,
-     trainLabZ_real, testLabZ_real,
-     trainIndices, testIndices) = split_train_test
-
-    if name_models is None:
-        name_models = model_paths
-
-    saved_models = []
-    for model_p in model_paths:
-        saved_models.append(keras.models.load_model(model_p,
-                                                    custom_objects={"smape_loss": XAVIER.Cerebro.smape_loss}))
-        # saved_models[0].summary()
-
-    #################
-    # Decide which data is going to be used
-    if which_data_is_going_to_be_used == 0:
-        # All the data
-        in_data = np.concatenate([input_spectra, input_magnitudes], axis=1)
-        idx = list(range(input_spectra.shape[0]))
-    elif which_data_is_going_to_be_used == 1:
-        # Only Training data
-        in_data = np.concatenate([trainSpect, trainMag], axis=1)
-        label_sfh = trainLabSfh
-        label_z = trainLabZ
-        label_sfh_real = trainLabSfh_real
-        label_z_real = trainLabZ_real
-        idx = trainIndices
-    elif which_data_is_going_to_be_used == 2:
-        # Only Test data
-        in_data = np.concatenate([testSpect, testMag], axis=1)
-        label_sfh = testLabSfh
-        label_z = testLabZ
-        label_sfh_real = testLabSfh_real
-        label_z_real = testLabZ_real
-        idx = testIndices
-    else:
-        raise ValueError(f"which_data_is_going_to_be_used should be [0, 1, 2] and is {which_data_is_going_to_be_used}")
-
-    if loss is None:
-        loss = tensorflow.keras.losses.MeanSquaredError()
-
-    outputs = []
-    for model in saved_models:
-        outputs.append(model.predict(in_data[first_id_plot:(first_id_plot + n_plot)]))
+    (input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_real, label_z_real,
+     spectra_lambda, agevec, ageweight, saved_models, idx, outputs, _) = loaded_data
+    # remove tuple data
+    del loaded_data
 
     legend_name = ["Label"] + name_models
     for i in range(first_id_plot, first_id_plot + n_plot):
@@ -431,7 +274,7 @@ def verify_model(model_paths, data_path, name_models=None, loss=None,
         for q, k in enumerate(outputs):
             ax[1, 0].scatter(agevec, np.subtract(k[0][(i - first_id_plot), :], label_sfh[i, :]))
             current_legend.append(name_models[q] + "_" +
-                                  f"{loss(label_sfh[i, :], k[0][(i - first_id_plot), :]).numpy():3f}")
+                                  f"{loss_function(label_sfh[i, :], k[0][(i - first_id_plot), :]).numpy():3f}")
         ax[1, 0].set_xscale('log')
         ax[1, 0].legend(current_legend)
 
@@ -448,7 +291,7 @@ def verify_model(model_paths, data_path, name_models=None, loss=None,
         for q, k in enumerate(outputs):
             ax[1, 1].scatter(agevec, np.subtract(k[1][(i - first_id_plot), :], label_z[i, :]))
             current_legend.append(name_models[q] + "_" +
-                                  f"{loss(label_z[i, :], k[1][(i - first_id_plot), :]).numpy():4f}")
+                                  f"{loss_function(label_z[i, :], k[1][(i - first_id_plot), :]).numpy():4f}")
         ax[1, 1].set_xscale('log')
         ax[1, 1].legend(current_legend)
         plt.tight_layout()
@@ -465,13 +308,13 @@ def verify_model(model_paths, data_path, name_models=None, loss=None,
         tmp_sp = {"spectr_in": input_spectra[i, :],
                   "waveout": spectra_lambda}
         tmp_mag = {"magnitudes_in": input_magnitudes[i, :],
-                   "ID": [idx[i]]*5}
+                   "ID": [idx[i]] * 5}
         tmp_id_names = {"ID": [idx[i]]}
         for q, k in enumerate(legend_name):
             if q == 0:
                 continue
             else:
-                tmp_id_names[f"name{q-1}"] = [k]
+                tmp_id_names[f"name{q - 1}"] = [k]
         tmp_df = pd.DataFrame(tmp_dic)
         tmp_df.to_csv("/Users/enrique/Documents/GitHub/LOGAN-SFH/tmp_file.pd", index=False)
         tmp_df2 = pd.DataFrame(tmp_sp)
@@ -481,28 +324,24 @@ def verify_model(model_paths, data_path, name_models=None, loss=None,
         tmp_df3.to_csv("/Users/enrique/Documents/GitHub/LOGAN-SFH/tmp_file3.pd", index=False)
         tmp_df4.to_csv("/Users/enrique/Documents/GitHub/LOGAN-SFH/tmp_file4.pd", index=False)
 
-
-
-
-
         print(i)
 
-    return
-    difference_sfh = np.subtract(output[0], label_sfh[first_id_plot:first_id_plot + n_plot, :])
-    difference_mag = np.subtract(output[1], label_z[first_id_plot:first_id_plot + n_plot, :])
-
-    fig1, ax1 = plt.subplots()
-    ax1.set_title("Boxplot SFH")
-    ax1.boxplot(difference_sfh)
-    fig2, ax2 = plt.subplots()
-    ax2.set_title("Boxplot Z")
-    ax2.boxplot(difference_mag)
-    fig1, ax1 = plt.subplots()
-    ax1.set_title("Boxplot SFH (relativo)")
-    ax1.boxplot(np.divide(difference_sfh, label_sfh[first_id_plot:first_id_plot + n_plot, :]))
-    fig2, ax2 = plt.subplots()
-    ax2.set_title("Boxplot Z (relativo)")
-    ax2.boxplot(np.divide(difference_mag, label_z[first_id_plot:first_id_plot + n_plot, :]))
+    # return
+    # difference_sfh = np.subtract(output[0], label_sfh[first_id_plot:first_id_plot + n_plot, :])
+    # difference_mag = np.subtract(output[1], label_z[first_id_plot:first_id_plot + n_plot, :])
+    #
+    # fig1, ax1 = plt.subplots()
+    # ax1.set_title("Boxplot SFH")
+    # ax1.boxplot(difference_sfh)
+    # fig2, ax2 = plt.subplots()
+    # ax2.set_title("Boxplot Z")
+    # ax2.boxplot(difference_mag)
+    # fig1, ax1 = plt.subplots()
+    # ax1.set_title("Boxplot SFH (relativo)")
+    # ax1.boxplot(np.divide(difference_sfh, label_sfh[first_id_plot:first_id_plot + n_plot, :]))
+    # fig2, ax2 = plt.subplots()
+    # ax2.set_title("Boxplot Z (relativo)")
+    # ax2.boxplot(np.divide(difference_mag, label_z[first_id_plot:first_id_plot + n_plot, :]))
 
     # for ids in range(10):
     #
@@ -628,7 +467,6 @@ if __name__ == "__main__":
     #                                    "model_no_normalizing_12_05.h5"),
     #       "data_path": os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/",
     #                                 "Input_combined.fits")})
-
 
 # ToDo: comparar dos SFH (ancha y estrecha), sacar gráfica de SFH y metalicidades
 # Mandar el código de la red
