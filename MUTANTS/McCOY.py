@@ -84,7 +84,7 @@ def evaluate_model(model_paths, data_path, return_loss=True,
                    which_data="val",
                    first_id_plot=0, n_plot=None,
                    train_size=0.8, test_size=0.2, traintestrandomstate=42, traintestshuffle=True,
-                   return_dictionary=False):
+                   return_dictionary=False, **kwargs):
     if method_standardize is None:
         method_standardize = {"sfh": 0, "z": 0, "spectra": 0, "magnitudes": 0}
     else:
@@ -92,6 +92,10 @@ def evaluate_model(model_paths, data_path, return_loss=True,
             if n not in ["sfh", "z", "spectra", "magnitudes"]:
                 raise ValueError("method_standardize dictionary should only have the keys: "
                                  f"'sfh', 'z', 'spectra', 'magnitudes'. One of the keywords given is {n}")
+    for key in ["sfh", "z", "spectra", "magnitudes"]:
+        if key not in method_standardize.keys():
+            method_standardize[key] = 0
+
     # Load Data
     print("[INFO] Loading data...")
     label_path = data_path.replace("Input_", "Label_")
@@ -132,8 +136,6 @@ def evaluate_model(model_paths, data_path, return_loss=True,
 
     saved_models = []
     for pqwe, model_p in enumerate(model_paths):
-        if pqwe == 1:
-            break
         saved_models.append(keras.models.load_model(model_p,
                                                     custom_objects={"smape_loss": XAVIER.Cerebro.smape_loss}))
 
@@ -146,6 +148,8 @@ def evaluate_model(model_paths, data_path, return_loss=True,
     elif which_data == "train":
         # Only Training data
         in_data = np.concatenate([trainSpect, trainMag], axis=1)
+        input_spectra = trainSpect
+        input_magnitudes = trainMag
         label_sfh = trainLabSfh
         label_z = trainLabZ
         label_sfh_no_normalization = trainLabSfh_real
@@ -154,6 +158,8 @@ def evaluate_model(model_paths, data_path, return_loss=True,
     elif which_data == "val":
         # Only Test data
         in_data = np.concatenate([testSpect, testMag], axis=1)
+        input_spectra = testSpect
+        input_magnitudes = testMag
         label_sfh = testLabSfh
         label_z = testLabZ
         label_sfh_no_normalization = testLabSfh_real
@@ -201,10 +207,9 @@ def model_colormap(model_paths, data_path, name_models=None, return_loss=True,
                    mageburst=1e8,
                    **kwargs):
     # Load Data
-    loaded_data = evaluate_model(model_paths, data_path, return_loss=return_loss,
-                                 method_standardize=method_standardize,
+    loaded_data = evaluate_model(model_paths, data_path, return_loss=return_loss, method_standardize=method_standardize,
                                  which_data=which_data_is_going_to_be_used, first_id_plot=first_id_plot, n_plot=n_plot,
-                                 *kwargs)
+                                 **kwargs)
 
     (input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_no_normalization, label_z_no_normalization,
      spectra_lambda, agevec, ageweight, saved_models, idx, outputs, losses) = loaded_data
@@ -289,7 +294,7 @@ def verify_model(model_paths, data_path, name_models=None, return_loss=False, lo
     loaded_data = evaluate_model(model_paths, data_path, return_loss=return_loss,
                                  method_standardize=method_standardize,
                                  which_data=which_data_is_going_to_be_used, first_id_plot=first_id_plot, n_plot=n_plot,
-                                 *kwargs)
+                                 **kwargs)
 
     (input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_real, label_z_real,
      spectra_lambda, agevec, ageweight, saved_models, idx, outputs, _) = loaded_data
@@ -366,38 +371,6 @@ def verify_model(model_paths, data_path, name_models=None, return_loss=False, lo
 
         print(i)
 
-    # return
-    # difference_sfh = np.subtract(output[0], label_sfh[first_id_plot:first_id_plot + n_plot, :])
-    # difference_mag = np.subtract(output[1], label_z[first_id_plot:first_id_plot + n_plot, :])
-    #
-    # fig1, ax1 = plt.subplots()
-    # ax1.set_title("Boxplot SFH")
-    # ax1.boxplot(difference_sfh)
-    # fig2, ax2 = plt.subplots()
-    # ax2.set_title("Boxplot Z")
-    # ax2.boxplot(difference_mag)
-    # fig1, ax1 = plt.subplots()
-    # ax1.set_title("Boxplot SFH (relativo)")
-    # ax1.boxplot(np.divide(difference_sfh, label_sfh[first_id_plot:first_id_plot + n_plot, :]))
-    # fig2, ax2 = plt.subplots()
-    # ax2.set_title("Boxplot Z (relativo)")
-    # ax2.boxplot(np.divide(difference_mag, label_z[first_id_plot:first_id_plot + n_plot, :]))
-
-    # for ids in range(10):
-    #
-    #     metadata = ERIK.getparametersfromid("/Users/enrique/Documents/GitHub/LOGAN-SFH/MetadataOutput.json",
-    #                                         ids, verbose=0, returnfunction=False)
-    #     fig3, ax3 = plt.subplots()
-    #     ax3.set_title(f"SFH - {ids}")
-    #     ax3.semilogx(agevec, label_sfh[5000 + ids], "k-")
-    #     ax3.semilogx(agevec, output[0][ids], "g.-")
-    #     plt.savefig(f"/Users/enrique/Documents/GitHub/LOGAN-SFH/Test/SFH{ids}.png")
-    #     fig4, ax4 = plt.subplots()
-    #     ax4.set_title(f"Z - {ids}")
-    #     ax4.semilogx(agevec, label_z[5000 + ids], "k-")
-    #     ax4.semilogx(agevec, output[1][ids], "g.-")
-    #     plt.savefig(f"/Users/enrique/Documents/GitHub/LOGAN-SFH/Test/Z{ids}.png")
-
     plt.show()
     print("test1234")
 
@@ -463,11 +436,9 @@ def main(update_values=None, **mainkwargs):
         model_names = None
         if "model_names" in mainkwargs:
             model_names = mainkwargs["model_names"]
-        arguments_standardize = {}
-        for key in mainkwargs.keys():
-            if "method_standardize_" in key:
-                arguments_standardize[key] = mainkwargs[key]
-        model_colormap(args.verify_model, data_path, model_names, **arguments_standardize)
+
+        # model_colormap(args.verify_model, data_path, model_names, **arguments_standardize)
+        save_data_to_file(args.verify_model, data_path, **mainkwargs)
         # verify_model(args.verify_model, data_path, model_names, **arguments_standardize)
 
     if args.json_clean is not None:
@@ -493,10 +464,9 @@ if __name__ == "__main__":
                  f"l{_[(length_prefix_loss + 4):-3]}" for _ in files]
     models = [os.path.join(models_path, f) for f in files]
 
-    main({"verify_model": models, "data_path": data_path},
+    main({"verify_model": models[0:2], "data_path": data_path},
          model_names=filenames,
-         method_standardize_label_sfh=5,
-         method_standardize_label_z=0
+         method_standardize={"sfh": 5}, n_plot=None
          )
 
     # old_models = ["/Users/enrique/model_mean_squared_13_05.h5",
