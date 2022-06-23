@@ -30,16 +30,16 @@ source(configFilename)
 
 
 simple.two.axes.plot <- function(lx, ly, rx=lx, ry, xlab=NULL, lylab=NULL, rylab=NULL, main="",
-                                 ltype="l", rtype="p", lpch=1, rpch=17, lcol="black", rcol="red", xlim=NULL,
+                                 ltype="l", rtype="p", lpch=1, rpch=17, lcol="black", rcol="red", xlim=NULL, lylim=NULL, rylim=NULL,
                                  log=""){
     if (is.null(xlim)){
         xlim = c(min(c(lx, rx)), max(c(lx, rx)))
     }
     par(mar = c(5, 4, 4, 4) + 0.3)  # Leave space for z axis
-    plot(lx, ly, type=ltype, xlim=xlim,
+    plot(lx, ly, type=ltype, xlim=xlim, ylim=lylim,
          main=main, xlab=xlab, ylab=lylab, pch=lpch, col=lcol, log=log) # first plot
     par(new = TRUE)
-    plot(rx, ry, type=rtype, pch=rpch, axes = FALSE, bty = "n", xlab = "", ylab = "", col=rcol, xlim=xlim, log=log)
+    plot(rx, ry, type=rtype, pch=rpch, axes = FALSE, bty = "n", xlab = "", ylab = "", col=rcol, xlim=xlim, ylim=rylim, log=log)
     axis(side=4, at = pretty(range(ry)), col=rcol, col.axis=rcol)
     mtext(rylab, side=4, line=3, col=rcol)
 }
@@ -104,11 +104,17 @@ post_process_spectra <- function(object, waveout){
     return(object)
 }
 
-compare_two_objects <- function(object1, object2, main="Compare 2 objects"){
+compare_two_objects <- function(object1, object2, same_ylims=FALSE, main="Compare 2 objects"){
+    if (same_ylims){
+        lrylim=c(min(c(object1$flux$flux, object2$flux$flux)), max(c(object1$flux$flux, object2$flux$flux)))
+    } else {
+        lrylim=NULL
+    }
     par(mfrow=c(2,2))
     simple.two.axes.plot(
         object1$flux$wave, object1$flux$flux,
         object2$flux$wave, object2$flux$flux,
+        lylim=lrylim, rylim=lrylim,
         main="Spectra", ltype="l", rtype="l",
         lylab="flux", rylab="flux", xlab="Wavelength (A)"
     )
@@ -193,41 +199,98 @@ compare_two_objects <- function(object1, object2, main="Compare 2 objects"){
 }
 
 # Indices de Lick
+# H_alpha
+# H_beta
+# Mg
+# Fe 5015
 
-# 
-# simple.two.axes.plot(spectraObject$agevec, spectraObject$Zvec,
-#                      csvData[["agevec"]], csvData[[paste0("z", idx)]],
-#                      main="Z spectraObject vs SFH data",
-#                      ltype="l", rtype="l", log="x")
-# 
-# simple.two.axes.plot(spectraObject$flux$wave, spectraObject$flux$flux,
-#                      spectraObject$out$cenwave, spectraObject$out$out,
-#                      main="spectraObject")
-# simple.two.axes.plot(waveout, csvData2$spectr_in,
-#                      filt_cenwave, csvData3$magnitudes_in,
-#                      main="Input to CNN")
-# 
-# simple.two.axes.plot(spectraObject$flux$wave, spectraObject$flux$flux)
+
+# output_spectra_true = spectra_true$flux
+# output_spectra_pred = spectraObject$flux
 # 
 # 
+# write.csv(output_spectra_true, "spectra_test_true.csv", row.names = FALSE)
+# write.csv(output_spectra_pred, "spectra_test_pred.csv", row.names = FALSE)
 # 
 # 
+# library(reticulate)
 # 
 # 
-# 
-# Age = EMILESCombined$Age
-# AgeW = EMILESCombined$AgeWeights
-# AgeB = EMILESCombined$AgeBins
+# np <- import("numpy")
+# mat <- np$load("/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder/test.numpy.npy")
 # 
 # 
-# Age
-# AgeW
-# x = 1
-# (Age[x] + Age[x+1])/2
-# AgeW[1]
-# 
-# kk = c()
-# for (x in 1:length(AgeW)){
-#     kk = c(kk, (Age[x] + Age[x+1])/2 - AgeB[x + 1])
-# }
-# kk
+# tfile <- tempfile(fileext=".npy")
+# set.seed(42)
+# m <- matrix(sort(rnorm(6)), 3, 2)
+# m
+# # [,1] [,2]
+# # [1,] -0.564698 0.404268
+# # [2,] -0.106125 0.632863
+# # [3,] 0.363128 1.370958
+# np$save("/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder/test2.numpy.npy", m)
+# m2 <- np$load(tfile)
+
+
+
+
+
+
+
+
+
+if (FALSE){
+    left_limit = 1600
+    right_limit = 10000
+    EMILESCombined_reducido <- EMILESCombined
+    idx = EMILESCombined$Wave > left_limit & EMILESCombined$Wave < right_limit
+    waveout=seq(4700, 7500, 1.25)
+    
+    EMILESCombined_reducido$Wave <- EMILESCombined_reducido$Wave[idx]
+    for (i in 1:7){
+        EMILESCombined_reducido$Zspec[[i]] <- EMILESCombined_reducido$Zspec[[i]][,idx]
+    }
+    
+    
+    spectra1 = SFHfunc(
+        massfunc = massfunc_custom,
+        speclib = EMILESCombined,
+        filters=filters,
+        Z = Z_custom,
+        magevec=csvData[["agevec"]],
+        msfh=csvData[["sfh_no_stand"]],
+        Zagevec = csvData[["agevec"]],
+        Zsfh=csvData[["z_no_stand"]],
+        emission=TRUE,
+        emission_scale = "SFR"
+    )
+    spectra2 = SFHfunc(
+        massfunc = massfunc_custom,
+        speclib = EMILESCombined_reducido,
+        filters=filters,
+        Z = Z_custom,
+        magevec=csvData[["agevec"]],
+        msfh=csvData[["sfh_no_stand"]],
+        Zagevec = csvData[["agevec"]],
+        Zsfh=csvData[["z_no_stand"]],
+        emission=TRUE,
+        emission_scale = "SFR"
+    )
+    spectra1 <- post_process_spectra(spectra1, waveout)
+    spectra2 <- post_process_spectra(spectra2, waveout)
+    
+    compare_two_objects(spectra1, spectra2, same_ylims=TRUE,
+                        main=paste0("EMILESCombined (",
+                                    round(EMILESCombined$Wave[1]), ", ",
+                                    round(EMILESCombined$Wave[length(EMILESCombined$Wave)]),
+                                    ") [black] vs EMILESCombined_reducido (",
+                                    round(EMILESCombined_reducido$Wave[1]), ", ",
+                                    round(EMILESCombined_reducido$Wave[length(EMILESCombined_reducido$Wave)]),
+                                    ") [red]"))
+    # saveRDS(EMILESCombined_reducido, "EMILESData/EMILESCombined_reducido.rds")
+    
+}
+
+
+
+
