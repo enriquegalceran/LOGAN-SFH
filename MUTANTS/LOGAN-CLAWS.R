@@ -35,6 +35,48 @@ simple.two.axes.plot <- function(lx, ly, rx, ry, xlab=NULL, lylab=NULL, rylab=NU
   mtext("magnitudes", side=4, line=3, col=rcol)
 }
 
+massfunc_custom <- function (age, magevec, msfh, magemax = 13.8){
+  magemax = magemax * 1e+09
+  age[age < 1e+05] = 1e+05
+  temp = splinefun(log10(magevec), msfh, method = 'monoH.FC')(log10(age))
+  temp[temp < 0] = 0
+  temp[age > magemax] = 0
+  return(temp)
+}
+
+Z_custom <- function (age, Zagevec, Zsfh, Zagemax = 13.8, ...){
+  Zagemax = Zagemax * 1e+09
+  age[age < 1e+05] = 1e+05
+  temp = splinefun(log10(Zagevec), Zsfh, method = 'monoH.FC')(log10(age))
+  temp[temp < 0] = 0
+  temp[age > Zagemax] = 0
+  return(temp)
+}
+
+post_process_spectra <- function(object, waveout){
+  # SFR
+  tmp_output = convertAgevecToOutputScale(object$agevec, object$SFR)
+  object$SFR = tmp_output$data
+  # massvec
+  tmp_output = convertAgevecToOutputScale(object$agevec, object$massvec)
+  object$massvec = tmp_output$data
+  # Zvec
+  tmp_output = convertAgevecToOutputScale(object$agevec, object$Zvec)
+  object$Zvec = tmp_output$data
+  # agevec
+  tmp_output = convertAgevecToOutputScale(object$agevec, object$agevec)
+  object$agevec = suppressWarnings(tmp_output$data)    
+  
+  # Adjust Spectra to Wavelength (waveout)
+  object$flux = interpolateToWaveout(
+    lapply(object$flux["wave"], as.numeric)[[1]],
+    lapply(object$flux["flux"], as.numeric)[[1]],
+    waveout,
+    returnList=TRUE)
+  
+  return(object)
+}
+
 
 exportObjectsToSingleFITS <- function(Parameters,
                                       df,
