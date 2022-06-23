@@ -47,6 +47,38 @@ def cleanlogfile(filename, filename_out=None):
         f.writelines(lines)
 
 
+def save_data_to_file(model_paths, data_path,
+                      method_standardize=None,
+                      which_data="val",
+                      first_id_plot=0, n_plot=None,
+                      temp_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder",
+                      **kwargs):
+    # Plan: export data (csv?) for R to be read
+    # Load Data
+    loaded_data = evaluate_model(model_paths, data_path, return_loss=False, method_standardize=method_standardize,
+                                 which_data=which_data, first_id_plot=first_id_plot, n_plot=n_plot, **kwargs)
+    (input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_no_normalization, label_z_no_normalization,
+     spectra_lambda, agevec, ageweight, saved_models, idx, outputs, losses) = loaded_data
+    # remove tuple data
+    del loaded_data
+
+    print(f"[INFO] Exported files to folder: {os.path.abspath(temp_folder)}")
+    # Export all the relevant information in numpy format in the temp_folder directory
+    np.save(os.path.join(temp_folder, "input_spectra"), input_spectra)
+    np.save(os.path.join(temp_folder, "input_magnitudes"), input_magnitudes)
+    np.save(os.path.join(temp_folder, "agevec"), agevec)
+    np.save(os.path.join(temp_folder, "ageweight"), ageweight)
+    np.save(os.path.join(temp_folder, "wave"), spectra_lambda)
+    np.save(os.path.join(temp_folder, "label_sfh"), label_sfh)
+    np.save(os.path.join(temp_folder, "label_z"), label_z)
+    np.save(os.path.join(temp_folder, "label_sfh_no_normalization"), label_sfh_no_normalization)
+    np.save(os.path.join(temp_folder, "label_z_no_normalization"), label_z_no_normalization)
+    for model_id in range(len(saved_models)):
+        np.save(os.path.join(temp_folder, f"predict_sfh_{model_id}"), outputs[model_id][0])
+        np.save(os.path.join(temp_folder, f"predict_z_{model_id}"), outputs[model_id][1])
+    # ToDo: Add losses here? They need a bit more of preprocessing before being saved, so I left this for afterwards.
+
+
 def evaluate_model(model_paths, data_path, return_loss=True,
                    method_standardize=None,
                    which_data="val",
