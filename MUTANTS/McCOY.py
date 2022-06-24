@@ -3,15 +3,17 @@
 
 import argparse
 import os
-import sys
-import csv
-from typing import Callable, Any
+# import sys
+# import csv
+# from typing import Callable, Any
+from pylick.pylick.analysis import Galaxy
+from pylick.pylick.indices import IndexLibrary
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import keras
-import tensorflow
+# import tensorflow
 from sklearn.model_selection import train_test_split
 
 import ERIK
@@ -77,6 +79,54 @@ def save_data_to_file(model_paths, data_path,
         np.save(os.path.join(temp_folder, f"predict_sfh_{model_id}"), outputs[model_id][0])
         np.save(os.path.join(temp_folder, f"predict_z_{model_id}"), outputs[model_id][1])
     # ToDo: Add losses here? They need a bit more of preprocessing before being saved, so I left this for afterwards.
+
+
+def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force_error_SN=100,
+                                temp_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder",
+                                return_indices=True, **kwargs):
+    if idx_models is None:
+        idx_models = [0, 1]
+
+    # Name of files to be loaded
+    name_input_spectra = os.path.join(temp_folder, "input_spectra.npy")
+    name_wave = os.path.join(temp_folder, "wave.npy")
+    name_files_predicted = [os.path.join(temp_folder, f"predict_spectra_{id_mod}.npy") for id_mod in idx_models]
+    index_values_predicted = None
+    index_values_spectra = None
+
+    # indexes that are going to be used:
+    index_list = np.arange(53, 66)
+
+    # Load wave
+    wave = np.load(name_wave)
+
+    # Calculate index for input_spectra
+    if calculate_for_input:
+        input_spectra = np.load(name_input_spectra)
+        input_spectra_number = input_spectra.shape[0]
+        index_values_spectra = np.zeros((input_spectra_number, len(index_list)), dtype=float)
+
+        for i in range(input_spectra_number):
+            tmp = Galaxy("Input_" + str(i), index_list, spec_wave=wave, spec_flux=input_spectra[i, :],
+                         spec_err=input_spectra[i, :]/force_error_SN, spec_mask=None, meas_method='int')
+            index_values_spectra[i, :] = tmp.vals
+
+        np.save(os.path.join(temp_folder, "lick_idx_input_spectra.npy"), index_values_spectra)
+
+    for imodel in idx_models:
+        predicted_spectra = np.load(name_files_predicted[imodel])
+        predicted_spectra_number = predicted_spectra.shape[0]
+        index_values_predicted = np.zeros((predicted_spectra_number, len(index_list)), dtype=float)
+
+        for i in range(predicted_spectra_number):
+            tmp = Galaxy("Predicted_" + str(i), index_list, spec_wave=wave, spec_flux=predicted_spectra[i, :],
+                         spec_err=predicted_spectra[i, :]/force_error_SN, spec_mask=None, meas_method='int')
+            index_values_predicted[i, :] = tmp.vals
+
+        np.save(os.path.join(temp_folder, f"lick_idx_predicted_{imodel}.npy"), index_values_predicted)
+
+    if return_indices:
+        return index_values_predicted, index_values_spectra
 
 
 def evaluate_model(model_paths, data_path, return_loss=True,
@@ -437,8 +487,8 @@ def main(update_values=None, **mainkwargs):
         if "model_names" in mainkwargs:
             model_names = mainkwargs["model_names"]
 
-        # model_colormap(args.verify_model, data_path, model_names, **arguments_standardize)
-        save_data_to_file(args.verify_model, data_path, **mainkwargs)
+        model_colormap(args.verify_model, data_path, model_names, **mainkwargs)
+        # save_data_to_file(args.verify_model, data_path, **mainkwargs)
         # verify_model(args.verify_model, data_path, model_names, **arguments_standardize)
 
     if args.json_clean is not None:
@@ -448,6 +498,7 @@ def main(update_values=None, **mainkwargs):
 
 
 if __name__ == "__main__":
+    calculate_lick_indices_mass()
     # models_path = "/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainedModels/MSE_reduced_wave_small_dataset/"
     models_path = "/Users/enrique/scpdata/2"
     data_path = os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/",
@@ -466,7 +517,7 @@ if __name__ == "__main__":
 
     main({"verify_model": models[0:2], "data_path": data_path},
          model_names=filenames,
-         method_standardize={"sfh": 5}, n_plot=None
+         method_standardize={"sfh": 5}, n_plot=10
          )
 
     # old_models = ["/Users/enrique/model_mean_squared_13_05.h5",
