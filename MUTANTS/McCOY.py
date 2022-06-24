@@ -303,13 +303,17 @@ def evaluate_model(model_paths, data_path, return_loss=True,
                label_z_no_normalization, spectra_lambda, agevec, ageweight, saved_models, idx, outputs, losses
 
 
-def model_colormap(model_paths, data_path, name_models=None, return_loss=True,
+def model_colormap(model_paths, data_path, calculate_loss=False,
                    method_standardize=None,
                    which_data_is_going_to_be_used="val",
-                   first_id_plot=0, n_plot=None,
-                   mageburst=1e8,
+                   first_id_plot=0, n_plot=None, percentile=98,
+                   mageburst=1e8, temp_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder",
                    **kwargs):
     # Load Data
+    if calculate_loss:
+        return_loss = True
+    else:
+        return_loss = False
     loaded_data = evaluate_model(model_paths, data_path, return_loss=return_loss, method_standardize=method_standardize,
                                  which_data=which_data_is_going_to_be_used, first_id_plot=first_id_plot, n_plot=n_plot,
                                  **kwargs)
@@ -319,16 +323,24 @@ def model_colormap(model_paths, data_path, name_models=None, return_loss=True,
     # remove tuple data
     del loaded_data
 
-    # Filter losses to keep only the relevant information
-    combined_losses = [[k[0] for k in losses[i_model]] for i_model in range(len(saved_models))]
-    log_combined_losses = [np.log10(_) for _ in combined_losses]
+    # If n_plot is None, consider it as "all"
+    if n_plot is None:
+        n_plot = input_spectra.shape[0] - first_id_plot
 
-    metallicity_loss = [[k[1] for k in losses[i_model]] for i_model in range(len(saved_models))]
-    log_metallicity_losses = [np.log10(_) for _ in metallicity_loss]
+    if calculate_loss:
+        # Filter losses to keep only the relevant information
+        combined_losses = [[k[0] for k in losses[i_model]] for i_model in range(len(saved_models))]
+        log_combined_losses = [np.log10(_) for _ in combined_losses]
 
-    sfh_losses = [[k[2] for k in losses[i_model]] for i_model in range(len(saved_models))]
-    log_sfh_losses = [np.log10(_) for _ in sfh_losses]
+        metallicity_loss = [[k[1] for k in losses[i_model]] for i_model in range(len(saved_models))]
+        log_metallicity_losses = [np.log10(_) for _ in metallicity_loss]
 
+        sfh_losses = [[k[2] for k in losses[i_model]] for i_model in range(len(saved_models))]
+        log_sfh_losses = [np.log10(_) for _ in sfh_losses]
+    else:
+        lick = []
+        for imodel in range(len(model_paths)):
+            lick.append(np.load(os.path.join(temp_folder, f"differences_{imodel}.npy")))
     # mass_weighted = label_sfh * ageweight
     # total_mass = np.sum(mass_weighted, axis=1)
     mass_weigted = label_sfh_no_normalization * ageweight
@@ -357,34 +369,52 @@ def model_colormap(model_paths, data_path, name_models=None, return_loss=True,
             plt.savefig(savefig_name)
         plt.show()
 
-    plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
-                   y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
-                   c=log_combined_losses[0],
-                   xlabel=r"$M_{total} (M_{\odot})$",
-                   ylabel=r"$M_{burst} (M_{\odot}) (\leq0.1Gyr)$",
-                   collabel=r'$Log_{10}(\ell)$',
-                   title=r"Combined Loss Function ($\ell$) based on $M_{total}$ and $M_{burst}$",
-                   savefig_name='/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_fig_combined.png',
-                   )
-    plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
-                   y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
-                   c=log_sfh_losses[0],
-                   xlabel=r"$M_{total} (M_{\odot})$",
-                   ylabel=r"$M_{burst} (M_{\odot}) (\leq0.1Gyr)$",
-                   collabel=r'$Log_{10}(\ell)$',
-                   title=r"SFH Loss Function ($\ell$) based on $M_{total}$ and $M_{burst}$",
-                   savefig_name='/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_fig_sfh.png',
-                   )
-    plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
-                   y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
-                   c=log_metallicity_losses[0],
-                   xlabel=r"$M_{total} (M_{\odot})$",
-                   ylabel=r"$M_{burst} (M_{\odot}) (\leq0.1Gyr)$",
-                   collabel=r'$Log_{10}(\ell)$',
-                   title=r"Metallicity Loss Function ($\ell$) based on $M_{total}$ and $M_{burst}$",
-                   savefig_name='/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_fig_metal.png',
-                   )
-
+    if calculate_loss:
+        plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
+                       y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
+                       c=log_combined_losses[0],
+                       xlabel=r"$M_{total} (M_{\odot})$",
+                       ylabel=r"$M_{burst} (M_{\odot}) (\leq0.1Gyr)$",
+                       collabel=r'$Log_{10}(\ell)$',
+                       title=r"Combined Loss Function ($\ell$) based on $M_{total}$ and $M_{burst}$",
+                       savefig_name='/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_fig_combined.png',
+                       )
+        plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
+                       y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
+                       c=log_sfh_losses[0],
+                       xlabel=r"$M_{total} (M_{\odot})$",
+                       ylabel=r"$M_{burst} (M_{\odot}) (\leq0.1Gyr)$",
+                       collabel=r'$Log_{10}(\ell)$',
+                       title=r"SFH Loss Function ($\ell$) based on $M_{total}$ and $M_{burst}$",
+                       savefig_name='/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_fig_sfh.png',
+                       )
+        plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
+                       y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
+                       c=log_metallicity_losses[0],
+                       xlabel=r"$M_{total} (M_{\odot})$",
+                       ylabel=r"$M_{burst} (M_{\odot}) (\leq0.1Gyr)$",
+                       collabel=r'$Log_{10}(\ell)$',
+                       title=r"Metallicity Loss Function ($\ell$) based on $M_{total}$ and $M_{burst}$",
+                       savefig_name='/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_fig_metal.png',
+                       )
+    else:
+        for imodel in range(len(model_paths)):
+            percentile_value = np.nanpercentile(lick[imodel],
+                                             percentile, )
+            id_percentile = np.logical_and(lick[imodel] < percentile_value, np.invert(np.isnan(lick[imodel])))
+            # plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
+            #                y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
+            #                c=lick[imodel][first_id_plot:(first_id_plot + n_plot)],
+            plot_colorbars(x=total_mass_no_norm[id_percentile],
+                           y=mass_burst[id_percentile],
+                           c=lick[imodel][id_percentile],
+                           xlabel=r"$M_{total} (M_{\odot})$",
+                           ylabel=r"$M_{burst} (M_{\odot}) (\leq0.1Gyr)$",
+                           collabel=r'$Log_{10}(\ell)$',
+                           title=r"Relative-MSE lick indexes based on $M_{total}$ and $M_{burst}$ for model #"
+                                 + str(imodel),
+                           savefig_name=f'/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_lick_{imodel}.png',
+                           )
     print("------")
 
 
@@ -551,7 +581,7 @@ def main(update_values=None, **mainkwargs):
 
 
 if __name__ == "__main__":
-    indices_lick = calculate_lick_indices_mass(calculate_for_input=True, verbosity_progress=400)
+    # indices_lick = calculate_lick_indices_mass(calculate_for_input=True, verbosity_progress=400)
     # models_path = "/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainedModels/MSE_reduced_wave_small_dataset/"
     models_path = "/Users/enrique/scpdata/2"
     datapath = os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/",
@@ -568,10 +598,17 @@ if __name__ == "__main__":
                  f"l{_[(length_prefix_loss + 4):-3]}" for _ in files]
     models = [os.path.join(models_path, f) for f in files]
 
-    main({"verify_model": models[0:2], "data_path": datapath},
-         model_names=filenames,
-         method_standardize={"sfh": 5}, n_plot=10
-         )
+    model_colormap(models[:2], data_path=datapath, calculate_loss=False)
+
+
+    # main({"verify_model": models[0:2], "data_path": datapath},
+    #      model_names=filenames,
+    #      method_standardize={"sfh": 5}, n_plot=10
+    #      )
+
+
+
+
 
     # old_models = ["/Users/enrique/model_mean_squared_13_05.h5",
     #               "/Users/enrique/model_mean_squared_log_13_05.h5",
