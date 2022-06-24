@@ -162,7 +162,7 @@ def main(**main_kwargs):
 
     ############################################################################
     # Build model
-    model = Cerebro.build_model(**main_kwargs, **parameters)
+    model = Cerebro.build_model(single_data_shape=(2246, 1), **main_kwargs, **parameters)
     model.summary()
     Cerebro.graph(model, "tstimage.png")
 
