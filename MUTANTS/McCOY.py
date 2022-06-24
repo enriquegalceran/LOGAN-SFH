@@ -8,6 +8,7 @@ import os
 # from typing import Callable, Any
 from pylick.pylick.analysis import Galaxy
 from pylick.pylick.indices import IndexLibrary
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -15,6 +16,7 @@ import matplotlib.pyplot as plt
 import keras
 # import tensorflow
 from sklearn.model_selection import train_test_split
+from math import nan
 
 import ERIK
 import XAVIER
@@ -83,9 +85,16 @@ def save_data_to_file(model_paths, data_path,
 
 def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force_error_sn=100,
                                 temp_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder",
-                                return_indices=True, calculate_differences=True, **kwargs):
+                                return_indices=True, calculate_differences=True, verbosity_progress=100,
+                                **kwargs):
     if idx_models is None:
         idx_models = [0, 1]
+
+    def single_relative_difference(t, p):
+        return (t - p) / t
+
+    def list_relative_difference(true, predicted):
+        return [single_relative_difference(true[k], predicted[k]) for k in range(len(true))]
 
     # Name of files to be loaded
     name_input_spectra = os.path.join(temp_folder, "input_spectra.npy")
@@ -108,39 +117,63 @@ def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force
         input_spectra_number = input_spectra.shape[0]
         index_values_spectra = np.zeros((input_spectra_number, len(index_list)), dtype=float)
 
+        print("[INFO] Calculating lick indices for input spectra...")
+        start_time = datetime.now()
         for i in range(input_spectra_number):
+            if i % verbosity_progress == 0:
+                print(f"Current case for input spectra : {i}/{input_spectra_number}")
             tmp = Galaxy("Input_" + str(i), index_list, spec_wave=wave, spec_flux=input_spectra[i, :],
                          spec_err=input_spectra[i, :] / force_error_sn, spec_mask=None, meas_method='int')
             index_values_spectra[i, :] = tmp.vals
-
+        end_time = datetime.now()
+        print('Duration: {}'.format(end_time - start_time))
+        print("[INFO] Finished calculating lick indices for input spectra.")
+        print(f"[INFO] storing in {os.path.join(temp_folder, 'lick_idx_input_spectra.npy')} ...")
         np.save(os.path.join(temp_folder, "lick_idx_input_spectra.npy"), index_values_spectra)
+    else:
+        index_values_spectra = np.load(os.path.join(temp_folder, "lick_idx_input_spectra.npy"))
 
     for imodel in idx_models:
         predicted_spectra = np.load(name_files_predicted[imodel])
         predicted_spectra_number = predicted_spectra.shape[0]
         index_values_predicted = np.zeros((predicted_spectra_number, len(index_list)), dtype=float)
 
+        print(f"[INFO] Calculating lick indices for predicted spectra for model #{imodel}...")
+        start_time = datetime.now()
         for i in range(predicted_spectra_number):
-            tmp = Galaxy("Predicted_" + str(i), index_list, spec_wave=wave, spec_flux=predicted_spectra[i, :],
-                         spec_err=predicted_spectra[i, :] / force_error_sn, spec_mask=None, meas_method='int')
-            index_values_predicted[i, :] = tmp.vals
-
+            if i % verbosity_progress == 0:
+                print(f"Current case for predicted spectra model #{imodel} : {i}/{predicted_spectra_number}")
+            # FIXME: There are some cases where there are NaNs (maybe because sfh/z is predicted as <0?)
+            if not np.isnan(predicted_spectra[i, 0]):
+                tmp = Galaxy("Predicted_" + str(i), index_list, spec_wave=wave, spec_flux=predicted_spectra[i, :],
+                             spec_err=predicted_spectra[i, :] / force_error_sn, spec_mask=None, meas_method='int')
+                index_values_predicted[i, :] = tmp.vals
+            else:
+                index_values_predicted[i, :] = [nan] * len(index_list)
+        end_time = datetime.now()
+        print('Duration: {}'.format(end_time - start_time))
+        print(f"[INFO] Finished calculating lick indices for predicted spectra for model #{imodel}.")
+        print(f"[INFO] storing in {os.path.join(temp_folder, f'lick_idx_predicted_{imodel}.npy')} ...")
         np.save(os.path.join(temp_folder, f"lick_idx_predicted_{imodel}.npy"), index_values_predicted)
 
-    if calculate_differences:
-        def single_relative_difference(t, p):
-            return (t - p) / t
-
-        def list_relative_difference(true, predicted):
-            return [single_relative_difference(true[k], predicted[k]) for k in range(len(true))]
-
-        differences = np.zeros((predicted_spectra_number, ))
-        for i in range(predicted_spectra_number):
-            differences[i] = np.square(list_relative_difference(index_values_spectra[i, ],
-                                                                index_values_predicted[i, ])
-                                       ).mean()
-
-        out["Relative-MSE"] = differences
+        if calculate_differences:
+            differences = np.zeros((predicted_spectra_number, ))
+            print(f"[INFO] Calculating differences for predicted spectra vs. input spectra for model #{imodel}...")
+            start_time = datetime.now()
+            for i in range(predicted_spectra_number):
+                if i % verbosity_progress == 0:
+                    print("Current case for differences for predicted spectra vs. input spectra model "
+                          f"#{imodel} : {i}/{predicted_spectra_number}")
+                differences[i] = np.square(list_relative_difference(index_values_spectra[i, ],
+                                                                    index_values_predicted[i, ])
+                                           ).mean()
+            end_time = datetime.now()
+            print('Duration: {}'.format(end_time - start_time))
+            print("[INFO] Finished calculating differences for predicted spectra vs. input "
+                  f"spectra for model #{imodel}.")
+            print(f"[INFO] storing in {os.path.join(temp_folder, f'differences_{imodel}.npy')} ...")
+            np.save(os.path.join(temp_folder, f"differences_{imodel}.npy"), differences)
+            out[f"Relative-MSE_{imodel}"] = differences
 
     if return_indices:
         out["index_values_predicted"] = index_values_predicted
@@ -518,7 +551,7 @@ def main(update_values=None, **mainkwargs):
 
 
 if __name__ == "__main__":
-    calculate_lick_indices_mass()
+    indices_lick = calculate_lick_indices_mass(calculate_for_input=True, verbosity_progress=400)
     # models_path = "/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainedModels/MSE_reduced_wave_small_dataset/"
     models_path = "/Users/enrique/scpdata/2"
     datapath = os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/",
