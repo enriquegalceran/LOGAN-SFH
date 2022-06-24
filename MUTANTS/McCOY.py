@@ -81,9 +81,9 @@ def save_data_to_file(model_paths, data_path,
     # ToDo: Add losses here? They need a bit more of preprocessing before being saved, so I left this for afterwards.
 
 
-def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force_error_SN=100,
+def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force_error_sn=100,
                                 temp_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder",
-                                return_indices=True, **kwargs):
+                                return_indices=True, calculate_differences=True, **kwargs):
     if idx_models is None:
         idx_models = [0, 1]
 
@@ -93,6 +93,8 @@ def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force
     name_files_predicted = [os.path.join(temp_folder, f"predict_spectra_{id_mod}.npy") for id_mod in idx_models]
     index_values_predicted = None
     index_values_spectra = None
+    predicted_spectra_number = None
+    out = {}
 
     # indexes that are going to be used:
     index_list = np.arange(53, 66)
@@ -108,7 +110,7 @@ def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force
 
         for i in range(input_spectra_number):
             tmp = Galaxy("Input_" + str(i), index_list, spec_wave=wave, spec_flux=input_spectra[i, :],
-                         spec_err=input_spectra[i, :]/force_error_SN, spec_mask=None, meas_method='int')
+                         spec_err=input_spectra[i, :] / force_error_sn, spec_mask=None, meas_method='int')
             index_values_spectra[i, :] = tmp.vals
 
         np.save(os.path.join(temp_folder, "lick_idx_input_spectra.npy"), index_values_spectra)
@@ -120,13 +122,31 @@ def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force
 
         for i in range(predicted_spectra_number):
             tmp = Galaxy("Predicted_" + str(i), index_list, spec_wave=wave, spec_flux=predicted_spectra[i, :],
-                         spec_err=predicted_spectra[i, :]/force_error_SN, spec_mask=None, meas_method='int')
+                         spec_err=predicted_spectra[i, :] / force_error_sn, spec_mask=None, meas_method='int')
             index_values_predicted[i, :] = tmp.vals
 
         np.save(os.path.join(temp_folder, f"lick_idx_predicted_{imodel}.npy"), index_values_predicted)
 
+    if calculate_differences:
+        def single_relative_difference(t, p):
+            return (t - p) / t
+
+        def list_relative_difference(true, predicted):
+            return [single_relative_difference(true[k], predicted[k]) for k in range(len(true))]
+
+        differences = np.zeros((predicted_spectra_number, ))
+        for i in range(predicted_spectra_number):
+            differences[i] = np.square(list_relative_difference(index_values_spectra[i, ],
+                                                                index_values_predicted[i, ])
+                                       ).mean()
+
+        out["Relative-MSE"] = differences
+
     if return_indices:
-        return index_values_predicted, index_values_spectra
+        out["index_values_predicted"] = index_values_predicted
+        out["index_values_spectra"] = index_values_spectra
+
+    return out
 
 
 def evaluate_model(model_paths, data_path, return_loss=True,
@@ -149,7 +169,7 @@ def evaluate_model(model_paths, data_path, return_loss=True,
     # Load Data
     print("[INFO] Loading data...")
     label_path = data_path.replace("Input_", "Label_")
-    metadata_path = data_path.replace("Input_", "MetaD_").replace(".fits", ".rda")
+    # metadata_path = data_path.replace("Input_", "MetaD_").replace(".fits", ".rda")
 
     if which_data not in ["all", "train", "val"]:
         raise ValueError(f"which_data needs to be 'all', 'train', or 'val'. given value: {which_data}")
@@ -501,8 +521,8 @@ if __name__ == "__main__":
     calculate_lick_indices_mass()
     # models_path = "/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainedModels/MSE_reduced_wave_small_dataset/"
     models_path = "/Users/enrique/scpdata/2"
-    data_path = os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/",
-                             "Input_combined_wave.fits")
+    datapath = os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/",
+                            "Input_combined_wave.fits")
 
     files = os.listdir(models_path)
     keywords_to_remove = ["epoch001", "imagen", "config"]
@@ -515,7 +535,7 @@ if __name__ == "__main__":
                  f"l{_[(length_prefix_loss + 4):-3]}" for _ in files]
     models = [os.path.join(models_path, f) for f in files]
 
-    main({"verify_model": models[0:2], "data_path": data_path},
+    main({"verify_model": models[0:2], "data_path": datapath},
          model_names=filenames,
          method_standardize={"sfh": 5}, n_plot=10
          )
