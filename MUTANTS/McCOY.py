@@ -87,6 +87,7 @@ def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force
                                 temp_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder",
                                 return_indices=True, calculate_differences=True, verbosity_progress=100,
                                 **kwargs):
+    # ToDo: Acknoledgements need to be added: https://gitlab.com/mmoresco/pylick#index_list
     if idx_models is None:
         idx_models = [0, 1]
 
