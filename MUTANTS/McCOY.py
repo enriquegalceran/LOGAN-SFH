@@ -307,7 +307,7 @@ def evaluate_model(model_paths, data_path, return_loss=True,
 def model_colormap(model_paths, data_path, calculate_loss=False,
                    method_standardize=None,
                    which_data_is_going_to_be_used="val",
-                   first_id_plot=0, n_plot=None, percentile=98,
+                   first_id_plot=0, n_plot=None, percentile=98, log_color=False,
                    mageburst=1e8, temp_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder",
                    **kwargs):
     # Load Data
@@ -350,10 +350,12 @@ def model_colormap(model_paths, data_path, calculate_loss=False,
     mass_burst = np.sum(mass_weigted[:, mass_only_burst_idx], axis=1)
 
     def plot_colorbars(x, y, c, s=3, cmap='plasma_r', log="xy", xlim=None, ylim=None,
-                       xlabel=None, ylabel=None, collabel=None, title=None,
+                       xlabel=None, ylabel=None, collabel=None, title=None, log_color=False,
                        savefig_name=None, figsize=(12, 9)):
         fig, ax = plt.subplots(figsize=figsize)
         plt.title(title)
+        if log_color:
+            c = np.log10(c)
         sc = ax.scatter(x, y, c=c, s=s, cmap=cmap)
         if 'x' in log:
             ax.set_yscale('log')
@@ -367,6 +369,7 @@ def model_colormap(model_paths, data_path, calculate_loss=False,
         ax.set_ylim(ylim)
         plt.tight_layout()
         if savefig_name is not None:
+            print(f"[INFO] Saving image to: {savefig_name} ...")
             plt.savefig(savefig_name)
         plt.show()
 
@@ -411,10 +414,11 @@ def model_colormap(model_paths, data_path, calculate_loss=False,
                            c=lick[imodel][id_percentile],
                            xlabel=r"$M_{total} (M_{\odot})$",
                            ylabel=r"$M_{burst} (M_{\odot}) (\leq0.1Gyr)$",
-                           collabel=r'$Log_{10}(\ell)$',
+                           collabel=r'$Log_{10}$'*log_color + 'Relative-MSE for lick indices',
                            title=r"Relative-MSE lick indexes based on $M_{total}$ and $M_{burst}$ for model #"
-                                 + str(imodel),
-                           savefig_name=f'/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_lick_{imodel}.png',
+                                 + str(imodel) + " percentile:" + str(percentile),
+                           log_color=log_color,
+                           savefig_name=f'/Users/enrique/Documents/GitHub/LOGAN-SFH/Plots/burstVStotal_lossAndLick/my_test_lick_m{imodel}_p{percentile}{"_log" * log_color}.png',
                            )
     print("------")
 
@@ -599,7 +603,10 @@ if __name__ == "__main__":
                  f"l{_[(length_prefix_loss + 4):-3]}" for _ in files]
     models = [os.path.join(models_path, f) for f in files]
 
-    model_colormap(models[:2], data_path=datapath, calculate_loss=False)
+    model_colormap(models[:2], data_path=datapath, calculate_loss=False, percentile=99)
+    model_colormap(models[:2], data_path=datapath, calculate_loss=False, percentile=95)
+    model_colormap(models[:2], data_path=datapath, calculate_loss=False, percentile=80)
+    model_colormap(models[:2], data_path=datapath, calculate_loss=False, percentile=99, log_color=True)
 
 
     # main({"verify_model": models[0:2], "data_path": datapath},
