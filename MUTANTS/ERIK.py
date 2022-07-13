@@ -519,11 +519,119 @@ def prettyfy_json_file(filename, verbose=1, indent=4):
         f.write(json.dumps(data, indent=indent))
 
 
-if __name__ == "__main__":
-    sufixes = ["20220427T192930_WViuSKxC", "20220428T130515_4QykcNJR", "20220428T154400_VxxFQPr2",
-               "20220428T182828_dfn2FS3c", "20220503T140118_wYhTmpOD"]
-    dataset_folder = "/Users/enrique/Documents/GitHub/LOGAN-SFH/DataGeneratedOutput"
+def convert_training_data_to_difference(path: str, suffix: str = None, out_name: str = None, out_suffix: str = None):
+    """
+    Convert input file into subtracted file
+    :param path:
+    :param suffix:
+    :param out_name:
+    :param out_suffix:
+    :return:
+    """
+    # Initialize variables
+    filename = None
 
-    combine_datasets(["all"], file_folder=dataset_folder, combined_output_sufix= "combined", overwrite = True)
+    # If suffix was NOT given, this means that path was the name of the file and not the folder path
+    # Verifies if some of the inputs are lists, in which case it will iterate over them recursively
+    if suffix is None:
+        if type(suffix) is list:
+            raise NotImplementedError
+            # ToDo: needs further work for the output names and such
+            # for p in path:
+            #     convert_training_data_to_difference(p)
+        elif os.path.isfile(path):
+            filename = path
+        else:
+            raise ValueError("Suffix not given and path is not the input file")
+    else:
+        if type(suffix) is list:
+            raise NotImplementedError
+            # ToDo: needs further work for the output names and such
+            # for s in suffix:
+            #     convert_training_data_to_difference(path, s)
+        else:
+            filename = os.path.join(path, f"Input_{suffix}.fits")
+
+    if out_name is None:
+        # Find new name
+        outputname, file_extension = os.path.splitext(filename)
+        if out_suffix is None:
+            outputname += "_steps" + file_extension
+        else:
+            left, right = filename.split("_", 1)
+            outputname = left + "_" + suffix + file_extension
+    else:
+        if not os.path.isabs(out_name):
+            outputname, _ = filename.rsplit("/", 1)
+            os.path.join(outputname, out_name)
+            if os.path.splitext(outputname)[1] != ".fits":
+                outputname += ".fits"
+        else:
+            outputname = out_name
+
+    # Once the filename is set, calculate the intermediate steps
+    # The new data will follow the formula :
+    #       F(w_i) = log10(F(i+i)/F(i))
+    #       w_i    = (w_i_old + w_i+1_old) /2
+    # i.e. F(1.5) = log10(F(1)/F(2))
+    # Following log identities: log_c(a/b) = log_c(a) - log_c(b)
+
+    with fits.open(filename) as hdul:
+        data = hdul[0].data
+        logi0 = np.log10(data[1:-6, 1:])
+        logi1 = np.log10(data[2:-5, 1:])
+        mag1 = data[-5:-1, 1:]
+        mag2 = data[-4:, 1:]
+        # Shorten array
+        data = data[:-2, :]
+        # Reset first row
+        data[1:-4, 0] = (data[1:-4, 0] + data[2:-3, 0]) / 2
+        data[-4:, 0] = np.arange(4)
+        # Overwrite with new data
+        data[1:-4, 1:] = logi0 - logi1
+        data[-4:, 1:] = mag1 - mag2
+        hdul[0].data = data
+        hdul[0].header["nspectra"] = hdul[0].header["nspectra"] - 1
+        hdul[0].header["nfilters"] = hdul[0].header["nfilters"] - 1
+        print(f"[INFO] Saving file with steps to: {outputname}")
+        hdul.writeto(outputname, overwrite=True)
+
+    with fits.open(filename) as hdul:
+        with fits.open(outputname) as hdulo:
+            print(hdul[0].header)
+            print(hdulo[0].header)
+            print(1234)
+    print("finished")
+
+
+def convert_training_data_to_difference_numpy(path: list[str], out_suffix: str = "_step"):
+    """
+    Same as convert_training_data_to_difference, but for a numpy array
+    :param path:
+    :param out_suffix:
+    :return:
+    """
+
+    for file in path:
+        spectra = np.load(file)
+        logi0 = np.log10(spectra[:1000, :-1])
+        logi1 = np.log10(spectra[:1000, 1:])
+        new = logi0 - logi1
+        print(f'[INFO] [NUMPY] recalculating for: {file.replace(".npy", "_step.npy")}')
+        np.save(file.replace(".npy", "_step.npy"), new)
+
+
+
+
+if __name__ == "__main__":
+    # sufixes = ["20220427T192930_WViuSKxC", "20220428T130515_4QykcNJR", "20220428T154400_VxxFQPr2",
+    #            "20220428T182828_dfn2FS3c", "20220503T140118_wYhTmpOD"]
+    temp_dir = "/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder_step2/"
+    filenames = [os.path.join(temp_dir, _) for _ in os.listdir(temp_dir) if "predict_spectra" in _]
+    filenames = [_ for _ in filenames if "_step.npy" not in _]
+    convert_training_data_to_difference_numpy(filenames)
+    # dataset_folder = "/Volumes/Elements/NewGeneratedData_reduced_wavelength"
+
+    # combine_datasets(["all"], file_folder=dataset_folder, combined_output_sufix="combined", overwrite = True)
     # combine_datasets(sufixes, file_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/KK", combined_output_sufix= "combined", overwrite = True)
 
