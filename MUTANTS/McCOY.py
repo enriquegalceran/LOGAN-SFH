@@ -5,10 +5,13 @@ import argparse
 import os
 # import sys
 # import csv
+# import pickle
+import codecs
 # from typing import Callable, Any
 from pylick.pylick.analysis import Galaxy
 from pylick.pylick.indices import IndexLibrary
 from datetime import datetime
+from astropy.io import fits
 
 import numpy as np
 import pandas as pd
@@ -55,21 +58,40 @@ def save_data_to_file(model_paths, data_path,
                       method_standardize=None,
                       which_data="val",
                       first_id_plot=0, n_plot=None,
+                      random_state=1995,
                       temp_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder",
                       **kwargs):
+    input_spectra_step = None
+    input_magnitudes_step = None
     # Plan: export data (csv?) for R to be read
     # Load Data
     loaded_data = evaluate_model(model_paths, data_path, return_loss=False, method_standardize=method_standardize,
-                                 which_data=which_data, first_id_plot=first_id_plot, n_plot=n_plot, **kwargs)
+                                 which_data=which_data, first_id_plot=first_id_plot, n_plot=n_plot,
+                                 traintestrandomstate=random_state, **kwargs)
     (input_spectra, input_magnitudes, label_sfh, label_z, label_sfh_no_normalization, label_z_no_normalization,
      spectra_lambda, agevec, ageweight, saved_models, idx, outputs, losses) = loaded_data
     # remove tuple data
     del loaded_data
 
+    if "_step" in data_path:
+        input_spectra_step = input_spectra
+        input_magnitudes_step = input_magnitudes
+        with fits.open(data_path.replace("_steps", "")) as hdul:
+            tmp_spect = hdul[0].data[1:-5, 1:]
+            tmp_magn = hdul[0].data[-5:, 1:]
+
+        # (_, input_spectra, _, input_magnitudes) = train_test_split(tmp_spect, tmp_magn,
+        #                                                            test_size=0.8,
+        #                                                            train_size=0.2,
+        #                                                            random_state=random_state,
+        #                                                            shuffle=True)
+
     print(f"[INFO] Exported files to folder: {os.path.abspath(temp_folder)}")
     # Export all the relevant information in numpy format in the temp_folder directory
     np.save(os.path.join(temp_folder, "input_spectra"), input_spectra)
     np.save(os.path.join(temp_folder, "input_magnitudes"), input_magnitudes)
+    np.save(os.path.join(temp_folder, "input_spectra_steps"), input_spectra_step)
+    np.save(os.path.join(temp_folder, "input_magnitudes_steps"), input_magnitudes_step)
     np.save(os.path.join(temp_folder, "agevec"), agevec)
     np.save(os.path.join(temp_folder, "ageweight"), ageweight)
     np.save(os.path.join(temp_folder, "wave"), spectra_lambda)
@@ -86,7 +108,10 @@ def save_data_to_file(model_paths, data_path,
 def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force_error_sn=100,
                                 temp_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder",
                                 return_indices=True, calculate_differences=True, verbosity_progress=100,
+                                plot_graphs=False,
                                 **kwargs):
+    lib = IndexLibrary()
+
     # ToDo: Acknoledgements need to be added: https://gitlab.com/mmoresco/pylick#index_list
     if idx_models is None:
         idx_models = [0, 1]
@@ -108,6 +133,9 @@ def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force
 
     # indexes that are going to be used:
     index_list = np.arange(53, 66)
+    # index_list = np.array([53, 54, 55, 57, 58])
+    names = lib.names[index_list]
+    tex_names = lib.tex_names[index_list]
 
     # Load wave
     wave = np.load(name_wave)
@@ -124,7 +152,8 @@ def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force
             if i % verbosity_progress == 0:
                 print(f"Current case for input spectra : {i}/{input_spectra_number}")
             tmp = Galaxy("Input_" + str(i), index_list, spec_wave=wave, spec_flux=input_spectra[i, :],
-                         spec_err=input_spectra[i, :] / force_error_sn, spec_mask=None, meas_method='int')
+                         spec_err=input_spectra[i, :] / force_error_sn, spec_mask=None, meas_method='int',
+                         plot=plot_graphs, plot_settings={'outpath': temp_folder + "/Graficas/"}, z=0.001)
             index_values_spectra[i, :] = tmp.vals
         end_time = datetime.now()
         print('Duration: {}'.format(end_time - start_time))
@@ -147,7 +176,8 @@ def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force
             # FIXME: There are some cases where there are NaNs (maybe because sfh/z is predicted as <0?)
             if not np.isnan(predicted_spectra[i, 0]):
                 tmp = Galaxy("Predicted_" + str(i), index_list, spec_wave=wave, spec_flux=predicted_spectra[i, :],
-                             spec_err=predicted_spectra[i, :] / force_error_sn, spec_mask=None, meas_method='int')
+                             spec_err=predicted_spectra[i, :] / force_error_sn, z=0.001, spec_mask=None,
+                             meas_method='int')
                 index_values_predicted[i, :] = tmp.vals
             else:
                 index_values_predicted[i, :] = [nan] * len(index_list)
@@ -158,15 +188,15 @@ def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force
         np.save(os.path.join(temp_folder, f"lick_idx_predicted_{imodel}.npy"), index_values_predicted)
 
         if calculate_differences:
-            differences = np.zeros((predicted_spectra_number, ))
+            differences = np.zeros((predicted_spectra_number,))
             print(f"[INFO] Calculating differences for predicted spectra vs. input spectra for model #{imodel}...")
             start_time = datetime.now()
             for i in range(predicted_spectra_number):
                 if i % verbosity_progress == 0:
                     print("Current case for differences for predicted spectra vs. input spectra model "
                           f"#{imodel} : {i}/{predicted_spectra_number}")
-                differences[i] = np.square(list_relative_difference(index_values_spectra[i, ],
-                                                                    index_values_predicted[i, ])
+                differences[i] = np.square(list_relative_difference(index_values_spectra[i,],
+                                                                    index_values_predicted[i,])
                                            ).mean()
             end_time = datetime.now()
             print('Duration: {}'.format(end_time - start_time))
@@ -176,9 +206,21 @@ def calculate_lick_indices_mass(idx_models=None, calculate_for_input=True, force
             np.save(os.path.join(temp_folder, f"differences_{imodel}.npy"), differences)
             out[f"Relative-MSE_{imodel}"] = differences
 
+    print("[INFO] Saving names and tex_names ...")
+    with open(os.path.join(temp_folder, "lick_names.txt"), "w+") as fp:
+        for item in names:
+            fp.write(f"{item}\n")
+        print("done")
+    with open(os.path.join(temp_folder, "lick_tex_names.txt"), "w+") as fp:
+        for item in tex_names:
+            fp.write(f"{item}\n")
+        print("done")
+
     if return_indices:
         out["index_values_predicted"] = index_values_predicted
         out["index_values_spectra"] = index_values_spectra
+        out["lick_names"] = names
+        out["lick_tex_names"] = tex_names
 
     return out
 
@@ -190,7 +232,7 @@ def evaluate_model(model_paths, data_path, return_loss=True,
                    train_size=0.8, test_size=0.2, traintestrandomstate=42, traintestshuffle=True,
                    return_dictionary=False, **kwargs):
     if method_standardize is None:
-        method_standardize = {"sfh": 0, "z": 0, "spectra": 0, "magnitudes": 0}
+        method_standardize = {"sfh": 5, "z": 0, "spectra": 0, "magnitudes": 0}
     else:
         for n in method_standardize.keys():
             if n not in ["sfh", "z", "spectra", "magnitudes"]:
@@ -340,8 +382,11 @@ def model_colormap(model_paths, data_path, calculate_loss=False,
         log_sfh_losses = [np.log10(_) for _ in sfh_losses]
     else:
         lick = []
+        lick_spectra = np.load(os.path.join(temp_folder, "lick_idx_input_spectra.npy"))
+        lick_individual = []
         for imodel in range(len(model_paths)):
             lick.append(np.load(os.path.join(temp_folder, f"differences_{imodel}.npy")))
+            lick_individual.append(np.load(os.path.join(temp_folder, f"lick_idx_predicted_{imodel}.npy")))
     # mass_weighted = label_sfh * ageweight
     # total_mass = np.sum(mass_weighted, axis=1)
     mass_weigted = label_sfh_no_normalization * ageweight
@@ -349,9 +394,9 @@ def model_colormap(model_paths, data_path, calculate_loss=False,
     mass_only_burst_idx = agevec < mageburst
     mass_burst = np.sum(mass_weigted[:, mass_only_burst_idx], axis=1)
 
-    def plot_colorbars(x, y, c, s=3, cmap='plasma_r', log="xy", xlim=None, ylim=None,
+    def plot_colormaps(x, y, c, s=3, cmap='plasma_r', log="xy", xlim=None, ylim=None,
                        xlabel=None, ylabel=None, collabel=None, title=None, log_color=False,
-                       savefig_name=None, figsize=(12, 9)):
+                       savefig_name=None, figsize=(12, 9), same_axis=True):
         fig, ax = plt.subplots(figsize=figsize)
         plt.title(title)
         if log_color:
@@ -368,13 +413,19 @@ def model_colormap(model_paths, data_path, calculate_loss=False,
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
         plt.tight_layout()
+        if same_axis:
+            x_limits = ax.get_xlim()
+            y_limits = ax.get_ylim()
+            limits = (min(x_limits[0], y_limits[0]), max(x_limits[1], y_limits[1]))
+            ax.set_xlim(limits)
+            ax.set_ylim(limits)
         if savefig_name is not None:
             print(f"[INFO] Saving image to: {savefig_name} ...")
             plt.savefig(savefig_name)
         plt.show()
 
     if calculate_loss:
-        plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
+        plot_colormaps(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
                        y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
                        c=log_combined_losses[0],
                        xlabel=r"$M_{total} (M_{\odot})$",
@@ -383,7 +434,7 @@ def model_colormap(model_paths, data_path, calculate_loss=False,
                        title=r"Combined Loss Function ($\ell$) based on $M_{total}$ and $M_{burst}$",
                        savefig_name='/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_fig_combined.png',
                        )
-        plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
+        plot_colormaps(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
                        y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
                        c=log_sfh_losses[0],
                        xlabel=r"$M_{total} (M_{\odot})$",
@@ -392,7 +443,7 @@ def model_colormap(model_paths, data_path, calculate_loss=False,
                        title=r"SFH Loss Function ($\ell$) based on $M_{total}$ and $M_{burst}$",
                        savefig_name='/Users/enrique/Documents/GitHub/LOGAN-SFH/my_test_fig_sfh.png',
                        )
-        plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
+        plot_colormaps(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
                        y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
                        c=log_metallicity_losses[0],
                        xlabel=r"$M_{total} (M_{\odot})$",
@@ -403,18 +454,47 @@ def model_colormap(model_paths, data_path, calculate_loss=False,
                        )
     else:
         for imodel in range(len(model_paths)):
+            names = []
+            # open file and read the content in a list
+            with open(os.path.join(temp_folder, "lick_names.txt"), 'r') as fp:
+                for line in fp:
+                    x = line.strip()
+                    names.append(x)
+            tex_names = []
+            # open file and read the content in a list
+            with open(os.path.join(temp_folder, "lick_tex_names.txt"), 'r') as fp:
+                for line in fp:
+                    x = line.strip()
+                    x.replace("\\\\", "\\")
+                    tex_names.append(x)
+
+            for iline, name, tex_name in zip(range(len(names)), names, tex_names):
+                true_index = lick_spectra[:, iline]
+                predicted_index = lick_individual[imodel][:, iline]
+                plot_colormaps(x=true_index,
+                               y=predicted_index,
+                               c=np.log10(mass_burst / total_mass_no_norm),
+                               xlabel=fr"True value for ${tex_name}$",
+                               ylabel=fr"Predicted value for ${tex_name}$",
+                               collabel=r'$Log_{10}(M_{burst}/M_{total}) (Burst \equiv \sum M_{age\leq0.1Gyr})$',
+                               title=fr"Lick indices comparison true vs predicted [${tex_name}$ line] - model: #{imodel}",
+                               log_color=False,
+                               log="",
+                               savefig_name=f'/Users/enrique/Documents/GitHub/LOGAN-SFH/Plots/lick_index_comparison/lick_{name}_m{imodel}.png',
+                               )
+
             percentile_value = np.nanpercentile(lick[imodel],
-                                             percentile, )
+                                                percentile, )
             id_percentile = np.logical_and(lick[imodel] < percentile_value, np.invert(np.isnan(lick[imodel])))
-            # plot_colorbars(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
+            # plot_colormaps(x=total_mass_no_norm[first_id_plot:(first_id_plot + n_plot)],
             #                y=mass_burst[first_id_plot:(first_id_plot + n_plot)],
             #                c=lick[imodel][first_id_plot:(first_id_plot + n_plot)],
-            plot_colorbars(x=total_mass_no_norm[id_percentile],
+            plot_colormaps(x=total_mass_no_norm[id_percentile],
                            y=mass_burst[id_percentile],
                            c=lick[imodel][id_percentile],
                            xlabel=r"$M_{total} (M_{\odot})$",
                            ylabel=r"$M_{burst} (M_{\odot}) (\leq0.1Gyr)$",
-                           collabel=r'$Log_{10}$'*log_color + 'Relative-MSE for lick indices',
+                           collabel=r'$Log_{10}$' * log_color + 'Relative-MSE for lick indices',
                            title=r"Relative-MSE lick indexes based on $M_{total}$ and $M_{burst}$ for model #"
                                  + str(imodel) + " percentile:" + str(percentile),
                            log_color=log_color,
@@ -588,9 +668,12 @@ def main(update_values=None, **mainkwargs):
 if __name__ == "__main__":
     # indices_lick = calculate_lick_indices_mass(calculate_for_input=True, verbosity_progress=400)
     # models_path = "/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainedModels/MSE_reduced_wave_small_dataset/"
-    models_path = "/Users/enrique/scpdata/2"
+    # models_path = "/Users/enrique/scpdata/2"          # Este es el último modelo antes de steps
+    models_path = "/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainedModels/MSE_steps2/"
+    # datapath = os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/",
+    #                         "Input_combined_wave.fits")               # Ultimo antes de steps
     datapath = os.path.join("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/",
-                            "Input_combined_wave.fits")
+                            "Input_combined_wave_steps.fits")
 
     files = os.listdir(models_path)
     keywords_to_remove = ["epoch001", "imagen", "config"]
@@ -601,22 +684,24 @@ if __name__ == "__main__":
     length_prefix_loss = files[0].find("loss")
     filenames = [f"e{_[(length_prefix_epoch + 5):(length_prefix_epoch + 8)]}-"
                  f"l{_[(length_prefix_loss + 4):-3]}" for _ in files]
-    models = [os.path.join(models_path, f) for f in files]
+    models = [os.path.join(models_path, f) for f in files if f[0] != "."]
 
-    model_colormap(models[:2], data_path=datapath, calculate_loss=False, percentile=99)
-    model_colormap(models[:2], data_path=datapath, calculate_loss=False, percentile=95)
-    model_colormap(models[:2], data_path=datapath, calculate_loss=False, percentile=80)
-    model_colormap(models[:2], data_path=datapath, calculate_loss=False, percentile=99, log_color=True)
+    tempfolder = "/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder_step2"
+    save_data_to_file([models[0]], datapath, random_state=1995,
+                      temp_folder=tempfolder)
 
+    # save_data_to_file(models[:3], data_path=datapath)
+    # calculate_lick_indices_mass([2], calculate_for_input=False, plot_graphs=False)
+    # model_colormap([models[0]], data_path=datapath, calculate_loss=False)
+    # model_colormap(models[:2], data_path=datapath, calculate_loss=False, percentile=99)
+    # model_colormap(models[:2], data_path=datapath, calculate_loss=False, percentile=95)
+    # model_colormap(models[:2], data_path=datapath, calculate_loss=False, percentile=80)
+    # model_colormap(models[:2], data_path=datapath, calculate_loss=False, percentile=99, log_color=True)
 
     # main({"verify_model": models[0:2], "data_path": datapath},
     #      model_names=filenames,
     #      method_standardize={"sfh": 5}, n_plot=10
     #      )
-
-
-
-
 
     # old_models = ["/Users/enrique/model_mean_squared_13_05.h5",
     #               "/Users/enrique/model_mean_squared_log_13_05.h5",
