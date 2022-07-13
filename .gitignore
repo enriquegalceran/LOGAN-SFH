@@ -66,3 +66,10 @@ tempFolder_step2/*
 tempFolder_step/*
 KK/*
 KK2/*
+my_test_lick_1.png
+my_test_lick_0.png
+TrainingData/Input_combined_wave2.fits
+TrainingData/Input_combined_wave_steps.fits
+TrainingData/Label_combined_wave_steps.fits
+TrainingData/MetaD_combined_wave_steps.rda
+pylick/
