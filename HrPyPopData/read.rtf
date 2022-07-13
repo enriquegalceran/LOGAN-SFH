@@ -1,0 +1,147 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2638
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fmodern\fcharset0 Courier;\f1\fnil\fcharset0 Menlo-Regular;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue233;\red0\green0\blue0;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c93333;\cssrgb\c0\c0\c0;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\partightenfactor0
+{\field{\*\fldinst{HYPERLINK "https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/MNRAS/506/4781"}}{\fldrslt 
+\f0\fs26 \cf2 \expnd0\expndtw0\kerning0
+\ul \ulc2 \outl0\strokewidth0 \strokec2 J/MNRAS/506/4781}}
+\f0\fs26 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3     HR-PYPOPSTAR model                  (Millan-irigoyen+, 2021)\
+\
+HR-PYPOPSTAR: high-wavelength-resolution stellar populations evolutionary\
+synthesis model.\
+    Millan-irigoyen I., Molla M., Cervino M., Ascasibar Y., Garcia-vargas M.L.,\
+    Coelho P.R.T.\
+   <Mon. Not. R. Astron. Soc., 506, 4781-4799 (2021)>\
+   ={\field{\*\fldinst{HYPERLINK "http://simbad.cds.unistra.fr/simbad/sim-ref?bibcode=2021MNRAS.506.4781M"}}{\fldrslt \cf2 \ul \ulc2 \strokec2 2021MNRAS.506.4781M}}    (SIMBAD/NED BibCode)\
+\
+ADC_Keywords: Models, atmosphere ; Energy distributions ; Associations, stellar\
+Keywords: galaxies: stellar content - galaxies: stars clusters: general -\
+          galaxies: evolution - stars: atmospheres - stars: evolution\
+\
+Abstract:\
+    We present the HR-PYPOPSTAR model, which provides a complete set (in\
+    ages) of high-resolution (HR) spectral energy distributions of Single\
+    Stellar Populations. The model uses the most recent\
+    high-wavelength-resolution theoretical atmosphere libraries for\
+    main-sequence, post-AGB/planetary nebulae and Wolf-Rayet stars. The\
+    spectral energy distributions are given for more than a hundred ages\
+    ranging from 0.1Myr to 13.8Gyr, at four different values of the\
+    metallicity (Z = 0.004, 0.008, 0.019, and 0.05), considering four\
+    different IMFs. The wavelength range goes from 91 to 24000\'c5 in\
+    linear steps 
+\f1 \uc0\u948 \u955 
+\f0 =0.1\'c5, giving a theoretical\
+    resolving power R
+\fs21\fsmilli10833 \sub th,5000
+\fs26 \nosupersub \uc0\u8764 50000 at 5000\'c5. This is the main\
+    novelty of these spectra, unique for their age and wavelength ranges.\
+    The models include the ionizing stellar populations that are relevant\
+    at both young (massive hot stars) and old (planetary nebulae) ages. We\
+    have tested the results with some examples of HR spectra recently\
+    observed with MEGARA at GTC. We highlight the importance of wavelength\
+    resolution in reproducing and interpreting the observational data from\
+    the last and forthcoming generations of astronomical instruments\
+    operating at 8-10m class telescopes, with higher spectral resolution\
+    than their predecessors.\
+\
+Description:\
+    We give the electronic tables corresponding to Table 5 and Table 6 of\
+    the publication. We also present the Stellar Energy Distributions\
+    (SEDs) for the Simple Stellar Populations (SSPs) computed in the work,\
+    for 4 different IMFs: Salpeter ({\field{\*\fldinst{HYPERLINK "http://simbad.cds.unistra.fr/simbad/sim-ref?bibcode=1955ApJ...121..161S"}}{\fldrslt \cf2 \ul \ulc2 \strokec2 1955ApJ...121..161S}}, SAL), Ferrini,\
+    Penco & Palla ({\field{\*\fldinst{HYPERLINK "http://simbad.cds.unistra.fr/simbad/sim-ref?bibcode=1990A%26A...231..391F"}}{\fldrslt \cf2 \ul \ulc2 \strokec2 1990A&A...231..391F}}, FER), Kroupa ({\field{\*\fldinst{HYPERLINK "http://simbad.cds.unistra.fr/simbad/sim-ref?bibcode=2002Sci...295...82K"}}{\fldrslt \cf2 \ul \ulc2 \strokec2 2002Sci...295...82K}},\
+    with exponent -2.7 for the massive star range, KRO), and Chabrier\
+    ({\field{\*\fldinst{HYPERLINK "http://simbad.cds.unistra.fr/simbad/sim-ref?bibcode=2003ApJ...586L.133C"}}{\fldrslt \cf2 \ul \ulc2 \strokec2 2003ApJ...586L.133C}}, CHA), 4 metallicities (Z=0.004, 0.008, 0.02 and\
+    0.05) for each one, and 106 ages from logage=5.00 until logage=10.18\
+    (a shorter range in age for SAL) for wavelengths in the range 91\'c5\
+    until 24000\'c5.\
+\
+File Summary:\
+--------------------------------------------------------------------------------\
+ FileName      Lrecl  Records   Explanations\
+--------------------------------------------------------------------------------\
+ReadMe            80        .   This file\
+table5.dat       165     3322   Magnitudes in broad band Systems for\
+                                 stellar and total spectra\
+table6.dat        54     1662   Number of ionizing photons\
+spectra.dat       49     1662   List of spectra\
+sp/*               .     1662   Individual spectra\
+--------------------------------------------------------------------------------\
+\
+Byte-by-byte Description of file: table5.dat\
+--------------------------------------------------------------------------------\
+   Bytes Format Units   Label     Explanations\
+--------------------------------------------------------------------------------\
+   1-  3  A3    ---     IMF       IMF: CHA, KRO, FER or SAL (G1)\
+   6- 10  F5.3  ---     Z         Metallicity:0.004,0.008,0.02,0.05\
+      13  A1    ---     Type      [ST] Type of spectra: S(stellar) or T(total)\
+  17- 21  F5.2  [yr]    logtau    Logarithm of the age in yr\
+  25- 30  F6.3  mag     UV1mag    Magnitude in Johnson-Cousins band UV1\
+  34- 39  F6.3  mag     UV2mag    Magnitude in Johnson-Cousins band UV2\
+  43- 48  F6.3  mag     Umag      Magnitude in Johnson-Cousins band U\
+  52- 57  F6.3  mag     B1mag     Magnitude in Johnson-Cousins band B1\
+  61- 66  F6.3  mag     B2mag     Magnitude in Johnson-Cousins band B2\
+  70- 75  F6.3  mag     Vmag      Magnitude in Johnson-Cousins band V\
+  79- 84  F6.3  mag     Rmag      Magnitude in Johnson-Cousins band R\
+  88- 93  F6.3  mag     Imag      Magnitude in Johnson-Cousins band I\
+  97-102  F6.3  mag     Jmag      Magnitude in Johnson-Cousins band J\
+ 106-111  F6.3  mag     Hmag      Magnitude in Johnson-Cousins band H\
+ 115-120  F6.3  mag     Kmag      Magnitude in Johnson-Cousins band K\
+ 124-129  F6.3  mag     umag      Magnitude in SDSS-SLOAN band u\
+ 133-138  F6.3  mag     gmag      Magnitude in SDSS-SLOAN band g\
+ 142-147  F6.3  mag     rmag      Magnitude in SDSS-SLOAN band r\
+ 151-156  F6.3  mag     imag      Magnitude in SDSS-SLOAN band i\
+ 160-165  F6.3  mag     zmag      Magnitude in SDSS-SLOAN band z\
+-------------------------------------------------------------------------------\
+\
+Byte-by-byte Description of file: table6.dat\
+--------------------------------------------------------------------------------\
+   Bytes Format Units   Label     Explanations\
+--------------------------------------------------------------------------------\
+   1-  3  A3    ---     IMF       IMF: CHA, KRO, FER or SAL (G1)\
+   6- 10  F5.3  ---     Z         Metallicity:0.004,0.008,0.02,0.05\
+  14- 18  F5.2  [yr]    logtau    Logarithm of the age in yr\
+  23- 27  F5.2  s-1     QHI       Number of ionizing photons by s for H\
+  32- 36  F5.2  s-1     QHeI      Number of ionizing photons by s for He I\
+  41- 45  F5.2  s-1     QOI       Number of ionizing photons by s for OI\
+  50- 54  F5.2  s-1     QHeII     Number of ionizing photons by s for HeII\
+-------------------------------------------------------------------------------\
+\
+Byte-by-byte Description of file: spectra.dat\
+--------------------------------------------------------------------------------\
+   Bytes Format Units   Label     Explanations\
+--------------------------------------------------------------------------------\
+   1-  3  A3    ---     IMF       IMF: CHA, KRO, FER or SAL (G1)\
+   5-  9  F5.3  ---     Z         Metallicity:0.004,0.008,0.02,0.05\
+  11- 15  F5.2  [yr]    logtau    Logarithm of the age in yr\
+  17- 49  A33   ---     FileName  Name of the spectrum file in subdirectory sp\
+--------------------------------------------------------------------------------\
+\
+Byte-by-byte Description of file: sp/*\
+--------------------------------------------------------------------------------\
+   Bytes Format Units     Label   Explanations\
+--------------------------------------------------------------------------------\
+   2-  9  F8.2  0.1nm     lambda  Wavelength in Anstrong\
+  12- 23  E12.6 10Lsun/nm FluxS   Stellar flux in solar luminosity by Angstroms\
+                                   for each solar mass of created star\
+  26- 37  E12.6 10Lsun/nm FluxT   Total flux (stellar+nebular) in solar\
+                                   luminosity by Angstroms for each solar mass\
+                                   of created star\
+--------------------------------------------------------------------------------\
+\
+Global notes:\
+Note (G1): IMF as follows:\
+   SAL =  Salpeter ({\field{\*\fldinst{HYPERLINK "http://simbad.cds.unistra.fr/simbad/sim-ref?bibcode=1955ApJ...121..161S"}}{\fldrslt \cf2 \ul \ulc2 \strokec2 1955ApJ...121..161S}})\
+   FER = Ferrini, Penco & Palla ({\field{\*\fldinst{HYPERLINK "http://simbad.cds.unistra.fr/simbad/sim-ref?bibcode=1990A%26A...231..391F"}}{\fldrslt \cf2 \ul \ulc2 \strokec2 1990A&A...231..391F}})\
+   KRO = Kroupa ({\field{\*\fldinst{HYPERLINK "http://simbad.cds.unistra.fr/simbad/sim-ref?bibcode=2002Sci...295...82K"}}{\fldrslt \cf2 \ul \ulc2 \strokec2 2002Sci...295...82K}}) with exponent -2.7 for the massive\
+          star range\
+   CHA = Chabrier ({\field{\*\fldinst{HYPERLINK "http://simbad.cds.unistra.fr/simbad/sim-ref?bibcode=2003ApJ...586L.133C"}}{\fldrslt \cf2 \ul \ulc2 \strokec2 2003ApJ...586L.133C}})\
+-------------------------------------------------------------------------------\
+\
+Acknowledgements:\
+    Mercedes Molla, mercedes.molla(at)hotmail.es\
+}
