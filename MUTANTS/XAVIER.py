@@ -365,7 +365,7 @@ class Cerebro:
 
     @staticmethod
     def graph(model, filename="testimage.png", **kwargs):
-        plot_model(model, to_file=filename, show_shapes=True, show_layer_names=True, **kwargs)
+        return plot_model(model, to_file=filename, show_shapes=True, show_layer_names=True, **kwargs)
 
     @staticmethod
     def smape_loss(y_true, y_pred):
