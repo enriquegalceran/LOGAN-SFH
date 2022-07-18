@@ -73,3 +73,5 @@ TrainingData/Input_combined_wave_steps.fits
 TrainingData/Label_combined_wave_steps.fits
 TrainingData/MetaD_combined_wave_steps.rda
 pylick/
+tempFolder*
+KK*
