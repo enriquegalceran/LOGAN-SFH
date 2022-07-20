@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # XAVIER
 # eXtragalactic Artificial-neural-network Visualizer and identifIER
-
+import keras.losses
 from keras.models import Model
 from keras.layers import BatchNormalization, Conv1D, MaxPooling1D, Activation, \
     Dropout, Concatenate, Flatten, Dense, Input, Lambda, Reshape
@@ -326,6 +326,11 @@ class Cerebro:
             if verbose >= 1:
                 print("[INFO] Custom SMAPE is being used.")
             loss_function_used = Cerebro.smape_loss
+        elif loss_function_used == "MSLE_weighted":
+            # MSLE weighted
+            if verbose >= 1:
+                print("[INFO] Custom MSLE_weighted is being used.")
+            loss_function_used = Cerebro.msle_weighted
 
         if loss_function_used_metal is None:
             loss_function_used_metal = loss_function_used
@@ -373,3 +378,12 @@ class Cerebro:
         summ = kerasbackend.maximum(kerasbackend.abs(y_true) + kerasbackend.abs(y_pred) + epsilon, 0.5 + epsilon)
         smape = kerasbackend.abs(y_pred - y_true) / summ * 2.0
         return smape
+
+    @staticmethod
+    def msle_weighted(y_true, y_pred):
+        y_pred = tf.convert_to_tensor(y_pred)
+        y_true = tf.cast(y_true, y_pred.dtype)
+        first_log = tf.math.log(keras.backend.maximum(y_pred, keras.backend.epsilon()) + 1.)
+        second_log = tf.math.log(keras.backend.maximum(y_true, keras.backend.epsilon()) + 1.)
+        weights = tf.linspace(1.5, 0.5, 17)
+        return keras.backend.mean(tf.math.squared_difference(first_log, second_log) * weights, axis=-1)
