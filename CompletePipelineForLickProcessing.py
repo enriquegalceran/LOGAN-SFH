@@ -184,6 +184,7 @@ def main(imodel,
          models_path="/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainedModels/MSLE_2/",
          temp_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder_MSLE_2/",
          dummy_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/KK2/",
+         lick_indices_used=np.arange(53, 66),
          n_spectra_to_plot=10,
          number_of_points_in_spectra_regenerated=1000,
          force_error_sn=100,
@@ -313,10 +314,8 @@ def main(imodel,
         plt.savefig(f"{dummy_folder}/ComparisonOfSpectra/model_{imodel}/SpectraComparison_{i}.png",
                     facecolor='white', transparent=False, frameon=True)
 
-    # index_list = np.array([53, 54, 55, 57, 58])         # Only interested lines
-    index_list = np.arange(53, 66)  # All indices in range
-    names = lib.names[index_list]
-    tex_names = lib.tex_names[index_list]
+    names = lib.names[lick_indices_used]
+    tex_names = lib.tex_names[lick_indices_used]
     input_spectra_number = 5
 
     if not os.path.exists(os.path.join(dummy_folder, "lines")):
@@ -327,7 +326,7 @@ def main(imodel,
 
     for i_spectra in range(n_spectra_to_plot):
         plot_lick_indices_comparison(in_spect=input_spectra_regenerated[i_spectra, :],
-                                     pre_spect=predicted_spectra[i_spectra, :], lick_indices_used=index_list,
+                                     pre_spect=predicted_spectra[i_spectra, :], lick_indices_used=lick_indices_used,
                                      age_vec=agevec, lab_sfh=label_sfh[i_spectra, :], lab_z=label_z[i_spectra, :],
                                      pre_sfh=predicted_sfh[i_spectra, :], pre_z=predicted_z[i_spectra, :],
                                      wave_plot=wave, force_error_sn=force_error_sn,
@@ -337,7 +336,7 @@ def main(imodel,
     output_name_input_spectra_lick = "lick_idx_input_spectra_regenerated_"
     input_spectra = np.load(name_input_spectra_regenerated)
     input_spectra_number = min(input_spectra.shape[0], number_of_points_in_spectra_regenerated)
-    index_values_spectra = np.zeros((input_spectra_number, len(index_list)), dtype=float)
+    index_values_spectra = np.zeros((input_spectra_number, len(lick_indices_used)), dtype=float)
 
     # Normalization
     if norm_mode == "no_norm":
@@ -352,7 +351,7 @@ def main(imodel,
     for i in range(input_spectra_number):
         if i % verbosity_progress == 0:
             print(f"Current case for input spectra : {i}/{input_spectra_number}")
-        tmp = Galaxy("Input_" + str(i), index_list, spec_wave=wave, spec_flux=input_spectra[i, :],
+        tmp = Galaxy("Input_" + str(i), lick_indices_used, spec_wave=wave, spec_flux=input_spectra[i, :],
                      spec_err=input_spectra[i, :] / force_error_sn, spec_mask=None, meas_method='int',
                      plot=False, plot_settings={'outpath': temp_folder + "/Graficas/"}, z=0.001)
         index_values_spectra[i, :] = tmp.vals
@@ -366,7 +365,7 @@ def main(imodel,
     predicted_spectra = np.load(predicted_spectra_name)
     output_name_predicted_spectra_lick = "lick_idx_predicted_"
     predicted_spectra_number = min(predicted_spectra.shape[0], number_of_points_in_spectra_regenerated)
-    index_values_predicted = np.zeros((predicted_spectra_number, len(index_list)), dtype=float)
+    index_values_predicted = np.zeros((predicted_spectra_number, len(lick_indices_used)), dtype=float)
 
     # Normalization
     if norm_mode == "no_norm":
@@ -383,11 +382,11 @@ def main(imodel,
             print(f"Current case for predicted spectra model #{imodel} : {i:4d}/{predicted_spectra_number}")
         # FIXME: There are some cases where there are NaNs (maybe because sfh/z is predicted as <0?)
         if not np.isnan(predicted_spectra[i, 0]):
-            tmp = Galaxy("Predicted_" + str(i), index_list, spec_wave=wave, spec_flux=predicted_spectra[i, :],
+            tmp = Galaxy("Predicted_" + str(i), lick_indices_used, spec_wave=wave, spec_flux=predicted_spectra[i, :],
                          spec_err=predicted_spectra[i, :] / force_error_sn, z=0.001, spec_mask=None, meas_method='int')
             index_values_predicted[i, :] = tmp.vals
         else:
-            index_values_predicted[i, :] = [nan] * len(index_list)
+            index_values_predicted[i, :] = [nan] * len(lick_indices_used)
     end_time = datetime.now()
     print('Duration: {}'.format(end_time - start_time))
     print(f"[INFO] Finished calculating lick indices for predicted spectra for model #{imodel}.")
