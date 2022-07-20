@@ -30,14 +30,14 @@ class Cerebro:
                        kernel_initializer=kernel_initializer)(layer_input)
             x = Activation(activation=act)(x)
             x = BatchNormalization()(x)
-            x = MaxPooling1D(pool_size=pool_size)(x)
+            x = MaxPooling1D(pool_size=pool_size, padding='same')(x)
             x = Dropout(dropout)(x)
         else:
             x = Conv1D(filters=n_filters, kernel_size=filter_size, activation=act,
                        strides=stride, padding=padding,
                        kernel_initializer=kernel_initializer)(layer_input)
             x = BatchNormalization()(x)
-            x = MaxPooling1D(pool_size=pool_size)(x)
+            x = MaxPooling1D(pool_size=pool_size, padding='same')(x)
             x = Dropout(dropout)(x)
         return x
 
