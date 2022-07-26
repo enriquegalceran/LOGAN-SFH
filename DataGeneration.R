@@ -11,7 +11,9 @@ library(ProSpect)
 library(ggplot2)
 library(plyr)         # splat(func)(c(var1, list_of_vars))
 library(stringi)
+library(dplyr)
 EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
+EMILESRecortado = readRDS(file="EMILESData/EMILESRecortado.rds")
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
 
@@ -20,15 +22,17 @@ EMILESCombined = readRDS(file="EMILESData/EMILESCombined.rds")
 outputFolder = "DataGeneratedOutput"
 savefilename = "Argument_df.rda"
 configFilename = "Data_Generation_Parameters.R"
-n.simul = 2000
+n.simul = 100
 
 rnd_id = stri_rand_strings(n=1, length=10)
 print(rnd_id)
+cat(paste("n.simul =", n.simul, "\n"))
 
 
 # Load Parameters from the Config File.
 source(configFilename)
 
+# TODO: Verify that speclib works as intended when it is changed.
 
 generateDataFrameArguments <- function(Parameters,
                                        n.simul,
@@ -194,9 +198,9 @@ generateDataFrameArguments <- function(Parameters,
                         emission=TRUE,
                         emission_scale="SFR",
                         burstfraction=NULL,
+                        sparse=1,
                         filters="HST",
                         stellpop="EMILESCombined",
-                        speclib=NULL,
                         new_scale="defaultlog1",
                         z=1e-4)
   for (name in names(def_parameters)){
@@ -214,10 +218,13 @@ generateDataFrameArguments <- function(Parameters,
       argument_names <- c(argument_names, n)
     }
   }
-  for (n in c("RndSeed", "probburst", "massfunc", "zfunc")){
+  for (n in c("RndSeed", "probburst", "massfunc", "zfunc", "waveout")){
     if (n %in% argument_names){
       argument_names <- argument_names[-which(argument_names == n)]
     }
+  }
+  if ("speclib" %in% argument_names){
+    argument_names <- argument_names[-which(argument_names =="speclib")]
   }
   
   df <- data.frame(matrix(0, nrow=n.simul, ncol=length(argument_names)))
@@ -316,7 +323,7 @@ drawSFHFromDataFrame <- function(df,
   norm_value = 1e10
   dummy_matrix = matrix(NA, nrow=dim(points_matrix)[1], ncol=dim(points_matrix)[2])
   for (i in 1:n.simul){
-    dummy_matrix[i, ] = points_matrix[i, ]*norm_value/(sum(points_matrix[i, ]*EMILESCombined$AgeWeights))
+    dummy_matrix[i, ] = points_matrix[i, ]*norm_value/(sum(points_matrix[i, ]*speclib$AgeWeights))
   }
   
   min_value = 1e-4
@@ -376,7 +383,7 @@ generateSpecFromDataFrame <- function(Parameters,
                                       new_scale="defaultlog1",
                                       saveDataFrame=FALSE,
                                       outputFolderPath=".",
-                                      waveout=seq(4700, 9400, 1.25),
+                                      waveout=seq(4700, 6247.75, 1.25),
                                       time_taken=NULL,
                                       rnd_id="",
                                       ...){
@@ -403,23 +410,20 @@ generateSpecFromDataFrame <- function(Parameters,
   name.df <- names(df)
   par.names = names(Parameters)
   
-  if (!is.null(Parameters$speclib)){
-    if (!is.null(Parameters$stellpop) & Parameters$stellpop != "EMILESCombined"){
-      warning("stellpop and speclib do not match!")
+  if (is.null(Parameters$speclib)){
+    if (!is.null(Parameters$stellpop)) {
+      if (Parameters$stellpop == "EMILESCombined"){
+        Parameters$speclib = readRDS(file="EMILESData/EMILESCombined.rds")
+      } else if (Parameters$stellpop == "EMILESRecortado"){
+        Parameters$speclib = readRDS(file="EMILESData/EMILESRecortado.rds")
+      }
     } else {
-      # Return to one of the default accepted values for SFHfunc
-      Parameters$stellpop="EMILES"
-    }
-  } else {
-    if (Parameters$stellpop  == "EMILESCombined"){
-      # Return to one of the default accepted values for SFHfunc
       Parameters$stellpop = "EMILESCombined"
-      # TODO: This will need to read global variable/env-variable or something similar.
       Parameters$speclib = readRDS(file="EMILESData/EMILESCombined.rds")
     }
   }
-  agevec = Parameters$speclib$Age
   
+  agevec = Parameters$speclib$Age
   
   if (Parameters$filters == "HST"){
     filtersHST <- c("F275W", "F336W", "F438W", "F555W", "F814W")
@@ -480,8 +484,8 @@ generateSpecFromDataFrame <- function(Parameters,
   completeDataMatrixLa <- matrix(0, nrow=n.simul + 1, ncol=numberColumnsLa)
   completeDataMatrixIn[1, ] = c(0, waveout, seq(1:length(filters)))
   completeDataMatrixLa[1, ] = c(0, agevec_new$age, agevec_new$age)
-  
-  
+
+
   i = 1
   while (i <= n.simul){
     
@@ -523,12 +527,37 @@ generateSpecFromDataFrame <- function(Parameters,
     }
     
     # Adjust Spectra to Wavelength (waveout)
-    if (!is.null(waveout)){
-      spectraObject$flux = interpolateToWaveout(
-        lapply(spectraObject$flux["wave"], as.numeric)[[1]],
-        lapply(spectraObject$flux["flux"], as.numeric)[[1]],
-        waveout,
-        returnList=TRUE)
+    if (Parameters$interpolate_waveout){
+      if (!is.null(waveout)){
+        spectraObject$flux = interpolateToWaveout(
+          lapply(spectraObject$flux["wave"], as.numeric)[[1]],
+          lapply(spectraObject$flux["flux"], as.numeric)[[1]],
+          waveout,
+          returnList=TRUE)
+      }
+    } else {
+      if (TRUE){
+        if (FALSE){    # EMILESCombined
+          plot(spectraObject$flux$wave, spectraObject$flux$flux, type="l", log="xy")
+          a <- spectraObject$flux$wave[1:(length(spectraObject$flux$wave) - 1)] - spectraObject$flux$wave[2:length(spectraObject$flux$wave)]
+          plot(spectraObject$flux$wave[1:(length(spectraObject$flux$wave) - 1)], a, type="l", log="x")
+          plot(spectraObject$flux$wave[30:11000], a[30:11000], type="l", log="x")
+          plot(spectraObject$flux$wave[30:11000], spectraObject$flux$flux[30:11000], type="l", log="xy")
+        }
+        if (FALSE){    # EMILESRecortado
+          plot(spectraObject$flux$wave, spectraObject$flux$flux, type="l", log="xy")
+          a <- spectraObject$flux$wave[1:(length(spectraObject$flux$wave) - 1)] - spectraObject$flux$wave[2:length(spectraObject$flux$wave)]
+          plot(spectraObject$flux$wave[1:(length(spectraObject$flux$wave) - 1)], a, type="l", log="x")
+          plot(spectraObject$flux$wave[22:1057], a[22:1057], type="l", log="x")
+          plot(spectraObject$flux$wave[22:1057], spectraObject$flux$flux[22:1057], type="l", log="xy")
+        }
+      }
+      filter_waveout = between(spectraObject$flux$wave, waveout[1], waveout[length(waveout)])
+      wav <- spectraObject$flux$wave[filter_waveout]
+      flu <- spectraObject$flux$flux[filter_waveout]
+      spectraObject$flux <- list(wave=wav, flux=flu)
+      
+      
     }
     
     # ID, spectra, Magnitudes, timer
@@ -538,7 +567,6 @@ generateSpecFromDataFrame <- function(Parameters,
     # Add new row to the Matrix
     completeDataMatrixIn[i + 1, ] = newRowIn
     completeDataMatrixLa[i + 1, ] = newRowLa
-    
     # ToDo: Add progress verbosity
     # ToDo: Add timer?
     if (i %% verboseStep == 0 || i == 1 || i == n.simul){
@@ -576,7 +604,7 @@ generateSpecFromDataFrame <- function(Parameters,
 generateTrainingData <- function(Parameters=NULL,
                                  Parameters_path=NULL,
                                  n.simul=1000,
-                                 speclib=EMILESCombined,
+                                 speclib=NULL,
                                  drawSFH=TRUE,
                                  drawSFHPath=NULL,
                                  drawSFHVerticalLine=FALSE,
@@ -588,7 +616,7 @@ generateTrainingData <- function(Parameters=NULL,
                                  progress_verbose_df=100,
                                  progress_verbose_spectra=20,
                                  rnd_id="",
-                                 waveout=seq(4700, 9400, 1.25),
+                                 waveout=seq(4700, 6247.75, 1.25),
                                  ...){
   
   # TODO: Documentation goes here
@@ -607,6 +635,11 @@ generateTrainingData <- function(Parameters=NULL,
   
   if (is.null(agevec)){
     agevec=speclib$Age
+  }
+  
+  # Put speclib inside Parameters
+  if (!is.null(speclib) && "speclib" %!in% Parameters){
+    Parameters$speclib = speclib
   }
   
   # If waveout is in Parameters, use that waveout.
@@ -672,10 +705,9 @@ generateTrainingData <- function(Parameters=NULL,
 
 
 
-metadata <- generateTrainingData(Parameters=NULL,
-                                 Parameters_path=configFilename,
+metadata <- generateTrainingData(Parameters=Parameters,
                                  n.simul=n.simul,
-                                 speclib=EMILESCombined,
+                                 speclib=EMILESRecortado,
                                  drawSFH=FALSE,
                                  drawSFHPath=NULL,
                                  drawSFHVerticalLine=FALSE,
@@ -686,36 +718,5 @@ metadata <- generateTrainingData(Parameters=NULL,
                                  progress_verbose_spectra=20,
                                  rnd_id=rnd_id,
                                  max_y_plot=10)
-
-
-
-
-
-
-
-
-# if (FALSE){
-#   #### MAIN ####
-#   output <- generateDataFrameArguments(Parameters=Parameters,
-#                                        n.simul=20,
-#                                        speclib=HRPyPop,
-#                                        # save_path=file.path(outputFolder, savefilename),
-#                                        verbose=10,
-#                                        progress_verbose = 1000)
-#   df = output[["df"]]
-#   Parameters = output[["Parameters"]]
-#   
-#   point_matrix <- drawSFHFromDataFrame(df,
-#                                        Parameters$massfunc,
-#                                        agevec=HRPyPop$Age,
-#                                        log="xy",
-#                                        ylim=c(1e-4, 15))
-#   
-#   # abline(v=EMILESCombined$Age)
-#   
-#   Parameters["stellpop"] = "HRPypop"
-#   Parameters[["speclib"]] = HRPyPop
-#   generateSpecFromDataFrame(Parameters, df, saveDataFrame = FALSE, verboseStep = 5)
-# }
 
 
