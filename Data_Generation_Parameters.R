@@ -124,7 +124,7 @@ Parameters <- list(
   filters="HST",
   emission=TRUE,
   emission_scale="SFR",
-  veldisp=40,
+  veldisp=100,
   
   name="snorm_burst",
   massfunc=massfunc_snorm_burst,
