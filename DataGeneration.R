@@ -49,7 +49,7 @@ generateDataFrameArguments <- function(Parameters,
       }
     }
     
-    evaluated = splat(x$func)(c(1, x[-which(names(x)=="func")]))
+    evaluated = splat(x$func)(c(1, x[["arg"]]))
     
     # Verify it is located within min/max
     if (!is.null(additional_arguments$min_val)){
