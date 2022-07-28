@@ -473,7 +473,8 @@ generateSpecFromDataFrame <- function(Parameters,
   static.params.names = names(Parameters)[names(Parameters) %in% list.names.not.used]
   static.params.val = Parameters[static.params.names]
   
-  
+  # Calculate the subvector of the output waveout
+  EMILESRecortado4700 = Parameters$speclib$Wave[between(Parameters$speclib$Wave, 4700, 6247.5)]
   
   #### Iterate over total number of cases ####
   # Initiate Matrix
@@ -536,25 +537,16 @@ generateSpecFromDataFrame <- function(Parameters,
           returnList=TRUE)
       }
     } else {
-      if (TRUE){
-        if (FALSE){    # EMILESCombined
-          plot(spectraObject$flux$wave, spectraObject$flux$flux, type="l", log="xy")
-          a <- spectraObject$flux$wave[1:(length(spectraObject$flux$wave) - 1)] - spectraObject$flux$wave[2:length(spectraObject$flux$wave)]
-          plot(spectraObject$flux$wave[1:(length(spectraObject$flux$wave) - 1)], a, type="l", log="x")
-          plot(spectraObject$flux$wave[30:11000], a[30:11000], type="l", log="x")
-          plot(spectraObject$flux$wave[30:11000], spectraObject$flux$flux[30:11000], type="l", log="xy")
-        }
-        if (FALSE){    # EMILESRecortado
-          plot(spectraObject$flux$wave, spectraObject$flux$flux, type="l", log="xy")
-          a <- spectraObject$flux$wave[1:(length(spectraObject$flux$wave) - 1)] - spectraObject$flux$wave[2:length(spectraObject$flux$wave)]
-          plot(spectraObject$flux$wave[1:(length(spectraObject$flux$wave) - 1)], a, type="l", log="x")
-          plot(spectraObject$flux$wave[22:1057], a[22:1057], type="l", log="x")
-          plot(spectraObject$flux$wave[22:1057], spectraObject$flux$flux[22:1057], type="l", log="xy")
-        }
+      
+      # Identify which of the new wavelengths are the corresponding ones.
+      # This step is due to the fact that the reemission lines are oversampling.
+      new_wave_idx = numeric(length(EMILESRecortado4700))
+      for (w in 1:length(EMILESRecortado4700)){
+        new_wave_idx[w] = which.min(abs(EMILESRecortado4700[w] - spectraObject$flux$wave))
       }
-      filter_waveout = between(spectraObject$flux$wave, waveout[1], waveout[length(waveout)])
-      wav <- spectraObject$flux$wave[filter_waveout]
-      flu <- spectraObject$flux$flux[filter_waveout]
+      
+      wav <- spectraObject$flux$wave[new_wave_idx]
+      flu <- spectraObject$flux$flux[new_wave_idx]
       spectraObject$flux <- list(wave=wav, flux=flu)
       
       
