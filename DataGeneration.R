@@ -509,6 +509,8 @@ generateSpecFromDataFrame <- function(Parameters,
                             )
     
     #### Postprocess Spectra ####
+    # Add agevec, as in some computers this is missing...
+    spectraObject$agevec = Parameters$speclib$Age
     # SFR
     tmp_output = convertAgevecToOutputScale(spectraObject$agevec, spectraObject$SFR)
     spectraObject$SFR = tmp_output$data
