@@ -98,7 +98,7 @@ exportObjectsToSingleFITS <- function(Parameters,
     header <- addComment("------ List of filters analysed ------", header=header)
     for (i in 1:length(filters$filter)){
       header <- addKwv(paste0("filterN", i),
-                       filters$filter[i],
+                       toString(filters$filter[i]),
                        note=paste("Filter Name", i),
                        header=header)
       header <- addKwv(paste0("filterC", i),
