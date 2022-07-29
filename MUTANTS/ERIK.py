@@ -292,6 +292,7 @@ def read_config_file(filename, file_folder=None, reset_file=False, default_confi
 
 
 def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_sufix: str = "combined", overwrite=True,
+                     output_folder: str = None, speclib: bool = False,
                      whichrscript: str = "/usr/local/bin/Rscript"):
     """
     Combines n datasets into a single combined dataset, where n=len(file_list_sufixes).
@@ -305,6 +306,8 @@ def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_su
     :param file_folder:
     :param combined_output_sufix:
     :param overwrite:
+    :param output_folder:
+    :param speclib:
     :param whichrscript:
     """
 
@@ -406,29 +409,38 @@ def combine_datasets(file_list_sufixes: list, file_folder="", combined_output_su
     in_header["nrows"] = last_id
     lab_header["nrows"] = last_id
 
+    if output_folder is None:
+        output_folder = file_folder
+
     # Combine Metadata
     # ToDo: read path to script from environment
     subprocess_str = " ".join(
         [whichrscript, "--vanilla", "/Users/enrique/Documents/GitHub/LOGAN-SFH/CombineMetadata.R",
          "uuidi=" + uuidi, "uuidl=" + uuidl, "uuidm=" + uuidm,
-         "path=" + file_folder,
+         "path=" + file_folder, "speclib=" + f"{1 if speclib else 0}",
+         "outpath=" + output_folder,
          "out=" + "MetaD_" + combined_output_sufix + ".rda",
          ] + file_list_sufixes)
+    print("[INFO] Executing Rscript for Metadata:")
+    print(subprocess_str)
     subprocess.call(subprocess_str, shell=True)
 
     # Save new files
-    print(f"[INFO] Saving directory: {file_folder}")
+    print(f"[INFO] Saving directory: {output_folder}")
     print(f"[INFO] Saving combined Input file to Input_{combined_output_sufix}.fits ...")
-    fits.writeto(file_folder + "/Input_" + combined_output_sufix + ".fits", in_data, in_header, overwrite=overwrite)
+    fits.writeto(os.path.join(output_folder, "Input_" + combined_output_sufix + ".fits"), in_data, in_header,
+                 overwrite=overwrite)
     print(f"[INFO] Saving combined Label file to Label_{combined_output_sufix}.fits ...")
-    fits.writeto(file_folder + "/Label_" + combined_output_sufix + ".fits", lab_data, lab_header, overwrite=overwrite)
+    fits.writeto(os.path.join(output_folder, "Label_" + combined_output_sufix + ".fits"), lab_data, lab_header,
+                 overwrite=overwrite)
 
     print("[INFO] Converting double precision to single precision...")
-    verify32bits(file_folder + "/Label_" + combined_output_sufix + ".fits", verbose=0)
-    verify32bits(file_folder + "/Input_" + combined_output_sufix + ".fits", verbose=0)
+    verify32bits(os.path.join(output_folder, "Label_" + combined_output_sufix + ".fits"), verbose=0)
+    verify32bits(os.path.join(output_folder, "Input_" + combined_output_sufix + ".fits"), verbose=0)
 
     print(f"[INFO] Number of lines: {' '.join([str(_) for _ in length_dataset])} -> Total: {int(in_header['nrows'])}")
     print(f"[INFO] Finished combining {len(file_list_sufixes)} files.")
+    print("")
 
 
 def standardize_dataset(input_spectra, input_magnitudes,
@@ -626,12 +638,14 @@ def convert_training_data_to_difference_numpy(path: list[str], out_suffix: str =
 if __name__ == "__main__":
     # sufixes = ["20220427T192930_WViuSKxC", "20220428T130515_4QykcNJR", "20220428T154400_VxxFQPr2",
     #            "20220428T182828_dfn2FS3c", "20220503T140118_wYhTmpOD"]
-    temp_dir = "/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder_step2/"
-    filenames = [os.path.join(temp_dir, _) for _ in os.listdir(temp_dir) if "predict_spectra" in _]
-    filenames = [_ for _ in filenames if "_step.npy" not in _]
-    convert_training_data_to_difference_numpy(filenames)
+    # temp_dir = "/Users/enrique/Documents/GitHub/LOGAN-SFH/tempFolder_MSLE_5"
+    # filenames = [os.path.join(temp_dir, _) for _ in os.listdir(temp_dir) if "predict_spectra" in _]
+    # filenames = [_ for _ in filenames if "_step.npy" not in _]
+    # convert_training_data_to_difference_numpy(filenames)
     # dataset_folder = "/Volumes/Elements/NewGeneratedData_reduced_wavelength"
-
-    # combine_datasets(["all"], file_folder=dataset_folder, combined_output_sufix="combined", overwrite = True)
+    raw_data_folder = "/Users/enrique/Documents/GitHub/LOGAN-SFH/scp"
+    combined_data_folder = "/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData"
+    combine_datasets(["all"], file_folder=raw_data_folder, combined_output_sufix="new_model",
+                     speclib=False, output_folder=combined_data_folder, overwrite=True)
     # combine_datasets(sufixes, file_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/KK", combined_output_sufix= "combined", overwrite = True)
 

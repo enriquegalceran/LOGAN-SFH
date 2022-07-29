@@ -15,6 +15,9 @@ filepath=NULL
 uuidi=NULL
 uuidl=NULL
 uuidm=NULL
+speclib=NULL
+outpath=NULL
+
 for (arg in args){
     if (substr(arg, 1, 4) == "out="){
         outfile = substr(arg, 5, nchar(arg))
@@ -26,11 +29,21 @@ for (arg in args){
         uuidl = substr(arg, 7, nchar(arg))
     } else if (substr(arg, 1, 6) == "uuidm="){
         uuidm = substr(arg, 7, nchar(arg))
-    } 
+    } else if (substr(arg, 1, 8) == "speclib="){
+        if (substr(arg, 9, 9) == "1"){speclib = TRUE} else {speclib = FALSE}
+    } else if (substr(arg, 1, 8) == "outpath="){
+        outpath=substr(arg, 9, nchar(arg))
+    }
 }
 for (arg in args){
     if (substr(arg, 1, 4) == "uuid")
         args = args[-which(args==arg)]
+}
+
+for (arg in args){
+    if (substr(arg, 1, 8) == "speclib="){
+        args = args[-which(args==arg)]
+    }
 }
 
 
@@ -40,7 +53,14 @@ if (is.null(outfile)){
 } else{
     args = args[-which(args == paste0("out=", outfile))]
 }
-cat(paste0("Output file = ", outfile, "\n"))
+if (is.null(outpath)){
+    cat("No value for output path (outpath=) was given. Output path set to default cwd.\n")
+    outpath = getwd()
+} else {
+    args = args[-which(args == paste0("outpath=", outpath))]
+}
+
+cat(paste0("Output file = ", file.path(outpath, outfile), "\n"))
 
 
 # TODO: Fix this hardcoded stuff... environ variables??
@@ -52,11 +72,6 @@ if (is.null(filepath)){
     if (substr(filepath, 1, 1) != "/")
         filepath = file.path(getwd(), filepath)
     cat(paste0("Output filename = ", filepath, "\n"))
-}
-
-# Add path to outfile
-if (substr(outfile, 1, 1) != "/"){
-    outfile = file.path(filepath, outfile)
 }
 
 metadata_to_save = list()
@@ -72,12 +87,16 @@ for (arg in args){
     cat(paste0("Loading file '", MetaDname, "' ...\n"))
     load(MetaDname)
     
+    if (!speclib){
+        metadata$speclib = NULL
+    }
+    
     metadata_to_save = append(metadata_to_save, list(metadata))
     
     i = i + 1
     
 }
 metadata_combined = setNames(metadata_to_save, seq(0, (i-1)))
-cat(paste0("Saving output in ", outfile, " ...\n"))
-save(metadata_combined, file=outfile)
+cat(paste0("Saving output in ", file.path(outpath, outfile), " ...\n"))
+save(metadata_combined, file=file.path(outpath, outfile))
 
