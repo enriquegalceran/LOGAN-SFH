@@ -531,7 +531,8 @@ def prettyfy_json_file(filename, verbose=1, indent=4):
         f.write(json.dumps(data, indent=indent))
 
 
-def convert_training_data_to_difference(path: str, suffix: str = None, out_name: str = None, out_suffix: str = None):
+def convert_training_data_to_difference(path: str, suffix: str = None,
+                                        out_name: str = None, out_suffix: str = None):
     """
     Convert input file into subtracted file
     :param path:
@@ -590,18 +591,19 @@ def convert_training_data_to_difference(path: str, suffix: str = None, out_name:
 
     with fits.open(filename) as hdul:
         data = hdul[0].data
-        logi0 = np.log10(data[1:-6, 1:])
-        logi1 = np.log10(data[2:-5, 1:])
-        mag1 = data[-5:-1, 1:]
-        mag2 = data[-4:, 1:]
+        n_filters = hdul[0].header["nfilters"]
+        logi0 = np.log10(data[1:-(n_filters + 1), 1:])
+        logi1 = np.log10(data[2:-n_filters, 1:])
+        mag1 = data[-n_filters:-1, 1:]
+        mag2 = data[-(n_filters - 1):, 1:]
         # Shorten array
         data = data[:-2, :]
         # Reset first row
-        data[1:-4, 0] = (data[1:-4, 0] + data[2:-3, 0]) / 2
-        data[-4:, 0] = np.arange(4)
+        data[1:-(n_filters - 1), 0] = (data[1:-(n_filters - 1), 0] + data[2:-(n_filters - 2), 0]) / 2
+        data[-(n_filters - 1):, 0] = np.arange((n_filters - 1))
         # Overwrite with new data
-        data[1:-4, 1:] = logi0 - logi1
-        data[-4:, 1:] = mag1 - mag2
+        data[1:-(n_filters - 1), 1:] = logi0 - logi1
+        data[-(n_filters - 1):, 1:] = mag1 - mag2
         hdul[0].data = data
         hdul[0].header["nspectra"] = hdul[0].header["nspectra"] - 1
         hdul[0].header["nfilters"] = hdul[0].header["nfilters"] - 1
@@ -645,7 +647,8 @@ if __name__ == "__main__":
     # dataset_folder = "/Volumes/Elements/NewGeneratedData_reduced_wavelength"
     raw_data_folder = "/Users/enrique/Documents/GitHub/LOGAN-SFH/scp"
     combined_data_folder = "/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData"
-    combine_datasets(["all"], file_folder=raw_data_folder, combined_output_sufix="new_model",
-                     speclib=False, output_folder=combined_data_folder, overwrite=True)
+    # combine_datasets(["all"], file_folder=raw_data_folder, combined_output_sufix="new_model",
+    #                  speclib=False, output_folder=combined_data_folder, overwrite=True)
+    convert_training_data_to_difference("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/Input_new_model.fits")
     # combine_datasets(sufixes, file_folder="/Users/enrique/Documents/GitHub/LOGAN-SFH/KK", combined_output_sufix= "combined", overwrite = True)
 
