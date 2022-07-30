@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# SpeCtra Observer [Cyclops]
+# SpeCtra Observer and TesTer [Cyclops]
 
 # import json
 import os
@@ -10,9 +10,12 @@ import argparse
 # from shutil import copyfile
 # from datetime import datetime
 # import numpy as np
-# from astropy.io import fits
-
-
+# import keras
+import matplotlib.pyplot as plt
+from astropy.io import fits
+import time
+import matplotlib
+print(matplotlib.matplotlib_fname())
 
 def main(update_values=None, **mainkwargs):
     # Argument Parser (argparse)
@@ -38,11 +41,34 @@ def main(update_values=None, **mainkwargs):
                              "be simply giving multiple paths).If verbose > 0, json file will be printed.")
     args = parser.parse_args()
 
+    with fits.open("/Users/enrique/Documents/GitHub/LOGAN-SFH/Testing_spectra1.fits") as hdul1:
+        data1 = hdul1[0].data
+    with fits.open("/Users/enrique/Documents/GitHub/LOGAN-SFH/Testing_spectra2.fits") as hdul1:
+        data2 = hdul1[0].data
 
 
-
-
+    color = "orange"
+    plt.ion()
+    fig, ax = plt.subplots()
+    ln, = ax.plot(data1)
+    while True:
+        ln.set_color(color)
+        # plt.show(block=False)
+        print("asdfg")
+        time.sleep(1)
+        color = input("Color a cambiar")
+        if color == "end":
+            break
 
 
 if __name__ == "__main__":
+    # with fits.open("/Users/enrique/Documents/GitHub/LOGAN-SFH/TrainingData/Input_combined_wave_steps.fits") as hdul:
+    #     spectra = hdul[0].data
+    #     output1 = spectra[1:-4, 1]
+    #     output2 = spectra[1:-4, 2]
+    #
+    # hdu = fits.PrimaryHDU(output1)
+    # hdu.writeto("/Users/enrique/Documents/GitHub/LOGAN-SFH/Testing_spectra1.fits")
+    # hdu = fits.PrimaryHDU(output2)
+    # hdu.writeto("/Users/enrique/Documents/GitHub/LOGAN-SFH/Testing_spectra2.fits")
     main()
